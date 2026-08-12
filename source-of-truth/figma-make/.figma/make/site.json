@@ -1,0 +1,10 @@
+{
+  "description": "Streamline food and beverage inventory management and optimize orders for restaurants and retailers, enhancing efficiency and reducing waste.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
