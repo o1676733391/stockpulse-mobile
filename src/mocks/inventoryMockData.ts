@@ -1,0 +1,443 @@
+import {
+  CountSchedule,
+  CountSummaryItem,
+  DashboardActivityItem,
+  DashboardExpiryItem,
+  DashboardKpi,
+  DashboardTask,
+  InventoryItem,
+  QuickAction,
+  StockCountItem,
+  StockHealthSegment,
+} from '@/types/inventory';
+import { Recipe } from '@/types/ocr';
+
+export const mockInventoryItems: InventoryItem[] = [
+  {
+    id: 'i1',
+    name: 'Chicken Breast',
+    sku: 'CHK-001',
+    category: 'Meat & Poultry',
+    unit: 'kg',
+    physicalStock: 24.5,
+    theoreticalStock: 27.0,
+    targetStock: 35,
+    safetyStock: 5,
+    costPerUnit: 4.80,
+    supplierId: 's1',
+    status: 'low',
+    batches: [
+      { id: 'B1024', quantity: 10, expiryDate: '14 Mar 2026', daysRemaining: 3 },
+      { id: 'B1029', quantity: 14.5, expiryDate: '21 Mar 2026', daysRemaining: 10 },
+    ],
+    transactions: [
+      { id: 't1', type: 'pos_deduction', date: '10 Mar 18:30', user: 'System', delta: -3.8, note: 'POS Report #2048' },
+      { id: 't2', type: 'manual_count', date: '10 Mar 10:00', user: 'Anna Schmidt', delta: 0, note: 'Daily count' },
+      { id: 't3', type: 'goods_receipt', date: '08 Mar 09:00', user: 'Marco Bauer', delta: 20, note: 'GR-20481' },
+      { id: 't4', type: 'adjustment', date: '07 Mar 14:00', user: 'Anna Schmidt', delta: -2.5, note: 'Spoilage' },
+    ],
+  },
+  {
+    id: 'i2',
+    name: 'Fresh Salmon',
+    sku: 'SAL-002',
+    category: 'Fish & Seafood',
+    unit: 'kg',
+    physicalStock: 4.2,
+    theoreticalStock: 6.0,
+    targetStock: 10,
+    safetyStock: 2,
+    costPerUnit: 16.20,
+    supplierId: 's2',
+    status: 'critical',
+    batches: [
+      { id: 'B1030', quantity: 4.2, expiryDate: '11 Mar 2026', daysRemaining: 1 },
+    ],
+    transactions: [
+      { id: 't5', type: 'pos_deduction', date: '10 Mar 18:30', user: 'System', delta: -1.8, note: 'POS Report #2048' },
+      { id: 't6', type: 'goods_receipt', date: '09 Mar 08:00', user: 'Marco Bauer', delta: 6, note: 'GR-20479' },
+    ],
+  },
+  {
+    id: 'i3',
+    name: 'Potatoes',
+    sku: 'POT-003',
+    category: 'Vegetables',
+    unit: 'kg',
+    physicalStock: 48.0,
+    theoreticalStock: 50.2,
+    targetStock: 80,
+    safetyStock: 10,
+    costPerUnit: 0.90,
+    supplierId: 's1',
+    status: 'low',
+    batches: [
+      { id: 'B1021', quantity: 48, expiryDate: '30 Mar 2026', daysRemaining: 19 },
+    ],
+    transactions: [
+      { id: 't7', type: 'pos_deduction', date: '10 Mar 18:30', user: 'System', delta: -8.2, note: 'POS Report #2048' },
+    ],
+  },
+  {
+    id: 'i4',
+    name: 'Cooking Oil',
+    sku: 'OIL-004',
+    category: 'Dry Goods',
+    unit: 'L',
+    physicalStock: 22.5,
+    theoreticalStock: 24.0,
+    targetStock: 30,
+    safetyStock: 5,
+    costPerUnit: 2.40,
+    supplierId: 's1',
+    status: 'healthy',
+    batches: [
+      { id: 'B1018', quantity: 22.5, expiryDate: '15 Jun 2026', daysRemaining: 96 },
+    ],
+    transactions: [],
+  },
+  {
+    id: 'i5',
+    name: 'Whole Milk',
+    sku: 'MLK-005',
+    category: 'Dairy',
+    unit: 'L',
+    physicalStock: 8.0,
+    theoreticalStock: 10.5,
+    targetStock: 20,
+    safetyStock: 4,
+    costPerUnit: 1.10,
+    supplierId: 's3',
+    status: 'low',
+    batches: [
+      { id: 'B1032', quantity: 8, expiryDate: '13 Mar 2026', daysRemaining: 3 },
+    ],
+    transactions: [],
+  },
+  {
+    id: 'i6',
+    name: 'Gouda Cheese',
+    sku: 'CHS-006',
+    category: 'Dairy',
+    unit: 'kg',
+    physicalStock: 6.8,
+    theoreticalStock: 7.2,
+    targetStock: 10,
+    safetyStock: 2,
+    costPerUnit: 8.50,
+    supplierId: 's3',
+    status: 'healthy',
+    batches: [
+      { id: 'B1031', quantity: 6.8, expiryDate: '25 Apr 2026', daysRemaining: 45 },
+    ],
+    transactions: [],
+  },
+  {
+    id: 'i7',
+    name: 'Tomatoes',
+    sku: 'TOM-007',
+    category: 'Vegetables',
+    unit: 'kg',
+    physicalStock: 12.4,
+    theoreticalStock: 14.0,
+    targetStock: 20,
+    safetyStock: 3,
+    costPerUnit: 1.80,
+    supplierId: 's2',
+    status: 'healthy',
+    batches: [
+      { id: 'B1028', quantity: 12.4, expiryDate: '16 Mar 2026', daysRemaining: 6 },
+    ],
+    transactions: [],
+  },
+  {
+    id: 'i8',
+    name: 'Romaine Lettuce',
+    sku: 'LET-008',
+    category: 'Vegetables',
+    unit: 'kg',
+    physicalStock: 3.1,
+    theoreticalStock: 4.0,
+    targetStock: 8,
+    safetyStock: 1.5,
+    costPerUnit: 2.20,
+    supplierId: 's2',
+    status: 'low',
+    batches: [
+      { id: 'B1033', quantity: 3.1, expiryDate: '12 Mar 2026', daysRemaining: 2 },
+    ],
+    transactions: [],
+  },
+  {
+    id: 'i9',
+    name: 'Ground Beef',
+    sku: 'BEF-009',
+    category: 'Meat & Poultry',
+    unit: 'kg',
+    physicalStock: 18.0,
+    theoreticalStock: 18.0,
+    targetStock: 25,
+    safetyStock: 4,
+    costPerUnit: 6.20,
+    supplierId: 's1',
+    status: 'healthy',
+    batches: [
+      { id: 'B1027', quantity: 18, expiryDate: '13 Mar 2026', daysRemaining: 3 },
+    ],
+    transactions: [],
+  },
+  {
+    id: 'i10',
+    name: 'Wheat Flour',
+    sku: 'FLR-010',
+    category: 'Dry Goods',
+    unit: 'kg',
+    physicalStock: 95.0,
+    theoreticalStock: 95.0,
+    targetStock: 80,
+    safetyStock: 10,
+    costPerUnit: 0.65,
+    supplierId: 's1',
+    status: 'overstock',
+    batches: [
+      { id: 'B1020', quantity: 95, expiryDate: '31 Aug 2026', daysRemaining: 173 },
+    ],
+    transactions: [],
+  },
+];
+
+export const mockStockTrend = {
+  '7D': {
+    labels: ['4 Mar', '5 Mar', '6 Mar', '7 Mar', '8 Mar', '9 Mar', '10 Mar'],
+    physical: [32.0, 30.5, 28.0, 26.5, 28.5, 26.0, 24.5],
+    theoretical: [34.5, 33.0, 31.2, 29.8, 32.0, 29.5, 27.0],
+  },
+  '30D': {
+    labels: ['10 Feb', '17 Feb', '24 Feb', '3 Mar', '10 Mar'],
+    physical: [42.0, 38.5, 35.0, 29.0, 24.5],
+    theoretical: [44.0, 40.0, 36.5, 31.0, 27.0],
+  },
+  '3M': {
+    labels: ['Dec', 'Jan', 'Feb', 'Mar'],
+    physical: [50.0, 44.0, 36.0, 24.5],
+    theoretical: [52.0, 46.0, 38.0, 27.0],
+  },
+};
+
+export const mockCountSchedules: CountSchedule[] = [
+  {
+    id: 'daily',
+    label: 'Daily Stock Count',
+    sub: 'Today, 10 March 2026',
+    progress: 42,
+    total: 68,
+    status: 'in_progress',
+    route: '/stock-count/active',
+  },
+  {
+    id: 'weekly',
+    label: 'Weekly Count',
+    sub: 'Due 14 March 2026',
+    progress: 0,
+    total: 68,
+    status: 'scheduled',
+    route: '/stock-count/active',
+  },
+  {
+    id: 'monthly',
+    label: 'Monthly Inventory',
+    sub: 'Due 31 March 2026',
+    progress: 0,
+    total: 152,
+    status: 'scheduled',
+    route: '/stock-count/active',
+  },
+  {
+    id: 'quarterly',
+    label: 'Quarterly Audit',
+    sub: 'Due 30 Jun 2026',
+    progress: 0,
+    total: 152,
+    status: 'scheduled',
+    route: '/stock-count/active',
+  },
+];
+
+export const mockStockCountItems: StockCountItem[] = [
+  { id: 'c1', name: 'Chicken Breast',  sku: 'CHK-001', unit: 'kg', expected: 27.0, category: 'Meat & Poultry' },
+  { id: 'c2', name: 'Fresh Salmon',    sku: 'SAL-002', unit: 'kg', expected: 6.0,  category: 'Fish & Seafood' },
+  { id: 'c3', name: 'Potatoes',        sku: 'POT-003', unit: 'kg', expected: 50.2, category: 'Vegetables' },
+  { id: 'c4', name: 'Cooking Oil',     sku: 'OIL-004', unit: 'L',  expected: 24.0, category: 'Dry Goods' },
+  { id: 'c5', name: 'Whole Milk',      sku: 'MLK-005', unit: 'L',  expected: 10.5, category: 'Dairy' },
+  { id: 'c6', name: 'Gouda Cheese',    sku: 'CHS-006', unit: 'kg', expected: 7.2,  category: 'Dairy' },
+  { id: 'c7', name: 'Tomatoes',        sku: 'TOM-007', unit: 'kg', expected: 14.0, category: 'Vegetables' },
+  { id: 'c8', name: 'Romaine Lettuce', sku: 'LET-008', unit: 'kg', expected: 4.0,  category: 'Vegetables' },
+  { id: 'c9', name: 'Ground Beef',     sku: 'BEF-009', unit: 'kg', expected: 18.0, category: 'Meat & Poultry' },
+  { id: 'c10', name: 'Wheat Flour',    sku: 'FLR-010', unit: 'kg', expected: 95.0, category: 'Dry Goods' },
+];
+
+export const mockSummaryItems: CountSummaryItem[] = [
+  { id: 's1', name: 'Chicken Breast',  should: 27.0, is: 24.5, unit: 'kg', cost: 4.80 },
+  { id: 's2', name: 'Fresh Salmon',    should: 6.0,  is: 4.2,  unit: 'kg', cost: 16.20 },
+  { id: 's3', name: 'Whole Milk',      should: 10.5, is: 8.0,  unit: 'L',  cost: 1.10 },
+  { id: 's4', name: 'Potatoes',        should: 50.2, is: 48.0, unit: 'kg', cost: 0.90 },
+  { id: 's5', name: 'Romaine Lettuce', should: 4.0,  is: 3.1,  unit: 'kg', cost: 2.20 },
+  { id: 's6', name: 'Ground Beef',     should: 18.0, is: 18.0, unit: 'kg', cost: 6.20 },
+];
+
+export const mockStockHealth: StockHealthSegment[] = [
+  { label: 'Healthy',   count: 52, pct: 52, color: '#059669', bg: '#059669' },
+  { label: 'Low Stock', count: 28, pct: 28, color: '#f59e0b', bg: '#f59e0b' },
+  { label: 'Critical',  count: 12, pct: 12, color: '#ef4444', bg: '#ef4444' },
+  { label: 'Overstock', count:  8, pct:  8, color: '#3b82f6', bg: '#3b82f6' },
+];
+
+export const mockExpiryItems: DashboardExpiryItem[] = [
+  { id: 'e1', name: 'Fresh Salmon',    qty: '4.2 kg', exp: 'Expires tomorrow',  days: 1, urgency: 'critical', value: '€68.04' },
+  { id: 'e2', name: 'Romaine Lettuce', qty: '3.1 kg', exp: 'Expires in 2 days', days: 2, urgency: 'critical', value: '€6.82' },
+  { id: 'e3', name: 'Whole Milk',      qty: '8 L',    exp: 'Expires in 3 days', days: 3, urgency: 'warning',  value: '€8.80' },
+  { id: 'e4', name: 'Ground Beef',     qty: '18 kg',  exp: 'Expires in 3 days', days: 3, urgency: 'warning',  value: '€111.60' },
+];
+
+export const mockActivityItems: DashboardActivityItem[] = [
+  { id: 'a1', iconName: 'ScanLine',      label: 'POS scan completed',   sub: 'Report #2048 · 24 items · 94% conf.',  time: '2h ago',  dotColor: '#3b82f6' },
+  { id: 'a2', iconName: 'PackageOpen',   label: 'Goods received',        sub: 'Metro Foods GmbH · GR-20481',          time: '08 Mar',  dotColor: '#059669' },
+  { id: 'a3', iconName: 'ClipboardList', label: 'Stock count completed', sub: 'Daily Count · 68 items counted',       time: '08 Mar',  dotColor: '#8b5cf6' },
+  { id: 'a4', iconName: 'ShoppingCart',  label: 'Purchase order sent',   sub: 'Metro Foods GmbH · PO-4821 · €248.40', time: '06 Mar',  dotColor: '#f59e0b' },
+];
+
+export const mockAdminKpis: DashboardKpi[] = [
+  { label: 'Inventory Value', value: '€18,420', sub: '+€380 vs last week', variant: 'gray',   trend: { dir: 'up',   label: '+2.1%' } },
+  { label: 'Low Stock',       value: '12',      sub: '4 critical',         variant: 'amber',  trend: { dir: 'flat', label: 'Unchanged' } },
+  { label: 'Near Expiry',     value: '7',       sub: '2 expire tomorrow',  variant: 'red',    trend: { dir: 'up',   label: '+2 items' } },
+  { label: 'Variance',        value: '−2.8%',   sub: 'This period',        variant: 'orange', trend: { dir: 'down', label: '−0.3% vs last' } },
+];
+
+export const mockStaffKpis: DashboardKpi[] = [
+  { label: 'Near Expiry', value: '7',  sub: '2 expire tomorrow', variant: 'red',   trend: { dir: 'up',   label: '+2 vs yesterday' } },
+  { label: 'Low Stock',   value: '12', sub: '4 critical',         variant: 'amber', trend: { dir: 'flat', label: 'Unchanged' } },
+];
+
+export const mockDashboardTasks: DashboardTask[] = [
+  {
+    id: 't1',
+    iconName: 'ClipboardList',
+    label: 'Daily Stock Count',
+    sub: 'In progress',
+    color: '#b45309',
+    bg: '#fef3c7',
+    done: 42,
+    total: 68,
+    badge: '26 remaining',
+    badgeVariant: 'amber',
+    route: '/stock-count',
+  },
+  {
+    id: 't2',
+    iconName: 'ScanLine',
+    label: 'Review POS Scans',
+    sub: 'Awaiting confirmation',
+    color: '#1d4ed8',
+    bg: '#dbeafe',
+    badge: '3 waiting',
+    badgeVariant: 'blue',
+    route: '/scan',
+  },
+  {
+    id: 't3',
+    iconName: 'AlertTriangle',
+    label: 'Expiration Alerts',
+    sub: '2 expire tomorrow',
+    color: '#b91c1c',
+    bg: '#fee2e2',
+    badge: '7 products',
+    badgeVariant: 'red',
+    route: '/inventory',
+  },
+  {
+    id: 't4',
+    iconName: 'ShoppingCart',
+    label: 'POQ Recommendations',
+    sub: 'Review reorder quantities',
+    color: '#047857',
+    bg: '#d1fae5',
+    badge: '4 items',
+    badgeVariant: 'green',
+    route: '/orders',
+  },
+];
+
+export const mockQuickActions: QuickAction[] = [
+  { id: 'q1', iconName: 'ClipboardList', label: 'Start Stock Count', iconColor: '#047857', bg: '#d1fae5', route: '/stock-count/active' },
+  { id: 'q2', iconName: 'ScanLine',      label: 'Scan POS Report',   iconColor: '#1d4ed8', bg: '#dbeafe', route: '/scan' },
+  { id: 'q3', iconName: 'PackageOpen',   label: 'Receive Goods',     iconColor: '#6d28d9', bg: '#ede9fe', route: '/orders' },
+  { id: 'q4', iconName: 'ShoppingCart',  label: 'Create PO',         iconColor: '#b45309', bg: '#fef3c7', route: '/orders/poq' },
+];
+
+export const mockSparklineTrend = [18200, 17900, 18100, 17800, 18250, 18350, 18420];
+
+export const mockRecipes: Recipe[] = [
+  {
+    id: 'r1',
+    name: 'Menu 1 — Chicken Plate',
+    category: 'Main Course',
+    costPerServing: 3.42,
+    active: true,
+    ingredients: [
+      { itemId: 'i1', itemName: 'Chicken Breast', quantity: 0.20, unit: 'kg' },
+      { itemId: 'i3', itemName: 'Potatoes', quantity: 0.15, unit: 'kg' },
+      { itemId: 'i4', itemName: 'Cooking Oil', quantity: 0.02, unit: 'L' },
+      { itemId: 'i7', itemName: 'Tomatoes', quantity: 0.05, unit: 'kg' },
+    ],
+  },
+  {
+    id: 'r2',
+    name: 'Burger XL',
+    category: 'Burgers',
+    costPerServing: 4.18,
+    active: true,
+    ingredients: [
+      { itemId: 'i9', itemName: 'Ground Beef', quantity: 0.25, unit: 'kg' },
+      { itemId: 'i8', itemName: 'Romaine Lettuce', quantity: 0.04, unit: 'kg' },
+      { itemId: 'i7', itemName: 'Tomatoes', quantity: 0.06, unit: 'kg' },
+      { itemId: 'i6', itemName: 'Gouda Cheese', quantity: 0.04, unit: 'kg' },
+    ],
+  },
+  {
+    id: 'r3',
+    name: 'Salmon Lunch Special',
+    category: 'Fish',
+    costPerServing: 8.90,
+    active: true,
+    ingredients: [
+      { itemId: 'i2', itemName: 'Fresh Salmon', quantity: 0.22, unit: 'kg' },
+      { itemId: 'i3', itemName: 'Potatoes', quantity: 0.12, unit: 'kg' },
+      { itemId: 'i7', itemName: 'Tomatoes', quantity: 0.05, unit: 'kg' },
+      { itemId: 'i4', itemName: 'Cooking Oil', quantity: 0.02, unit: 'L' },
+    ],
+  },
+  {
+    id: 'r4',
+    name: 'Menu 3 — Mixed Salad',
+    category: 'Salads',
+    costPerServing: 2.10,
+    active: true,
+    ingredients: [
+      { itemId: 'i8', itemName: 'Romaine Lettuce', quantity: 0.12, unit: 'kg' },
+      { itemId: 'i7', itemName: 'Tomatoes', quantity: 0.08, unit: 'kg' },
+      { itemId: 'i6', itemName: 'Gouda Cheese', quantity: 0.05, unit: 'kg' },
+    ],
+  },
+  {
+    id: 'r5',
+    name: 'Classic Pancakes',
+    category: 'Breakfast',
+    costPerServing: 1.85,
+    active: false,
+    ingredients: [
+      { itemId: 'i10', itemName: 'Wheat Flour', quantity: 0.10, unit: 'kg' },
+      { itemId: 'i5', itemName: 'Whole Milk', quantity: 0.15, unit: 'L' },
+      { itemId: 'i4', itemName: 'Cooking Oil', quantity: 0.01, unit: 'L' },
+    ],
+  },
+];
