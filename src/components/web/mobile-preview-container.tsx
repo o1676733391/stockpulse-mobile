@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Pressable,
 } from 'react-native';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme';
+import { Colors, Spacing, Typography, Radius as BorderRadius } from '@/constants/theme';
 import { VectorIcon } from '@/components/ui/icons';
 
 interface MobilePreviewContainerProps {
@@ -16,6 +16,10 @@ interface MobilePreviewContainerProps {
 }
 
 export function MobilePreviewContainer({ children }: MobilePreviewContainerProps) {
+  if (Platform.OS !== 'web') {
+    return <>{children}</>;
+  }
+
   const { width, height } = useWindowDimensions();
   const isWideWeb = Platform.OS === 'web' && width > 560;
   
@@ -116,19 +120,19 @@ export function MobilePreviewContainer({ children }: MobilePreviewContainerProps
             <Pressable
               style={[
                 styles.segmentOption,
-                deviceMode === 'full' && styles.segmentOptionActive,
+                (deviceMode as string) === 'full' && styles.segmentOptionActive,
               ]}
               onPress={() => setDeviceMode('full')}
             >
               <VectorIcon
                 name="Maximize2"
                 size={13}
-                color={deviceMode === 'full' ? '#FFFFFF' : '#94A3B8'}
+                color={(deviceMode as string) === 'full' ? '#FFFFFF' : '#94A3B8'}
               />
               <Text
                 style={[
                   styles.segmentText,
-                  deviceMode === 'full' && styles.segmentTextActive,
+                  (deviceMode as string) === 'full' && styles.segmentTextActive,
                 ]}
               >
                 Full Screen

@@ -5,14 +5,15 @@ import { VectorIcon } from '@/components/ui/icons';
 import { StockMetricBox } from '@/components/ui/stock-metric-box';
 import { TopBar } from '@/components/ui/top-bar';
 import { BadgeVariant, Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { mockInventoryItems } from '@/mocks/inventoryMockData';
+import { inventoryService } from '@/services/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,28 +53,49 @@ export default function InventoryListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [sort, setSort] = useState<SortOption>('Name');
   const [showSortModal, setShowSortModal] = useState(false);
 
+  const fetchItems = useCallback(async () => {
+    try {
+      const data = await inventoryService.getItems();
+      setItems(data);
+    } catch {
+      // Fallback logged in service
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchItems();
+    setRefreshing(false);
+  }, [fetchItems]);
+
   // Filter & Sort Logic
   const filtered = useMemo(() => {
-    return mockInventoryItems
+    return items
       .filter((item) => {
         const matchesQuery =
           item.name.toLowerCase().includes(query.toLowerCase()) ||
           item.sku.toLowerCase().includes(query.toLowerCase());
 
         const matchesCategory =
-          category === 'All' || item.category === category;
+          category === 'All' || item.category.toLowerCase() === category.toLowerCase();
 
         let matchesStatus = true;
         if (statusFilter === 'Low Stock') {
           matchesStatus = item.status === 'low' || item.status === 'critical';
         } else if (statusFilter === 'Expiring') {
-          matchesStatus = item.batches.some((b) => b.daysRemaining <= 7);
+          matchesStatus = (item.batches || []).some((b) => b.daysRemaining <= 7);
         } else if (statusFilter === 'Overstock') {
           matchesStatus = item.status === 'overstock';
         } else if (statusFilter === 'Variance') {
@@ -92,26 +114,26 @@ export default function InventoryListScreen() {
           return varB - varA;
         }
         if (sort === 'Expiry ↑') {
-          const minA = Math.min(...a.batches.map((x) => x.daysRemaining));
-          const minB = Math.min(...b.batches.map((x) => x.daysRemaining));
+          const minA = a.batches && a.batches.length > 0 ? Math.min(...a.batches.map((x) => x.daysRemaining)) : 999;
+          const minB = b.batches && b.batches.length > 0 ? Math.min(...b.batches.map((x) => x.daysRemaining)) : 999;
           return minA - minB;
         }
         return a.name.localeCompare(b.name);
       });
-  }, [query, category, statusFilter, sort]);
+  }, [items, query, category, statusFilter, sort]);
 
   const totalValue = useMemo(() => {
-    return mockInventoryItems.reduce(
+    return items.reduce(
       (sum, item) => sum + item.physicalStock * item.costPerUnit,
       0
     );
-  }, []);
+  }, [items]);
 
   const alertCount = useMemo(() => {
-    return mockInventoryItems.filter(
+    return items.filter(
       (item) => item.status === 'critical' || item.status === 'low'
     ).length;
-  }, []);
+  }, [items]);
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
@@ -187,6 +209,14 @@ export default function InventoryListScreen() {
           { paddingBottom: insets.bottom + 80 },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.brand.primary]}
+            tintColor={Colors.brand.primary}
+          />
+        }
       >
         {filtered.map((item) => {
           const variance = item.physicalStock - item.theoreticalStock;

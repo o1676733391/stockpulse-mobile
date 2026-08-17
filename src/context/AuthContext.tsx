@@ -1,4 +1,5 @@
 import { ROLES } from '@/constants/rbac';
+import { getAuthToken } from '@/services/apiClient';
 import { MOCK_USERS, authService } from '@/services/authService';
 import { AuthUser, Permission, UserRole } from '@/types/rbac';
 import React, {
@@ -14,6 +15,9 @@ export interface AuthContextType {
   user: AuthUser;
   role: UserRole;
   isAuthenticated: boolean;
+  login: (email: string, password?: string) => Promise<AuthUser>;
+  register: (name: string, email: string, password: string, storeName?: string, phone?: string, role?: UserRole) => Promise<AuthUser>;
+  logout: () => Promise<void>;
   switchRole: (role: UserRole) => Promise<void>;
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
@@ -25,9 +29,35 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser>(MOCK_USERS.admin);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
 
   useEffect(() => {
-    authService.getCurrentUser().then(setUser);
+    authService.getCurrentUser().then((u) => {
+      setUser(u);
+      setIsAuthenticated(true);
+    });
+  }, []);
+
+  const login = useCallback(async (email: string, password?: string) => {
+    const loggedInUser = await authService.login(email, password);
+    setUser(loggedInUser);
+    setIsAuthenticated(true);
+    return loggedInUser;
+  }, []);
+
+  const register = useCallback(
+    async (name: string, email: string, password: string, storeName?: string, phone?: string, role?: UserRole) => {
+      const registeredUser = await authService.register(name, email, password, storeName, phone, role);
+      setUser(registeredUser);
+      setIsAuthenticated(true);
+      return registeredUser;
+    },
+    []
+  );
+
+  const logout = useCallback(async () => {
+    await authService.logout();
+    setIsAuthenticated(false);
   }, []);
 
   const switchRole = useCallback(async (newRole: UserRole) => {
@@ -90,14 +120,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       role: user.role,
-      isAuthenticated: true,
+      isAuthenticated,
+      login,
+      register,
+      logout,
       switchRole,
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
       canAccessRoute,
     }),
-    [user, switchRole, hasPermission, hasAnyPermission, hasAllPermissions, canAccessRoute]
+    [user, isAuthenticated, login, register, logout, switchRole, hasPermission, hasAnyPermission, hasAllPermissions, canAccessRoute]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,6 +3,7 @@ import {
   ExpiryItem,
   WasteSuggestion,
 } from '@/types/expiration';
+import { apiClient, logDebugFallback } from './apiClient';
 
 export interface IExpirationService {
   getExpiringItems(): Promise<ExpiryItem[]>;
@@ -11,6 +12,7 @@ export interface IExpirationService {
   markItemUsed(itemId: string, qtyUsed: number): Promise<void>;
   actionSuggestion(suggestionId: number): Promise<void>;
   dismissSuggestion(suggestionId: number): Promise<void>;
+  logWaste(itemId: string, batchId: string | undefined, quantity: number, reason: string): Promise<void>;
 }
 
 export const INITIAL_EXPIRY_ITEMS: ExpiryItem[] = [
@@ -147,7 +149,7 @@ export const INITIAL_SUGGESTIONS: WasteSuggestion[] = [
   },
 ];
 
-export class MockExpirationService implements IExpirationService {
+export class RealExpirationService implements IExpirationService {
   private items: ExpiryItem[] = JSON.parse(JSON.stringify(INITIAL_EXPIRY_ITEMS));
   private expired: ExpiredItem[] = JSON.parse(JSON.stringify(INITIAL_EXPIRED_ITEMS));
   private suggestions: WasteSuggestion[] = JSON.parse(JSON.stringify(INITIAL_SUGGESTIONS));
@@ -155,15 +157,30 @@ export class MockExpirationService implements IExpirationService {
   private dismissedSuggestions = new Set<number>();
 
   async getExpiringItems(): Promise<ExpiryItem[]> {
-    return [...this.items];
+    try {
+      return await apiClient.get<ExpiryItem[]>('/expiration/expiring');
+    } catch (err) {
+      logDebugFallback('ExpirationService', '/expiration/expiring', err);
+      return [...this.items];
+    }
   }
 
   async getExpiredItems(): Promise<ExpiredItem[]> {
-    return [...this.expired];
+    try {
+      return await apiClient.get<ExpiredItem[]>('/expiration/expired');
+    } catch (err) {
+      logDebugFallback('ExpirationService', '/expiration/expired', err);
+      return [...this.expired];
+    }
   }
 
   async getWasteSuggestions(): Promise<WasteSuggestion[]> {
-    return this.suggestions.filter((s) => !this.dismissedSuggestions.has(s.id));
+    try {
+      return await apiClient.get<WasteSuggestion[]>('/expiration/suggestions');
+    } catch (err) {
+      logDebugFallback('ExpirationService', '/expiration/suggestions', err);
+      return this.suggestions.filter((s) => !this.dismissedSuggestions.has(s.id));
+    }
   }
 
   async markItemUsed(itemId: string, qtyUsed: number): Promise<void> {
@@ -185,6 +202,14 @@ export class MockExpirationService implements IExpirationService {
   async dismissSuggestion(suggestionId: number): Promise<void> {
     this.dismissedSuggestions.add(suggestionId);
   }
+
+  async logWaste(itemId: string, batchId: string | undefined, quantity: number, reason: string): Promise<void> {
+    try {
+      await apiClient.post('/expiration/waste-log', { itemId, batchId, quantity, reason });
+    } catch (err) {
+      logDebugFallback('ExpirationService', '/expiration/waste-log', err);
+    }
+  }
 }
 
-export const expirationService: IExpirationService = new MockExpirationService();
+export const expirationService: IExpirationService = new RealExpirationService();

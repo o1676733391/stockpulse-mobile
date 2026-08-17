@@ -15,11 +15,16 @@ import {
   mockSparklineTrend,
   mockStockHealth,
 } from '@/mocks/inventoryMockData';
+import { analyticsService } from '@/services/analyticsService';
+import { expirationService } from '@/services/expirationService';
+import { authService } from '@/services/authService';
+import { DashboardExpiryItem, DashboardKpi } from '@/types/inventory';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,10 +36,65 @@ export default function DashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [expiryItems, setExpiryItems] = useState<DashboardExpiryItem[]>(mockExpiryItems);
+  const [adminKpis, setAdminKpis] = useState<DashboardKpi[]>(mockAdminKpis);
+  const [sparklineData, setSparklineData] = useState<number[]>(mockSparklineTrend);
 
-  const criticalExpiry = mockExpiryItems.filter((e) => e.urgency === 'critical');
-  const totalValueAtRisk = mockExpiryItems.reduce(
-    (sum, item) => sum + parseFloat(item.value.replace('€', '')),
+  const loadData = useCallback(async () => {
+    try {
+      const [valRes, expRes] = await Promise.all([
+        analyticsService.getStockValuation(),
+        expirationService.getExpiringItems(),
+      ]);
+
+      if (valRes?.trend7D?.values) {
+        setSparklineData(valRes.trend7D.values);
+        setAdminKpis((prev) => [
+          {
+            ...prev[0],
+            value: `€${valRes.totalValuation.toLocaleString('de-DE')}`,
+          },
+          prev[1],
+          {
+            ...prev[2],
+            value: `${expRes.length}`,
+          },
+          prev[3],
+        ]);
+      }
+
+      if (expRes && expRes.length > 0) {
+        setExpiryItems(
+          expRes.map((e) => ({
+            id: e.id,
+            name: e.name,
+            qty: `${e.qty} ${e.unit}`,
+            exp: e.days === 1 ? 'Expires tomorrow' : `Expires in ${e.days} days`,
+            days: e.days,
+            urgency: e.status === 'critical' ? 'critical' : 'warning',
+            value: `€${e.value.toFixed(2)}`,
+          }))
+        );
+      }
+    } catch {
+      // Fallback already logged by service
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  const criticalExpiry = expiryItems.filter((e) => e.urgency === 'critical');
+  const totalValueAtRisk = expiryItems.reduce(
+    (sum, item) => sum + parseFloat(item.value.replace('€', '').replace(',', '.')),
     0
   );
 
@@ -98,6 +158,14 @@ export default function DashboardScreen() {
           { paddingBottom: insets.bottom + 80 },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.brand.primary]}
+            tintColor={Colors.brand.primary}
+          />
+        }
       >
         {/* ── Urgent Expiration Alert ── */}
         {!alertDismissed && criticalExpiry.length > 0 && (

@@ -37,7 +37,7 @@ interface MenuSection {
 export default function MoreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, role, switchRole, hasPermission } = useAuth();
+  const { user, role, switchRole, logout, hasPermission } = useAuth();
 
   const [showRoleModal, setShowRoleModal] = useState(false);
 
@@ -266,6 +266,18 @@ export default function MoreScreen() {
             </Card>
           </View>
         ))}
+
+        {/* ── Sign Out Action Card ── */}
+        <Pressable
+          onPress={async () => {
+            await logout();
+            router.replace('/login' as any);
+          }}
+          style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
+        >
+          <VectorIcon name="LogOut" size={18} color={Colors.critical.main} />
+          <Text style={styles.signOutBtnText}>Sign Out from {user.storeName}</Text>
+        </Pressable>
 
         {/* ── Version & Copyright ── */}
         <Text style={styles.versionText}>
@@ -562,6 +574,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.critical.subtle,
+    borderWidth: 1,
+    borderColor: Colors.critical.light,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  signOutBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.critical.dark,
   },
   pressed: {
     opacity: 0.8,

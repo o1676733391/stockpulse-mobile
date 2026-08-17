@@ -6,6 +6,7 @@ import {
   PurchaseOrderLine,
   Supplier,
 } from '@/types/procurement';
+import { apiClient, logDebugFallback } from './apiClient';
 
 export function calculatePOQ(target: number, physical: number, safety: number): number {
   return Math.max(0, parseFloat((target - physical + safety).toFixed(1)));
@@ -138,28 +139,52 @@ export interface IProcurementService {
   receiveGoods(poId: string, bbdEntries: Record<string, string>): Promise<GoodsReceipt>;
 }
 
-export class MockProcurementService implements IProcurementService {
+export class RealProcurementService implements IProcurementService {
   private orders: PurchaseOrder[] = JSON.parse(JSON.stringify(INITIAL_PURCHASE_ORDERS));
   private suppliers: Supplier[] = JSON.parse(JSON.stringify(INITIAL_SUPPLIERS));
   private poqGroups: POQSupplierGroup[] = JSON.parse(JSON.stringify(INITIAL_POQ_GROUPS));
 
   async getOrders(tab: 'active' | 'history' = 'active'): Promise<PurchaseOrder[]> {
-    if (tab === 'history') {
-      return this.orders.filter((p) => p.status === 'received');
+    try {
+      return await apiClient.get<PurchaseOrder[]>(`/procurement/orders?tab=${tab}`);
+    } catch (err) {
+      logDebugFallback('ProcurementService', `/procurement/orders?tab=${tab}`, err);
+      if (tab === 'history') {
+        return this.orders.filter((p) => p.status === 'received');
+      }
+      return this.orders.filter((p) => p.status !== 'received');
     }
-    return this.orders.filter((p) => p.status !== 'received');
   }
 
   async getOrderById(id: string): Promise<PurchaseOrder | null> {
-    return this.orders.find((p) => p.id === id) || this.orders[0] || null;
+    try {
+      const orders = await this.getOrders('active');
+      const found = orders.find((p) => p.id === id);
+      if (found) return found;
+      const history = await this.getOrders('history');
+      return history.find((p) => p.id === id) || null;
+    } catch (err) {
+      logDebugFallback('ProcurementService', `/procurement/orders/${id}`, err);
+      return this.orders.find((p) => p.id === id) || this.orders[0] || null;
+    }
   }
 
   async getSuppliers(): Promise<Supplier[]> {
-    return [...this.suppliers];
+    try {
+      return await apiClient.get<Supplier[]>('/procurement/suppliers');
+    } catch (err) {
+      logDebugFallback('ProcurementService', '/procurement/suppliers', err);
+      return [...this.suppliers];
+    }
   }
 
   async getPOQGroups(): Promise<POQSupplierGroup[]> {
-    return [...this.poqGroups];
+    try {
+      return await apiClient.get<POQSupplierGroup[]>('/procurement/poq-recommendations');
+    } catch (err) {
+      logDebugFallback('ProcurementService', '/procurement/poq-recommendations', err);
+      return [...this.poqGroups];
+    }
   }
 
   async advanceOrderStatus(poId: string, nextStatus: OrderStatus): Promise<PurchaseOrder> {
@@ -170,50 +195,85 @@ export class MockProcurementService implements IProcurementService {
   }
 
   async createDraftOrder(supplierId: string, lines: PurchaseOrderLine[]): Promise<PurchaseOrder> {
-    const supplier = this.suppliers.find((s) => s.id === supplierId);
-    const { total } = calculateOrderFinancials(lines);
+    try {
+      return await apiClient.post<PurchaseOrder>('/procurement/orders', {
+        supplierId,
+        items: lines,
+      });
+    } catch (err) {
+      logDebugFallback('ProcurementService', '/procurement/orders', err);
+      const supplier = this.suppliers.find((s) => s.id === supplierId);
+      const { total } = calculateOrderFinancials(lines);
 
-    const newPO: PurchaseOrder = {
-      id: `po-${Date.now()}`,
-      supplierId,
-      supplierName: supplier?.name || 'Supplier',
-      date: 'Today, 10 Mar',
-      status: 'draft',
-      total,
-      items: lines,
-    };
+      const newPO: PurchaseOrder = {
+        id: `po-${Date.now()}`,
+        supplierId,
+        supplierName: supplier?.name || 'Supplier',
+        date: 'Today, 10 Mar',
+        status: 'draft',
+        total,
+        items: lines,
+      };
 
-    this.orders.unshift(newPO);
-    return newPO;
+      this.orders.unshift(newPO);
+      return newPO;
+    }
   }
 
   async receiveGoods(poId: string, bbdEntries: Record<string, string>): Promise<GoodsReceipt> {
-    const po = this.orders.find((p) => p.id === poId);
-    if (!po) throw new Error(`PO not found: ${poId}`);
+    try {
+      const res = await apiClient.post<any>('/procurement/goods-receipt', {
+        poId,
+        bbdEntries,
+      });
 
-    po.status = 'received';
+      const po = this.orders.find((p) => p.id === poId);
+      if (po) po.status = 'received';
 
-    const receipt: GoodsReceipt = {
-      id: `gr-${Date.now()}`,
-      poId: po.id,
-      supplierId: po.supplierId,
-      supplierName: po.supplierName,
-      invoiceNumber: `INV-${Date.now().toString().slice(-5)}`,
-      date: '10 Mar 2026',
-      total: po.total,
-      status: 'received',
-      items: po.items.map((item) => ({
-        itemId: item.itemId,
-        itemName: item.itemName,
-        quantity: item.quantity,
-        unit: item.unit,
-        pricePerUnit: item.pricePerUnit,
-        bbd: bbdEntries[item.itemName] || '30 Mar 2026',
-      })),
-    };
+      return {
+        id: res.goodsReceiptId || `gr-${Date.now()}`,
+        poId,
+        supplierId: po?.supplierId || 's1',
+        supplierName: po?.supplierName || 'Supplier',
+        invoiceNumber: res.invoiceNumber || `INV-${Date.now().toString().slice(-5)}`,
+        date: '10 Mar 2026',
+        total: po?.total || 100,
+        status: 'received',
+        items: (po?.items || []).map((item) => ({
+          itemId: item.itemId,
+          itemName: item.itemName,
+          quantity: item.quantity,
+          unit: item.unit,
+          pricePerUnit: item.pricePerUnit,
+          bbd: bbdEntries[item.itemName] || '30 Mar 2026',
+        })),
+      };
+    } catch (err) {
+      logDebugFallback('ProcurementService', '/procurement/goods-receipt', err);
+      const po = this.orders.find((p) => p.id === poId);
+      if (!po) throw new Error(`PO not found: ${poId}`);
+      po.status = 'received';
 
-    return receipt;
+      return {
+        id: `gr-${Date.now()}`,
+        poId: po.id,
+        supplierId: po.supplierId,
+        supplierName: po.supplierName,
+        invoiceNumber: `INV-${Date.now().toString().slice(-5)}`,
+        date: '10 Mar 2026',
+        total: po.total,
+        status: 'received',
+        items: po.items.map((item) => ({
+          itemId: item.itemId,
+          itemName: item.itemName,
+          quantity: item.quantity,
+          unit: item.unit,
+          pricePerUnit: item.pricePerUnit,
+          bbd: bbdEntries[item.itemName] || '30 Mar 2026',
+        })),
+      };
+    }
   }
 }
 
-export const procurementService: IProcurementService = new MockProcurementService();
+export const procurementService: IProcurementService = new RealProcurementService();

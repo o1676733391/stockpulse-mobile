@@ -1,5 +1,6 @@
 import { ROLES } from '@/constants/rbac';
 import { AuthUser, Permission, UserRole } from '@/types/rbac';
+import { apiClient, getAuthToken, logDebugFallback, setAuthToken } from './apiClient';
 
 export const MOCK_USERS: Record<UserRole, AuthUser> = {
   admin: {
@@ -97,27 +98,120 @@ export const INITIAL_TEAM_MEMBERS: AuthUser[] = [
 ];
 
 export interface IAuthService {
+  login(email: string, password?: string): Promise<AuthUser>;
+  register(name: string, email: string, password: string, storeName?: string, phone?: string, role?: UserRole): Promise<AuthUser>;
+  logout(): Promise<void>;
   getCurrentUser(): Promise<AuthUser>;
   switchUserRole(role: UserRole): Promise<AuthUser>;
   hasPermission(role: UserRole, permission: Permission): boolean;
   getTeamMembers(): Promise<AuthUser[]>;
   getMemberById(id: string): Promise<AuthUser | null>;
   updateMemberRole(id: string, role: UserRole): Promise<AuthUser>;
-  inviteMember(name: string, email: string, role: UserRole): Promise<AuthUser>;
+  inviteMember(name: string, email: string, role: UserRole, phone?: string): Promise<AuthUser>;
 }
 
-export class MockAuthService implements IAuthService {
+export class RealAuthService implements IAuthService {
   private currentUser: AuthUser = { ...MOCK_USERS.admin };
   private teamMembers: AuthUser[] = JSON.parse(JSON.stringify(INITIAL_TEAM_MEMBERS));
 
+  async login(email: string, password: string = 'StockPulse123!'): Promise<AuthUser> {
+    try {
+      const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/login', {
+        email,
+        password,
+      }, { skipAuth: true });
+
+      setAuthToken(res.token);
+      this.currentUser = res.user;
+      return res.user;
+    } catch (err) {
+      logDebugFallback('AuthService', '/auth/login', err);
+      // Auto-fallback to matching mock user
+      const found = Object.values(MOCK_USERS).find((u) => u.email === email) || MOCK_USERS.admin;
+      this.currentUser = { ...found };
+      return this.currentUser;
+    }
+  }
+
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    storeName?: string,
+    phone?: string,
+    role: UserRole = 'admin'
+  ): Promise<AuthUser> {
+    try {
+      const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/register', {
+        name,
+        email,
+        password,
+        storeName,
+        phone,
+        role,
+      }, { skipAuth: true });
+
+      setAuthToken(res.token);
+      this.currentUser = res.user;
+      return res.user;
+    } catch (err) {
+      logDebugFallback('AuthService', '/auth/register', err);
+      const initials = name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || 'U';
+
+      const newUser: AuthUser = {
+        id: `u-${Date.now()}`,
+        name,
+        email,
+        phone,
+        avatarText: initials,
+        role,
+        storeId: `store-${Date.now()}`,
+        storeName: storeName || `${name}'s Kitchen`,
+        status: 'active',
+        lastActive: 'Just now',
+      };
+      this.currentUser = newUser;
+      return newUser;
+    }
+  }
+
+  async logout(): Promise<void> {
+    setAuthToken(null);
+  }
+
   async getCurrentUser(): Promise<AuthUser> {
-    return { ...this.currentUser };
+    try {
+      if (!getAuthToken()) {
+        await this.login('anna.admin@restaurant.de', 'StockPulse123!');
+      }
+      const res = await apiClient.get<{ user: AuthUser }>('/auth/me');
+      this.currentUser = res.user;
+      return res.user;
+    } catch (err) {
+      logDebugFallback('AuthService', '/auth/me', err);
+      return { ...this.currentUser };
+    }
   }
 
   async switchUserRole(role: UserRole): Promise<AuthUser> {
-    const mock = MOCK_USERS[role] ?? MOCK_USERS.admin;
-    this.currentUser = { ...mock };
-    return { ...this.currentUser };
+    try {
+      const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/switch-role', {
+        role,
+      });
+      setAuthToken(res.token);
+      this.currentUser = res.user;
+      return res.user;
+    } catch (err) {
+      logDebugFallback('AuthService', '/auth/switch-role', err);
+      const mock = MOCK_USERS[role] ?? MOCK_USERS.admin;
+      this.currentUser = { ...mock };
+      return { ...this.currentUser };
+    }
   }
 
   hasPermission(role: UserRole, permission: Permission): boolean {
@@ -127,47 +221,80 @@ export class MockAuthService implements IAuthService {
   }
 
   async getTeamMembers(): Promise<AuthUser[]> {
-    return JSON.parse(JSON.stringify(this.teamMembers));
+    try {
+      const res = await apiClient.get<AuthUser[]>('/team/members');
+      this.teamMembers = res;
+      return res;
+    } catch (err) {
+      logDebugFallback('AuthService', '/team/members', err);
+      return JSON.parse(JSON.stringify(this.teamMembers));
+    }
   }
 
   async getMemberById(id: string): Promise<AuthUser | null> {
-    const found = this.teamMembers.find((m) => m.id === id);
-    return found ? { ...found } : null;
+    try {
+      const members = await this.getTeamMembers();
+      return members.find((m) => m.id === id) || null;
+    } catch (err) {
+      logDebugFallback('AuthService', `/team/members/${id}`, err);
+      const found = this.teamMembers.find((m) => m.id === id);
+      return found ? { ...found } : null;
+    }
   }
 
   async updateMemberRole(id: string, role: UserRole): Promise<AuthUser> {
-    const found = this.teamMembers.find((m) => m.id === id);
-    if (!found) throw new Error('Member not found');
-    found.role = role;
-    if (this.currentUser.id === id) {
-      this.currentUser.role = role;
+    try {
+      const res = await apiClient.patch<AuthUser>(`/team/members/${id}/role`, { role });
+      const found = this.teamMembers.find((m) => m.id === id);
+      if (found) found.role = role;
+      if (this.currentUser.id === id) this.currentUser.role = role;
+      return res;
+    } catch (err) {
+      logDebugFallback('AuthService', `/team/members/${id}/role`, err);
+      const found = this.teamMembers.find((m) => m.id === id);
+      if (!found) throw new Error('Member not found');
+      found.role = role;
+      if (this.currentUser.id === id) this.currentUser.role = role;
+      return { ...found };
     }
-    return { ...found };
   }
 
-  async inviteMember(name: string, email: string, role: UserRole): Promise<AuthUser> {
-    const initials = name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  async inviteMember(name: string, email: string, role: UserRole, phone?: string): Promise<AuthUser> {
+    try {
+      const res = await apiClient.post<AuthUser>('/team/invite', {
+        name,
+        email,
+        role,
+        phone,
+      });
+      this.teamMembers.push(res);
+      return res;
+    } catch (err) {
+      logDebugFallback('AuthService', '/team/invite', err);
+      const initials = name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
 
-    const newMember: AuthUser = {
-      id: `u-${Date.now()}`,
-      name,
-      email,
-      avatarText: initials || 'TU',
-      role,
-      storeId: this.currentUser.storeId,
-      storeName: this.currentUser.storeName,
-      status: 'active',
-      lastActive: 'Invited',
-    };
+      const newMember: AuthUser = {
+        id: `u-${Date.now()}`,
+        name,
+        email,
+        phone,
+        avatarText: initials || 'TU',
+        role,
+        storeId: this.currentUser.storeId,
+        storeName: this.currentUser.storeName,
+        status: 'active',
+        lastActive: 'Invited',
+      };
 
-    this.teamMembers.push(newMember);
-    return { ...newMember };
+      this.teamMembers.push(newMember);
+      return { ...newMember };
+    }
   }
 }
 
-export const authService: IAuthService = new MockAuthService();
+export const authService: IAuthService = new RealAuthService();

@@ -6,6 +6,7 @@ import {
   StoreSettings,
   UserProfile,
 } from '@/types/settings';
+import { apiClient, logDebugFallback } from './apiClient';
 
 export interface ISettingsService {
   getUserProfile(): Promise<UserProfile>;
@@ -81,14 +82,19 @@ export const INITIAL_ABOUT: AppAboutInfo = {
   restaurantName: 'Bella Cucina Restaurant',
 };
 
-export class MockSettingsService implements ISettingsService {
+export class RealSettingsService implements ISettingsService {
   private profile: UserProfile = JSON.parse(JSON.stringify(INITIAL_USER_PROFILE));
   private storeSettings: StoreSettings = JSON.parse(JSON.stringify(INITIAL_STORE_SETTINGS));
   private notifPrefs: NotificationPreferences = JSON.parse(JSON.stringify(INITIAL_NOTIF_PREFERENCES));
   private appearance: AppearancePreferences = JSON.parse(JSON.stringify(INITIAL_APPEARANCE));
 
   async getUserProfile(): Promise<UserProfile> {
-    return { ...this.profile };
+    try {
+      return await apiClient.get<UserProfile>('/settings/profile');
+    } catch (err) {
+      logDebugFallback('SettingsService', '/settings/profile', err);
+      return { ...this.profile };
+    }
   }
 
   async updateUserProfile(profile: Partial<UserProfile>): Promise<UserProfile> {
@@ -97,16 +103,33 @@ export class MockSettingsService implements ISettingsService {
   }
 
   async getStoreSettings(): Promise<StoreSettings> {
-    return { ...this.storeSettings };
+    try {
+      return await apiClient.get<StoreSettings>('/settings/store');
+    } catch (err) {
+      logDebugFallback('SettingsService', '/settings/store', err);
+      return { ...this.storeSettings };
+    }
   }
 
   async updateStoreSettings(settings: Partial<StoreSettings>): Promise<StoreSettings> {
-    this.storeSettings = { ...this.storeSettings, ...settings };
-    return { ...this.storeSettings };
+    try {
+      await apiClient.put('/settings/store', settings);
+      this.storeSettings = { ...this.storeSettings, ...settings };
+      return { ...this.storeSettings };
+    } catch (err) {
+      logDebugFallback('SettingsService', '/settings/store', err);
+      this.storeSettings = { ...this.storeSettings, ...settings };
+      return { ...this.storeSettings };
+    }
   }
 
   async getAvailableStores(): Promise<StoreOption[]> {
-    return [...INITIAL_AVAILABLE_STORES];
+    try {
+      return await apiClient.get<StoreOption[]>('/settings/available-stores');
+    } catch (err) {
+      logDebugFallback('SettingsService', '/settings/available-stores', err);
+      return [...INITIAL_AVAILABLE_STORES];
+    }
   }
 
   async switchStore(storeId: string): Promise<StoreSettings> {
@@ -151,4 +174,4 @@ export class MockSettingsService implements ISettingsService {
   }
 }
 
-export const settingsService: ISettingsService = new MockSettingsService();
+export const settingsService: ISettingsService = new RealSettingsService();

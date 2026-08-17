@@ -1,81 +1,108 @@
-import { BadgeVariant } from '@/constants/theme';
-import {
-  AppNotification,
-  NotificationFilter,
+import { AppNotification, NotificationFilter, NotificationType } from '@/types/notification';
+import { apiClient, logDebugFallback } from './apiClient';
+
+export const NOTIFICATION_TYPE_CONFIG: Record<
   NotificationType,
-} from '@/types/notification';
-
-export interface NotificationTypeConfig {
-  iconName: string;
-  iconColor: string;
-  bgColor: string;
-  badgeVariant: BadgeVariant;
-  label: string;
-}
-
-export const NOTIFICATION_TYPE_CONFIG: Record<NotificationType, NotificationTypeConfig> = {
+  {
+    label: string;
+    icon: string;
+    iconName: string;
+    iconBg: string;
+    bgColor: string;
+    iconColor: string;
+    badgeVariant: 'red' | 'amber' | 'orange' | 'purple' | 'blue' | 'green' | 'gray';
+    defaultRoute: string;
+  }
+> = {
   expiring_soon: {
+    label: 'Expiring Stock',
+    icon: 'AlertTriangle',
     iconName: 'AlertTriangle',
-    iconColor: '#dc2626',
+    iconBg: '#fee2e2',
     bgColor: '#fee2e2',
+    iconColor: '#b91c1c',
     badgeVariant: 'red',
-    label: 'Expiring Soon',
-  },
-  expired_items: {
-    iconName: 'PackageX',
-    iconColor: '#64748b',
-    bgColor: '#f1f5f9',
-    badgeVariant: 'gray',
-    label: 'Expired Batch',
+    defaultRoute: '/expiration',
   },
   low_stock: {
-    iconName: 'Package',
-    iconColor: '#d97706',
-    bgColor: '#fef3c7',
-    badgeVariant: 'amber',
     label: 'Low Stock',
+    icon: 'Package',
+    iconName: 'Package',
+    iconBg: '#fef3c7',
+    bgColor: '#fef3c7',
+    iconColor: '#b45309',
+    badgeVariant: 'amber',
+    defaultRoute: '/inventory',
   },
   variance: {
+    label: 'High Variance',
+    icon: 'TrendingDown',
     iconName: 'TrendingDown',
-    iconColor: '#ea580c',
+    iconBg: '#ffedd5',
     bgColor: '#ffedd5',
+    iconColor: '#c2410c',
     badgeVariant: 'orange',
-    label: 'Major Variance',
+    defaultRoute: '/stock-count/summary',
   },
   count_due: {
+    label: 'Count Due',
+    icon: 'ClipboardList',
     iconName: 'ClipboardList',
-    iconColor: '#7c3aed',
+    iconBg: '#ede9fe',
     bgColor: '#ede9fe',
+    iconColor: '#6d28d9',
     badgeVariant: 'purple',
-    label: 'Audit Due',
+    defaultRoute: '/stock-count',
   },
   ocr_complete: {
+    label: 'OCR Processed',
+    icon: 'ScanLine',
     iconName: 'ScanLine',
-    iconColor: '#2563eb',
+    iconBg: '#dbeafe',
     bgColor: '#dbeafe',
+    iconColor: '#1d4ed8',
     badgeVariant: 'blue',
-    label: 'POS Scan Processed',
+    defaultRoute: '/scan/review',
   },
   po_update: {
+    label: 'Purchase Order',
+    icon: 'ShoppingCart',
     iconName: 'ShoppingCart',
-    iconColor: '#059669',
+    iconBg: '#d1fae5',
     bgColor: '#d1fae5',
+    iconColor: '#047857',
     badgeVariant: 'green',
-    label: 'PO Recommendation',
+    defaultRoute: '/orders',
   },
   goods_receipt_update: {
+    label: 'Goods Receipt',
+    icon: 'Truck',
     iconName: 'Truck',
-    iconColor: '#059669',
-    bgColor: '#d1fae5',
-    badgeVariant: 'green',
-    label: 'Goods Received',
+    iconBg: '#e0e7ff',
+    bgColor: '#e0e7ff',
+    iconColor: '#4338ca',
+    badgeVariant: 'blue',
+    defaultRoute: '/orders',
+  },
+  expired_items: {
+    label: 'Expired Stock',
+    icon: 'AlertOctagon',
+    iconName: 'AlertOctagon',
+    iconBg: '#fee2e2',
+    bgColor: '#fee2e2',
+    iconColor: '#991b1b',
+    badgeVariant: 'red',
+    defaultRoute: '/expiration',
   },
   system_alert: {
-    iconName: 'ShieldCheck',
-    iconColor: '#475569',
+    label: 'System Alert',
+    icon: 'Info',
+    iconName: 'Info',
+    iconBg: '#f1f5f9',
     bgColor: '#f1f5f9',
+    iconColor: '#475569',
     badgeVariant: 'gray',
-    label: 'System Notice',
+    defaultRoute: '/notifications',
   },
 };
 
@@ -83,196 +110,137 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
     id: 'n1',
     type: 'expiring_soon',
-    title: 'Critical Expiry: Fresh Salmon',
-    body: '4.2 kg Fresh Salmon (Batch #B1030) expires tomorrow. Estimated €68.04 value at risk.',
-    details: 'Salmon was received on 08 Mar. Current physical stock indicates 4.2 kg remaining with an active smart recipe suggestion available.',
-    time: '2 min ago',
-    timestamp: Date.now() - 2 * 60 * 1000,
+    title: 'Salmon Expiring Tomorrow',
+    body: 'Batch B1030 (4.2 kg Fresh Salmon) will expire on 11 Mar. Action waste reduction promo recommended.',
+    time: '2h ago',
+    timestamp: Date.now() - 2 * 3600 * 1000,
     read: false,
     urgent: true,
     priority: 'urgent',
-    entityId: 'e1',
-    actions: [
-      { label: 'View Expiry →', route: '/expiration' },
-      { label: 'Smart Suggestions', route: '/expiration/waste-reduction' },
-    ],
+    actions: [{ label: 'View Item', route: '/expiration' }],
   },
   {
     id: 'n2',
-    type: 'expiring_soon',
-    title: 'Expiry Warning: Romaine Lettuce',
-    body: '3.1 kg Romaine Lettuce expires in 2 days. €6.82 at risk.',
-    details: 'Batch #B1033. High risk of wilt/spoilage. Recommended Caesar Salad promotion to clear stock.',
-    time: '15 min ago',
-    timestamp: Date.now() - 15 * 60 * 1000,
+    type: 'variance',
+    title: 'High Variance Detected',
+    body: 'Chicken Breast daily count has −2.5 kg variance (−€12.00). Theoretical: 27.0 kg, Physical: 24.5 kg.',
+    time: '4h ago',
+    timestamp: Date.now() - 4 * 3600 * 1000,
     read: false,
     urgent: true,
-    priority: 'urgent',
-    entityId: 'e2',
-    actions: [
-      { label: 'View Expiry →', route: '/expiration' },
-    ],
+    priority: 'high',
+    actions: [{ label: 'Review Variance', route: '/stock-count/summary' }],
   },
   {
     id: 'n3',
     type: 'low_stock',
-    title: 'Low Stock Alert: Whole Milk',
-    body: 'Whole Milk is below safety stock level. 8 L remaining (Safety: 4 L, Target: 20 L).',
-    details: 'Daily consumption is estimated at 6 L/day. Reorder recommended immediately to prevent 86 stock-outs on morning shift.',
-    time: '1 hr ago',
-    timestamp: Date.now() - 60 * 60 * 1000,
+    title: 'Low Stock: Whole Milk',
+    body: 'Current physical stock (8.0 L) is approaching safety threshold (4.0 L). POQ suggests reordering 16 L.',
+    time: '5h ago',
+    timestamp: Date.now() - 5 * 3600 * 1000,
     read: false,
     urgent: false,
-    priority: 'high',
-    entityId: 'i5',
-    actions: [
-      { label: 'View Inventory →', route: '/inventory' },
-      { label: 'Create PO →', route: '/orders/poq' },
-    ],
+    priority: 'normal',
+    actions: [{ label: 'Create PO', route: '/orders/poq' }],
   },
   {
     id: 'n4',
-    type: 'variance',
-    title: 'Major Variance: Chicken Breast',
-    body: 'Chicken Breast shows -9.3% variance between physical count and POS BOM deductions.',
-    details: 'Physical count showed 24.5 kg vs theoretical 27.0 kg. Discrepancy value impact: -€12.00.',
-    time: '2 hr ago',
-    timestamp: Date.now() - 120 * 60 * 1000,
-    read: false,
+    type: 'ocr_complete',
+    title: 'POS Scan #2048 Processed',
+    body: 'Lunch shift POS report parsed with 94% confidence. 5 menu items mapped to BOM recipes.',
+    time: 'Yesterday',
+    timestamp: Date.now() - 24 * 3600 * 1000,
+    read: true,
     urgent: false,
-    priority: 'high',
-    entityId: 'i1',
-    actions: [
-      { label: 'Review Variance →', route: '/stock-count/summary' },
-    ],
+    priority: 'normal',
+    actions: [{ label: 'Review Deductions', route: '/scan/review' }],
   },
   {
     id: 'n5',
-    type: 'count_due',
-    title: 'Daily Stock Count Due',
-    body: 'Daily closing stock count is scheduled for today. 42 of 68 items counted.',
-    details: 'Scheduled closing audit for Bella Cucina main store. Critical proteins and fresh produce must be audited before shift end.',
-    time: '6 hr ago',
-    timestamp: Date.now() - 360 * 60 * 1000,
-    read: true,
-    urgent: false,
-    priority: 'normal',
-    actions: [
-      { label: 'Continue Count →', route: '/stock-count/active' },
-    ],
-  },
-  {
-    id: 'n6',
-    type: 'ocr_complete',
-    title: 'POS Scan Processed: Report #2048',
-    body: 'Evening POS report processed. 24 menu items detected with 94% average OCR confidence.',
-    details: 'BOM ingredients deducted: Chicken Breast -2.5 kg, Potatoes -3.8 kg, Cooking Oil -0.4 L. Theoretical inventory updated.',
-    time: '8 hr ago',
-    timestamp: Date.now() - 480 * 60 * 1000,
-    read: true,
-    urgent: false,
-    priority: 'normal',
-    actions: [
-      { label: 'View Deduction →', route: '/scan/result' },
-    ],
-  },
-  {
-    id: 'n7',
-    type: 'po_update',
-    title: 'POQ Recommendations Ready',
-    body: '5 items require reordering based on target stock formulas. Total estimated spend: €378.50.',
-    details: 'Supplier groups: Metro Foods GmbH (3 items), FreshProduce GmbH (2 items). Auto-calculated POQ ready for one-tap PO creation.',
-    time: 'Yesterday',
-    timestamp: Date.now() - 24 * 60 * 60 * 1000,
-    read: true,
-    urgent: false,
-    priority: 'normal',
-    actions: [
-      { label: 'Review POQ →', route: '/orders/poq' },
-    ],
-  },
-  {
-    id: 'n8',
     type: 'goods_receipt_update',
-    title: 'Goods Received: Metro Foods GmbH',
-    body: 'PO-1 received and processed. 3 items added to physical stock with new BBD batches.',
-    details: 'Invoice INV-20481 confirmed by Kitchen Admin. +20 kg Chicken Breast (BBD: 24 Mar), +50 kg Potatoes (BBD: 15 Apr), +15 L Cooking Oil (BBD: 30 Jul).',
-    time: 'Yesterday',
-    timestamp: Date.now() - 28 * 60 * 60 * 1000,
+    title: 'Goods Received: GR-20481',
+    body: 'Metro Foods GmbH delivery of 20 kg Chicken Breast received and logged to Batch B1029.',
+    time: '08 Mar',
+    timestamp: Date.now() - 48 * 3600 * 1000,
     read: true,
     urgent: false,
-    priority: 'normal',
-    actions: [
-      { label: 'View Inventory →', route: '/inventory' },
-    ],
+    priority: 'low',
+    actions: [{ label: 'View Order', route: '/orders' }],
   },
 ];
 
 export interface INotificationService {
   getNotifications(filter?: NotificationFilter): Promise<AppNotification[]>;
-  getNotificationById(id: string): Promise<AppNotification | null>;
-  getUnreadCount(): Promise<number>;
   markAsRead(id: string): Promise<void>;
   markAllAsRead(): Promise<void>;
   dismissNotification(id: string): Promise<void>;
-  registerPushToken(token: string): Promise<void>;
-  onNotificationReceived(callback: (n: AppNotification) => void): () => void;
+  deleteNotification(id: string): Promise<void>;
+  getUnreadCount(): Promise<number>;
 }
 
-export class MockNotificationService implements INotificationService {
+export class RealNotificationService implements INotificationService {
   private notifications: AppNotification[] = JSON.parse(JSON.stringify(INITIAL_NOTIFICATIONS));
-  private dismissedIds = new Set<string>();
-  private listeners: Array<(n: AppNotification) => void> = [];
 
   async getNotifications(filter: NotificationFilter = 'all'): Promise<AppNotification[]> {
-    let list = this.notifications.filter((n) => !this.dismissedIds.has(n.id));
-
-    if (filter === 'unread') {
-      list = list.filter((n) => !n.read);
-    } else if (filter === 'urgent') {
-      list = list.filter((n) => n.urgent);
+    try {
+      const items = await apiClient.get<any[]>('/notifications');
+      this.notifications = items.map((it) => ({
+        id: it.id,
+        type: it.type as NotificationType,
+        title: it.title,
+        body: it.message,
+        time: it.time || 'Today',
+        timestamp: Date.now(),
+        read: Boolean(it.isRead),
+        urgent: it.urgency === 'critical',
+        priority: it.urgency === 'critical' ? 'urgent' : 'normal',
+        actions: [{ label: 'View Details', route: it.route || '/notifications' }],
+      }));
+    } catch (err) {
+      logDebugFallback('NotificationService', '/notifications', err);
     }
 
-    return [...list];
-  }
-
-  async getNotificationById(id: string): Promise<AppNotification | null> {
-    const item = this.notifications.find((n) => n.id === id);
-    if (!item || this.dismissedIds.has(id)) return null;
-    return { ...item };
-  }
-
-  async getUnreadCount(): Promise<number> {
-    return this.notifications.filter((n) => !n.read && !this.dismissedIds.has(n.id)).length;
+    if (filter === 'unread') {
+      return this.notifications.filter((n) => !n.read);
+    }
+    if (filter === 'urgent') {
+      return this.notifications.filter((n) => n.urgent);
+    }
+    return [...this.notifications];
   }
 
   async markAsRead(id: string): Promise<void> {
-    const item = this.notifications.find((n) => n.id === id);
-    if (item) {
-      item.read = true;
+    try {
+      await apiClient.patch(`/notifications/${id}/read`);
+    } catch (err) {
+      logDebugFallback('NotificationService', `/notifications/${id}/read`, err);
     }
+    const item = this.notifications.find((n) => n.id === id);
+    if (item) item.read = true;
   }
 
   async markAllAsRead(): Promise<void> {
+    try {
+      await apiClient.post('/notifications/mark-all-read');
+    } catch (err) {
+      logDebugFallback('NotificationService', '/notifications/mark-all-read', err);
+    }
     this.notifications.forEach((n) => {
       n.read = true;
     });
   }
 
   async dismissNotification(id: string): Promise<void> {
-    this.dismissedIds.add(id);
+    this.notifications = this.notifications.filter((n) => n.id !== id);
   }
 
-  async registerPushToken(token: string): Promise<void> {
-    // Stub for Expo Push Notification token registration
+  async deleteNotification(id: string): Promise<void> {
+    this.notifications = this.notifications.filter((n) => n.id !== id);
   }
 
-  onNotificationReceived(callback: (n: AppNotification) => void): () => void {
-    this.listeners.push(callback);
-    return () => {
-      this.listeners = this.listeners.filter((l) => l !== callback);
-    };
+  async getUnreadCount(): Promise<number> {
+    return this.notifications.filter((n) => !n.read).length;
   }
 }
 
-export const notificationService: INotificationService = new MockNotificationService();
+export const notificationService: INotificationService = new RealNotificationService();

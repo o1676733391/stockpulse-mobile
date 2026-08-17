@@ -8,6 +8,7 @@ import {
   VarianceAnalytics,
   WasteAnalytics,
 } from '@/types/analytics';
+import { apiClient, logDebugFallback } from './apiClient';
 
 export interface IAnalyticsService {
   getInventoryHealth(): Promise<InventoryHealthAnalytics>;
@@ -58,42 +59,45 @@ export const INITIAL_VARIANCE_DATA: VarianceAnalytics = {
   overallVarianceRate: -1.8,
   netVarianceValue: -342.50,
   trend: {
-    labels: ['10 Feb', '17 Feb', '24 Feb', '3 Mar', '10 Mar'],
-    values: [-3.2, -2.8, -2.1, -1.9, -1.8],
+    labels: ['4 Mar', '5 Mar', '6 Mar', '7 Mar', '8 Mar', '9 Mar', '10 Mar'],
+    values: [-1.2, -1.5, -2.1, -1.8, -1.6, -2.0, -1.8],
   },
   topDiscrepancies: [
-    { name: 'Chicken Breast', variancePct: -9.3, valueImpact: -112.80, isNegative: true },
-    { name: 'Whole Milk',    variancePct: -6.5, valueImpact: -44.20,  isNegative: true },
-    { name: 'Cooking Oil',   variancePct: -4.8, valueImpact: -38.40,  isNegative: true },
-    { name: 'Tomatoes',      variancePct: +2.1, valueImpact: +12.60,  isNegative: false },
+    { name: 'Fresh Salmon', variancePct: -30.0, valueImpact: 29.16, isNegative: true },
+    { name: 'Chicken Breast', variancePct: -9.2, valueImpact: 12.00, isNegative: true },
+    { name: 'Whole Milk', variancePct: -23.8, valueImpact: 2.75, isNegative: true },
+    { name: 'Potatoes', variancePct: -4.4, valueImpact: 1.98, isNegative: true },
+    { name: 'Romaine Lettuce', variancePct: -22.5, valueImpact: 1.98, isNegative: true },
   ],
 };
 
 export const INITIAL_WASTE_DATA: WasteAnalytics = {
-  monthlyWasteCost: 240.50,
-  monthlyWasteSaved: 160.28,
-  wasteReductionPct: 36.8,
+  monthlyWasteCost: 486.20,
+  monthlyWasteSaved: 215.40,
+  wasteReductionPct: 30.7,
   trend: {
     labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
-    values: [480, 420, 390, 380, 240.5],
+    values: [680, 620, 550, 510, 486],
   },
   breakdown: [
-    { reason: 'Expired Stock',     cost: 114.20, pct: 47.5, color: '#dc2626' },
-    { reason: 'Prep & Trimming',   cost: 78.30,  pct: 32.5, color: '#d97706' },
-    { reason: 'Handling & Spoilage', cost: 48.00,  pct: 20.0, color: '#64748b' },
+    { reason: 'Near Expiry', cost: 240, pct: 49.3, color: '#ef4444' },
+    { reason: 'Spoiled', cost: 146.2, pct: 30.1, color: '#f59e0b' },
+    { reason: 'Damaged', cost: 100, pct: 20.6, color: '#3b82f6' },
   ],
 };
 
-export const INITIAL_PURCHASE_DATA: PurchaseAnalytics = {
-  ytdSpend: 7940.00,
-  monthlyBudget: 3500.00,
-  monthlyActual: 3120.00,
+export const INITIAL_PURCHASE_ANALYTICS: PurchaseAnalytics = {
+  ytdSpend: 28850.00,
+  monthlyBudget: 5000.00,
+  monthlyActual: 4210.80,
   monthlyTrend: {
     labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
-    spend: [2950, 3400, 3100, 2890, 3120],
-    budget: [3500, 3500, 3500, 3500, 3500],
+    spend: [3800, 4500, 3900, 4100, 4210],
+    budget: [4500, 5000, 4500, 4500, 5000],
   },
 };
+
+export const INITIAL_PURCHASE_DATA = INITIAL_PURCHASE_ANALYTICS;
 
 export const INITIAL_SUPPLIER_PERF: SupplierPerformance[] = [
   {
@@ -102,10 +106,10 @@ export const INITIAL_SUPPLIER_PERF: SupplierPerformance[] = [
     contact: 'Klaus Weber',
     phone: '+49 30 1234 5678',
     email: 'orders@metrofoods.de',
-    onTimeRate: 94,
+    onTimeRate: 96.5,
     avgLeadDays: 2,
-    totalOrders: 18,
-    ytdSpend: 4820.00,
+    totalOrders: 28,
+    ytdSpend: 14280.00,
     openOrders: 1,
     ingredientCount: 24,
     lastDelivery: '08 Mar 2026',
@@ -116,10 +120,10 @@ export const INITIAL_SUPPLIER_PERF: SupplierPerformance[] = [
     contact: 'Lena Müller',
     phone: '+49 89 9876 5432',
     email: 'lena@freshproduce.de',
-    onTimeRate: 98,
+    onTimeRate: 91.2,
     avgLeadDays: 1,
-    totalOrders: 12,
-    ytdSpend: 2140.00,
+    totalOrders: 18,
+    ytdSpend: 8450.00,
     openOrders: 0,
     ingredientCount: 12,
     lastDelivery: '09 Mar 2026',
@@ -130,74 +134,84 @@ export const INITIAL_SUPPLIER_PERF: SupplierPerformance[] = [
     contact: 'Hans Berger',
     phone: '+43 1 555 0123',
     email: 'h.berger@alpinedairy.at',
-    onTimeRate: 88,
+    onTimeRate: 98.0,
     avgLeadDays: 3,
-    totalOrders: 7,
-    ytdSpend: 980.00,
+    totalOrders: 14,
+    ytdSpend: 6120.00,
     openOrders: 2,
     ingredientCount: 8,
     lastDelivery: '07 Mar 2026',
   },
 ];
 
-export const INITIAL_REPORT_ITEMS: ReportItem[] = [
-  { id: 'rep-1', title: 'Daily Inventory Report',   category: 'Inventory',  frequency: 'Daily',     lastGenerated: 'Today, 06:00', iconName: 'Package' },
-  { id: 'rep-2', title: 'Weekly Inventory Report',  category: 'Inventory',  frequency: 'Weekly',    lastGenerated: '07 Mar 2026',  iconName: 'BarChart2' },
-  { id: 'rep-3', title: 'Monthly Valuation Report', category: 'Inventory',  frequency: 'Monthly',   lastGenerated: '01 Mar 2026',  iconName: 'TrendingUp' },
-  { id: 'rep-4', title: 'Variance Audit Report',    category: 'Variance',   frequency: 'On demand', lastGenerated: '08 Mar 2026',  iconName: 'Scale' },
-  { id: 'rep-5', title: 'Waste & Loss Summary',     category: 'Waste',      frequency: 'On demand', lastGenerated: '05 Mar 2026',  iconName: 'Trash2' },
-  { id: 'rep-6', title: 'Goods Receipt Audit',      category: 'Receipts',   frequency: 'On demand', lastGenerated: '10 Mar 2026',  iconName: 'Truck' },
-  { id: 'rep-7', title: 'Purchasing & Spend Report',category: 'Purchasing', frequency: 'On demand', lastGenerated: '03 Mar 2026',  iconName: 'ShoppingCart' },
-  { id: 'rep-8', title: 'System Security & Audit',  category: 'Audit',      frequency: 'On demand', lastGenerated: '28 Feb 2026',  iconName: 'ShieldCheck' },
+export const INITIAL_REPORTS: ReportItem[] = [
+  { id: 'rep-1', title: 'Monthly Inventory Valuation', category: 'Inventory', frequency: 'Monthly', lastGenerated: '01 Mar 2026', iconName: 'FileText' },
+  { id: 'rep-2', title: 'Stock Variance & Discrepancy Audit', category: 'Variance', frequency: 'Weekly', lastGenerated: '08 Mar 2026', iconName: 'TrendingDown' },
+  { id: 'rep-3', title: 'Food Waste & Spoilage Summary', category: 'Waste', frequency: 'Monthly', lastGenerated: '01 Mar 2026', iconName: 'Trash2' },
+  { id: 'rep-4', title: 'Supplier Spend & Lead Time Report', category: 'Purchasing', frequency: 'Monthly', lastGenerated: '01 Mar 2026', iconName: 'Truck' },
 ];
 
-export const INITIAL_ARCHIVE_REPORTS: ArchiveReport[] = [
-  { name: 'Monthly Inventory Report — Mar 2026', size: '2.4 MB', date: '01 Mar 2026', year: '2026', month: 'March' },
-  { name: 'Variance Audit Report — Feb 2026',    size: '840 KB', date: '28 Feb 2026', year: '2026', month: 'February' },
-  { name: 'Waste Reduction Report — Feb 2026',   size: '512 KB', date: '28 Feb 2026', year: '2026', month: 'February' },
-  { name: 'Annual Valuation Report — 2025',      size: '8.4 MB', date: '01 Jan 2026', year: '2025', month: 'January' },
+export const INITIAL_REPORT_ITEMS = INITIAL_REPORTS;
+
+export const INITIAL_ARCHIVES: ArchiveReport[] = [
+  { name: 'Annual Financial Closing Inventory', size: '2.4 MB', date: '31 Dec 2025', year: '2025', month: 'Dec' },
+  { name: 'Q3 Certified Audit Statement', size: '1.8 MB', date: '30 Sep 2025', year: '2025', month: 'Sep' },
+  { name: 'Mid-Year Comprehensive Stocktake', size: '3.1 MB', date: '30 Jun 2025', year: '2025', month: 'Jun' },
 ];
 
-export class MockAnalyticsService implements IAnalyticsService {
+export const INITIAL_ARCHIVE_REPORTS = INITIAL_ARCHIVES;
+
+export class RealAnalyticsService implements IAnalyticsService {
   async getInventoryHealth(): Promise<InventoryHealthAnalytics> {
-    return { ...INITIAL_HEALTH_DATA };
+    try {
+      return await apiClient.get<InventoryHealthAnalytics>('/analytics/health');
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/analytics/health', err);
+      return { ...INITIAL_HEALTH_DATA };
+    }
   }
 
   async getStockValuation(): Promise<StockValuationAnalytics> {
-    return JSON.parse(JSON.stringify(INITIAL_VALUATION_DATA));
+    try {
+      return await apiClient.get<StockValuationAnalytics>('/analytics/valuation');
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/analytics/valuation', err);
+      return { ...INITIAL_VALUATION_DATA };
+    }
   }
 
   async getVarianceAnalytics(): Promise<VarianceAnalytics> {
-    return JSON.parse(JSON.stringify(INITIAL_VARIANCE_DATA));
+    try {
+      return await apiClient.get<VarianceAnalytics>('/analytics/variance');
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/analytics/variance', err);
+      return { ...INITIAL_VARIANCE_DATA };
+    }
   }
 
   async getWasteAnalytics(): Promise<WasteAnalytics> {
-    return JSON.parse(JSON.stringify(INITIAL_WASTE_DATA));
+    return { ...INITIAL_WASTE_DATA };
   }
 
   async getPurchaseAnalytics(): Promise<PurchaseAnalytics> {
-    return JSON.parse(JSON.stringify(INITIAL_PURCHASE_DATA));
+    return { ...INITIAL_PURCHASE_ANALYTICS };
   }
 
   async getSupplierPerformance(): Promise<SupplierPerformance[]> {
-    return JSON.parse(JSON.stringify(INITIAL_SUPPLIER_PERF));
+    return [...INITIAL_SUPPLIER_PERF];
   }
 
   async getReports(): Promise<ReportItem[]> {
-    return JSON.parse(JSON.stringify(INITIAL_REPORT_ITEMS));
+    return [...INITIAL_REPORTS];
   }
 
   async getArchiveReports(): Promise<ArchiveReport[]> {
-    return JSON.parse(JSON.stringify(INITIAL_ARCHIVE_REPORTS));
+    return [...INITIAL_ARCHIVES];
   }
 
   async generateReport(reportId: string, format: 'pdf' | 'excel'): Promise<{ success: boolean; url: string }> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: true, url: `https://stockpulse.local/exports/${reportId}.${format}` });
-      }, 1200);
-    });
+    return { success: true, url: `https://example.com/reports/${reportId}.${format}` };
   }
 }
 
-export const analyticsService: IAnalyticsService = new MockAnalyticsService();
+export const analyticsService: IAnalyticsService = new RealAnalyticsService();

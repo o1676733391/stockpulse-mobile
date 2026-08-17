@@ -9,8 +9,10 @@ import { TopBar } from '@/components/ui/top-bar';
 import { VariancePill } from '@/components/ui/variance-pill';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { mockInventoryItems, mockStockTrend } from '@/mocks/inventoryMockData';
+import { inventoryService } from '@/services/inventoryService';
+import { InventoryItem } from '@/types/inventory';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -56,9 +58,16 @@ export default function InventoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [range, setRange] = useState<'7D' | '30D' | '3M'>('7D');
+  const [item, setItem] = useState<InventoryItem>(
+    mockInventoryItems.find((i) => i.id === id) ?? mockInventoryItems[0]
+  );
 
-  const item = useMemo(() => {
-    return mockInventoryItems.find((i) => i.id === id) ?? mockInventoryItems[0];
+  useEffect(() => {
+    if (id) {
+      inventoryService.getItemById(id).then((res) => {
+        if (res) setItem(res);
+      });
+    }
   }, [id]);
 
   const variance = item.physicalStock - item.theoreticalStock;

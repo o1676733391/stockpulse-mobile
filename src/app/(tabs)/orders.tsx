@@ -3,12 +3,13 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { BadgeVariant, Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { INITIAL_PURCHASE_ORDERS } from '@/services/procurementService';
+import { procurementService } from '@/services/procurementService';
 import { OrderStatus, PurchaseOrder } from '@/types/procurement';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,29 +33,47 @@ export default function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<'active' | 'history'>('active');
-  const [orders] = useState<PurchaseOrder[]>(() =>
-    JSON.parse(JSON.stringify(INITIAL_PURCHASE_ORDERS))
-  );
+  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const data = await procurementService.getOrders(tab);
+      setOrders(data);
+    } catch {
+      // Fallback logged in service
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+  }, [fetchOrders]);
 
   const activeOrders = useMemo(
-    () => orders.filter((p) => p.status !== 'received'),
-    [orders]
+    () => (tab === 'active' ? orders : []),
+    [orders, tab]
   );
   const historyOrders = useMemo(
-    () => orders.filter((p) => p.status === 'received'),
-    [orders]
+    () => (tab === 'history' ? orders : []),
+    [orders, tab]
   );
 
-  const displayedOrders = tab === 'active' ? activeOrders : historyOrders;
+  const displayedOrders = orders;
 
   const totalActiveValue = useMemo(
-    () => activeOrders.reduce((sum, p) => sum + p.total, 0),
-    [activeOrders]
+    () => orders.reduce((sum, p) => sum + p.total, 0),
+    [orders]
   );
 
   const awaitingDeliveryCount = useMemo(
-    () => activeOrders.filter((p) => p.status === 'sent' || p.status === 'confirmed').length,
-    [activeOrders]
+    () => orders.filter((p) => p.status === 'sent' || p.status === 'confirmed').length,
+    [orders]
   );
 
   return (
@@ -117,6 +136,14 @@ export default function OrdersScreen() {
           { paddingBottom: insets.bottom + 80 },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.brand.primary]}
+            tintColor={Colors.brand.primary}
+          />
+        }
       >
         {/* 3-Stat Metric Grid */}
         <View style={styles.metricsGrid}>

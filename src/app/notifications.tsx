@@ -7,9 +7,10 @@ import {
   INITIAL_NOTIFICATIONS,
   NOTIFICATION_TYPE_CONFIG,
 } from '@/services/notificationService';
+import { notificationService } from '@/services/notificationService';
 import { AppNotification, NotificationFilter } from '@/types/notification';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -27,7 +28,7 @@ function groupByDay(notifs: AppNotification[]) {
   };
 
   notifs.forEach((n) => {
-    if (n.time.includes('min') || n.time.includes('hr') || n.time.includes('hour')) {
+    if (n.time.includes('min') || n.time.includes('hr') || n.time.includes('hour') || n.time.includes('ago') || n.time === 'Today') {
       groups.Today.push(n);
     } else if (n.time.includes('Yesterday')) {
       groups.Yesterday.push(n);
@@ -43,11 +44,15 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [notifications, setNotifications] = useState<AppNotification[]>(() =>
-    JSON.parse(JSON.stringify(INITIAL_NOTIFICATIONS))
-  );
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [filter, setFilter] = useState<NotificationFilter>('all');
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    notificationService.getNotifications().then((data) => {
+      setNotifications(data);
+    });
+  }, []);
 
   const visible = useMemo(() => {
     let list = notifications.filter((n) => !dismissedIds.has(n.id));

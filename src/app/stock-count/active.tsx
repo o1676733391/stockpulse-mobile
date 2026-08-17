@@ -3,8 +3,10 @@ import { NumericKeypad } from '@/components/ui/numeric-keypad';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { mockStockCountItems } from '@/mocks/inventoryMockData';
+import { stockCountService } from '@/services/stockCountService';
+import { StockCountItem } from '@/types/inventory';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -21,13 +23,20 @@ export default function ActiveStockCountScreen() {
   const insets = useSafeAreaInsets();
   const isIOS = Platform.OS === 'ios';
 
+  const [items, setItems] = useState<StockCountItem[]>(mockStockCountItems);
   const [idx, setIdx] = useState(0);
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [showNote, setShowNote] = useState(false);
   const [notes, setNotes] = useState<Record<number, string>>({});
 
-  const total = mockStockCountItems.length;
-  const currentItem = mockStockCountItems[idx];
+  useEffect(() => {
+    stockCountService.getActiveItems().then((res) => {
+      if (res && res.length > 0) setItems(res);
+    });
+  }, []);
+
+  const total = items.length;
+  const currentItem = items[idx] || items[0] || mockStockCountItems[0];
   const currentValue = counts[idx] ?? '';
   const parsedValue = parseFloat(currentValue);
   const hasValue = !isNaN(parsedValue) && currentValue !== '';

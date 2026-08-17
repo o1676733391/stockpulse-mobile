@@ -402,7 +402,7 @@ export default function AnalyticsScreen() {
             <Card style={styles.chartCard}>
               <SectionHeader title="Monthly Procurement Spend" />
               <BarChart
-                data={purchase.monthlyTrend.labels.map((lbl, idx) => ({
+                data={purchase.monthlyTrend.labels.map((lbl: string, idx: number) => ({
                   label: lbl,
                   value: purchase.monthlyTrend.spend[idx],
                   color: Colors.brand.primary,

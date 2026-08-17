@@ -197,6 +197,18 @@ export const Typography = StyleSheet.create({
 });
 
 export const Shadows = {
+  sm: Platform.select({
+    ios: {
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+    },
+    android: {
+      elevation: 1,
+    },
+    default: {},
+  }),
   card: Platform.select({
     ios: {
       shadowColor: '#0f172a',
@@ -209,6 +221,18 @@ export const Shadows = {
     },
     default: {},
   }),
+  md: Platform.select({
+    ios: {
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+    },
+    android: {
+      elevation: 3,
+    },
+    default: {},
+  }),
   elevated: Platform.select({
     ios: {
       shadowColor: '#0f172a',
@@ -218,6 +242,18 @@ export const Shadows = {
     },
     android: {
       elevation: 4,
+    },
+    default: {},
+  }),
+  lg: Platform.select({
+    ios: {
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 14,
+    },
+    android: {
+      elevation: 6,
     },
     default: {},
   }),

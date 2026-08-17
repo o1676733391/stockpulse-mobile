@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ConfidenceBar } from '@/components/ui/confidence-bar';
 import { VectorIcon } from '@/components/ui/icons';
@@ -6,10 +5,10 @@ import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { mockInventoryItems, mockRecipes } from '@/mocks/inventoryMockData';
 import { applyTheoreticalDeductions, calculateBomDeductions } from '@/services/bomService';
-import { INITIAL_MOCK_OCR_ITEMS } from '@/services/ocrService';
+import { INITIAL_MOCK_OCR_ITEMS, ocrService } from '@/services/ocrService';
 import { OcrItem } from '@/types/ocr';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -98,17 +97,23 @@ export default function OCRReviewScreen() {
   const totalPortions = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items]);
 
   // Confirm and Deduct
-  const handleConfirmDeduct = () => {
+  const handleConfirmDeduct = async () => {
+    try {
+      await ocrService.confirmDeductions('rep-2048', items);
+    } catch {
+      // Fallback logged in service
+    }
+
     const deductionResult = calculateBomDeductions(items, mockRecipes, mockInventoryItems, {
       reportNumber: '2048',
       date: '10 Mar 2026',
       shift: 'Lunch shift',
     });
 
-    // Apply to mock inventory in-memory (isolated until count)
+    // Apply to mock inventory in-memory
     applyTheoreticalDeductions(deductionResult.deductions, mockInventoryItems);
 
-    // Navigate to Result screen with query params or state
+    // Navigate to Result screen
     router.push({
       pathname: '/scan/result',
       params: {
