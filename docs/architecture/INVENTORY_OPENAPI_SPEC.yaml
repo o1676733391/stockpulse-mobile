@@ -1,0 +1,1036 @@
+openapi: 3.1.0
+info:
+  title: StockPulse Inventory Management API
+  version: 1.0.0
+  description: >
+    Production REST API specification for StockPulse Inventory, FEFO Batch Tracking,
+    Manual Adjustments, Stock Counting, Variance Reconciliation, and Transaction Ledger History.
+servers:
+  - url: https://api.stockpulse.io/api/v1
+    description: Production API Server
+  - url: http://localhost:3000/api/v1
+    description: Local Development Server
+
+security:
+  - BearerAuth: []
+  - StoreIdHeader: []
+
+paths:
+  # ---------------------------------------------------------------------------
+  # 1. LIST & SEARCH INVENTORY
+  # ---------------------------------------------------------------------------
+  /inventory:
+    get:
+      summary: List Inventory Items
+      description: >
+        Retrieve a paginated list of inventory items with physical/theoretical balances,
+        threshold statuses, and category groupings.
+      tags:
+        - Inventory
+      parameters:
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by category ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [healthy, low, critical, overstock]
+          description: Filter by stock health status
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: Search term matching SKU or item name (Trigram search)
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Base64 opaque cursor for pagination
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Number of items per page
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name, physicalStock, costPerUnit, status, updatedAt]
+            default: name
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: Successfully retrieved inventory items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInventoryResponseDto'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  # ---------------------------------------------------------------------------
+  # 2. INVENTORY DETAILS & FEFO BATCHES
+  # ---------------------------------------------------------------------------
+  /inventory/{itemId}:
+    get:
+      summary: Get Inventory Item Details
+      description: >
+        Retrieve full details of a specific inventory item, including active FEFO batches,
+        reorder thresholds, and active recipe usages.
+      tags:
+        - Inventory
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique inventory item UUID
+      responses:
+        '200':
+          description: Successfully retrieved item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItemDetailResponseDto'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # ---------------------------------------------------------------------------
+  # 3. MANUAL INVENTORY ADJUSTMENTS
+  # ---------------------------------------------------------------------------
+  /inventory/{itemId}/adjustments:
+    post:
+      summary: Execute Manual Stock Adjustment
+      description: >
+        Adjust physical stock levels up or down with mandatory reason code, cost impact calculation,
+        and append-only ledger transaction logging.
+      tags:
+        - Inventory Adjustments
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUIDv4 token preventing duplicate adjustments on retry
+        - name: If-Match
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Optimistic locking version tag (e.g. "v14")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStockAdjustmentDto'
+      responses:
+        '201':
+          description: Adjustment recorded and ledger synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockAdjustmentResponseDto'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  # ---------------------------------------------------------------------------
+  # 4. STOCK COUNT SESSIONS
+  # ---------------------------------------------------------------------------
+  /stock-counts/sessions:
+    post:
+      summary: Start Stock Count Session
+      description: >
+        Instantiate a new stocktaking session (blind or standard) linked to an audit schedule.
+      tags:
+        - Stock Counts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartStockCountSessionDto'
+      responses:
+        '201':
+          description: Count session initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockCountSessionResponseDto'
+
+  /stock-counts/sessions/{sessionId}/items/{itemId}:
+    put:
+      summary: Record Counted Quantity for Item
+      description: >
+        Record physical count for a specific SKU within an active count session.
+      tags:
+        - Stock Counts
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordCountItemDto'
+      responses:
+        '200':
+          description: Item count recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockCountItemResponseDto'
+
+  /stock-counts/sessions/{sessionId}/submit:
+    post:
+      summary: Submit Count Session for Review
+      description: >
+        Finalize physical counting, lock session lines, and compute variance shrinkage breakdown.
+      tags:
+        - Stock Counts
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session submitted and variance calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockCountSessionSummaryDto'
+
+  # ---------------------------------------------------------------------------
+  # 5. VARIANCE REVIEW & LEDGER RECONCILIATION
+  # ---------------------------------------------------------------------------
+  /stock-counts/sessions/{sessionId}/variance:
+    get:
+      summary: Get Variance Review Summary
+      description: >
+        Retrieve full variance breakdown, financial shrinkage value, and critical discrepancy alerts.
+      tags:
+        - Variance Review
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed variance report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VarianceReviewResponseDto'
+
+  /stock-counts/sessions/{sessionId}/variance/approve:
+    post:
+      summary: Approve Variance & Sync Ledger
+      description: >
+        Supervisor/Manager sign-off executing atomic ledger alignment to overwrite theoretical
+        stock with physical count.
+      tags:
+        - Variance Review
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveVarianceDto'
+      responses:
+        '200':
+          description: Variance approved and inventory balances synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VarianceApprovalResponseDto'
+
+  # ---------------------------------------------------------------------------
+  # 6. INVENTORY TRANSACTION HISTORY (LEDGER)
+  # ---------------------------------------------------------------------------
+  /inventory/{itemId}/history:
+    get:
+      summary: Get Item Transaction History
+      description: >
+        Retrieve the immutable transaction history for an inventory SKU (purchases, POS deductions,
+        adjustments, waste discards).
+      tags:
+        - Inventory History
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: transactionType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PURCHASE_RECEIPT, POS_DEDUCTION, COUNT_VARIANCE, WASTE_DISCARD, MANUAL_ADJUSTMENT]
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Paginated transaction ledger
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTransactionHistoryResponseDto'
+
+# =============================================================================
+# COMPONENTS & SCHEMAS
+# =============================================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth JWT Access Token
+    StoreIdHeader:
+      type: apiKey
+      in: header
+      name: X-Store-Id
+      description: Active store tenant UUID context
+
+  schemas:
+    # -------------------------------------------------------------------------
+    # INVENTORY SCHEMAS
+    # -------------------------------------------------------------------------
+    InventoryItemSummaryDto:
+      type: object
+      required:
+        - id
+        - storeId
+        - sku
+        - name
+        - unit
+        - physicalStock
+        - theoreticalStock
+        - targetStock
+        - safetyStock
+        - costPerUnit
+        - status
+        - version
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        storeId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        supplierId:
+          type: string
+          format: uuid
+          nullable: true
+        supplierName:
+          type: string
+          nullable: true
+        sku:
+          type: string
+          example: "SKU-CHK-001"
+        name:
+          type: string
+          example: "Chicken Breast"
+        unit:
+          type: string
+          enum: [kg, g, L, ml, pcs, can, bottle]
+          example: "kg"
+        physicalStock:
+          type: number
+          format: double
+          example: 24.500
+        theoreticalStock:
+          type: number
+          format: double
+          example: 27.000
+        targetStock:
+          type: number
+          format: double
+          example: 35.000
+        safetyStock:
+          type: number
+          format: double
+          example: 5.000
+        costPerUnit:
+          type: number
+          format: double
+          example: 4.80
+        totalValuation:
+          type: number
+          format: double
+          example: 117.60
+        status:
+          type: string
+          enum: [healthy, low, critical, overstock]
+          example: "low"
+        version:
+          type: integer
+          example: 14
+        updatedAt:
+          type: string
+          format: date-time
+
+    PaginatedInventoryResponseDto:
+      type: object
+      required:
+        - items
+        - meta
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryItemSummaryDto'
+        meta:
+          $ref: '#/components/schemas/PaginationCursorMetaDto'
+
+    InventoryBatchSummaryDto:
+      type: object
+      required:
+        - id
+        - batchNumber
+        - quantity
+        - initialQuantity
+        - costPerUnit
+        - expiryDate
+        - daysUntilExpiry
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        batchNumber:
+          type: string
+          example: "BAT-20260818-001"
+        quantity:
+          type: number
+          example: 10.0
+        initialQuantity:
+          type: number
+          example: 25.0
+        costPerUnit:
+          type: number
+          example: 4.80
+        expiryDate:
+          type: string
+          format: date
+          example: "2026-08-25"
+        daysUntilExpiry:
+          type: integer
+          example: 7
+        status:
+          type: string
+          enum: [active, consumed, wasted, expired]
+          example: "active"
+
+    InventoryItemDetailResponseDto:
+      type: object
+      required:
+        - item
+        - batches
+        - activeRecipeCount
+      properties:
+        item:
+          $ref: '#/components/schemas/InventoryItemSummaryDto'
+        batches:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryBatchSummaryDto'
+        activeRecipeCount:
+          type: integer
+          example: 3
+
+    # -------------------------------------------------------------------------
+    # ADJUSTMENT SCHEMAS
+    # -------------------------------------------------------------------------
+    CreateStockAdjustmentDto:
+      type: object
+      required:
+        - delta
+        - reasonCode
+      properties:
+        delta:
+          type: number
+          format: double
+          example: -2.5
+          description: Quantity change (negative for reduction, positive for addition)
+        batchId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional batch ID if adjusting a specific FEFO batch
+        reasonCode:
+          type: string
+          enum:
+            - SPOILAGE_TRIM_LOSS
+            - PREPARATION_WASTE
+            - STORAGE_FAILURE
+            - UNRECORDED_USAGE
+            - SUPPLIER_SHORTAGE
+            - MANUAL_CORRECTION
+          example: "SPOILAGE_TRIM_LOSS"
+        note:
+          type: string
+          maxLength: 500
+          example: "Discarded spoiled cuts from batch BAT-20260818-001"
+
+    StockAdjustmentResponseDto:
+      type: object
+      required:
+        - transactionId
+        - transactionNumber
+        - itemId
+        - previousStock
+        - newStock
+        - delta
+        - costImpact
+        - version
+        - timestamp
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+        transactionNumber:
+          type: string
+          example: "TXN-202608-000452"
+        itemId:
+          type: string
+          format: uuid
+        previousStock:
+          type: number
+          example: 27.0
+        newStock:
+          type: number
+          example: 24.5
+        delta:
+          type: number
+          example: -2.5
+        costImpact:
+          type: number
+          example: -12.00
+        version:
+          type: integer
+          example: 15
+        timestamp:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # STOCK COUNT SCHEMAS
+    # -------------------------------------------------------------------------
+    StartStockCountSessionDto:
+      type: object
+      required:
+        - countType
+      properties:
+        scheduleId:
+          type: string
+          format: uuid
+          nullable: true
+        countType:
+          type: string
+          enum: [blind, standard]
+          default: blind
+          description: Blind counts hide theoretical expectations from staff
+        targetCategoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          nullable: true
+
+    StockCountSessionResponseDto:
+      type: object
+      required:
+        - id
+        - sessionNumber
+        - storeId
+        - conductedBy
+        - status
+        - countType
+        - totalItems
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionNumber:
+          type: string
+          example: "SC-20260818-D01"
+        storeId:
+          type: string
+          format: uuid
+        conductedBy:
+          type: string
+          format: uuid
+        conductedByName:
+          type: string
+          example: "Elena Fischer"
+        status:
+          type: string
+          enum: [draft, in_progress, completed, approved, rejected]
+          example: "in_progress"
+        countType:
+          type: string
+          enum: [blind, standard]
+        totalItems:
+          type: integer
+          example: 68
+        createdAt:
+          type: string
+          format: date-time
+
+    RecordCountItemDto:
+      type: object
+      required:
+        - countedQty
+        - unit
+      properties:
+        countedQty:
+          type: number
+          minimum: 0
+          example: 24.5
+        unit:
+          type: string
+          enum: [kg, g, L, ml, pcs, can, bottle]
+        notes:
+          type: string
+          maxLength: 255
+          example: "Verified 2 full unbroken boxes"
+
+    StockCountItemResponseDto:
+      type: object
+      required:
+        - itemId
+        - sku
+        - name
+        - countedQty
+        - unit
+        - recordedAt
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+          example: "SKU-CHK-001"
+        name:
+          type: string
+          example: "Chicken Breast"
+        countedQty:
+          type: number
+          example: 24.5
+        unit:
+          type: string
+          example: "kg"
+        notes:
+          type: string
+          nullable: true
+        recordedAt:
+          type: string
+          format: date-time
+
+    StockCountSessionSummaryDto:
+      type: object
+      required:
+        - id
+        - sessionNumber
+        - status
+        - totalCounted
+        - totalItems
+        - submittedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionNumber:
+          type: string
+        status:
+          type: string
+          example: "completed"
+        totalCounted:
+          type: integer
+          example: 68
+        totalItems:
+          type: integer
+          example: 68
+        submittedAt:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # VARIANCE SCHEMAS
+    # -------------------------------------------------------------------------
+    VarianceItemDetailDto:
+      type: object
+      required:
+        - itemId
+        - sku
+        - name
+        - unit
+        - expectedQty
+        - countedQty
+        - varianceQty
+        - unitCost
+        - varianceValue
+        - discrepancyTier
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+          example: "SKU-CHK-001"
+        name:
+          type: string
+          example: "Chicken Breast"
+        unit:
+          type: string
+          example: "kg"
+        expectedQty:
+          type: number
+          example: 27.0
+        countedQty:
+          type: number
+          example: 24.5
+        varianceQty:
+          type: number
+          example: -2.5
+        unitCost:
+          type: number
+          example: 4.80
+        varianceValue:
+          type: number
+          example: -12.00
+        discrepancyTier:
+          type: string
+          enum: [none, minor, critical]
+          example: "critical"
+
+    VarianceReviewResponseDto:
+      type: object
+      required:
+        - sessionId
+        - sessionNumber
+        - conductedByName
+        - totalVarianceValue
+        - itemsWithDiscrepancyCount
+        - varianceItems
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        sessionNumber:
+          type: string
+          example: "SC-20260818-D01"
+        conductedByName:
+          type: string
+          example: "Elena Fischer"
+        totalVarianceValue:
+          type: number
+          example: -48.50
+        itemsWithDiscrepancyCount:
+          type: integer
+          example: 4
+        varianceItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/VarianceItemDetailDto'
+
+    ApproveVarianceDto:
+      type: object
+      properties:
+        notes:
+          type: string
+          maxLength: 500
+          example: "Monthly shrinkage approved after manager recount"
+
+    VarianceApprovalResponseDto:
+      type: object
+      required:
+        - varianceId
+        - varianceNumber
+        - sessionId
+        - totalNetShrinkage
+        - approvedBy
+        - approvedAt
+        - ledgerSyncedAt
+      properties:
+        varianceId:
+          type: string
+          format: uuid
+        varianceNumber:
+          type: string
+          example: "VAR-202608-000089"
+        sessionId:
+          type: string
+          format: uuid
+        totalNetShrinkage:
+          type: number
+          example: -48.50
+        approvedBy:
+          type: string
+          format: uuid
+        approvedAt:
+          type: string
+          format: date-time
+        ledgerSyncedAt:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # TRANSACTION HISTORY SCHEMAS
+    # -------------------------------------------------------------------------
+    InventoryTransactionRecordDto:
+      type: object
+      required:
+        - id
+        - transactionNumber
+        - transactionType
+        - delta
+        - previousStock
+        - newStock
+        - costImpact
+        - timestamp
+      properties:
+        id:
+          type: string
+          format: uuid
+        transactionNumber:
+          type: string
+          example: "TXN-202608-000452"
+        transactionType:
+          type: string
+          enum: [PURCHASE_RECEIPT, POS_DEDUCTION, COUNT_VARIANCE, WASTE_DISCARD, MANUAL_ADJUSTMENT]
+          example: "POS_DEDUCTION"
+        delta:
+          type: number
+          example: -4.80
+        previousStock:
+          type: number
+          example: 29.30
+        newStock:
+          type: number
+          example: 24.50
+        costImpact:
+          type: number
+          example: -23.04
+        actorId:
+          type: string
+          format: uuid
+          nullable: true
+        actorName:
+          type: string
+          nullable: true
+          example: "POS Shift Sync (Dinner)"
+        referenceType:
+          type: string
+          example: "ocr_report"
+        referenceId:
+          type: string
+          example: "OCR-202608-0094"
+        note:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedTransactionHistoryResponseDto:
+      type: object
+      required:
+        - transactions
+        - meta
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryTransactionRecordDto'
+        meta:
+          $ref: '#/components/schemas/PaginationCursorMetaDto'
+
+    # -------------------------------------------------------------------------
+    # COMMON PAGINATION & RFC 7807 ERROR SCHEMAS
+    # -------------------------------------------------------------------------
+    PaginationCursorMetaDto:
+      type: object
+      required:
+        - limit
+        - hasMore
+      properties:
+        limit:
+          type: integer
+          example: 50
+        hasMore:
+          type: boolean
+          example: true
+        nextCursor:
+          type: string
+          nullable: true
+          example: "eyJpZCI6IjAxOTFkZmEtYjFjNC03MjIxLTk5ODgtNTFiNzJlMDRlMGExIn0="
+        totalCount:
+          type: integer
+          nullable: true
+          example: 68
+
+    ProblemDetailsDto:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+        - errorCode
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://api.stockpulse.io/errors/validation-failed"
+        title:
+          type: string
+          example: "Unprocessable Entity"
+        status:
+          type: integer
+          example: 422
+        detail:
+          type: string
+          example: "The delta value must not be zero."
+        instance:
+          type: string
+          example: "/api/v1/inventory/01915dfa/adjustments"
+        errorCode:
+          type: string
+          example: "ERR_INVALID_ADJUSTMENT_DELTA"
+        invalidParams:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              reason:
+                type: string
+
+  responses:
+    UnauthorizedError:
+      description: Missing or invalid Supabase JWT Bearer token
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'
+    ForbiddenError:
+      description: Insufficient RBAC privileges or cross-tenant store access violation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'
+    NotFoundError:
+      description: The requested resource was not found in the active store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'
+    ValidationError:
+      description: Request body failed validation constraints
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'
+    ConflictError:
+      description: Optimistic locking version conflict (If-Match mismatch)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'

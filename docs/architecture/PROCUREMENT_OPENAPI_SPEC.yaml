@@ -1,0 +1,1140 @@
+openapi: 3.1.0
+info:
+  title: StockPulse Procurement & Supplier Management API
+  version: 1.0.0
+  description: >
+    Production REST API specification for StockPulse Supplier Master Data, Algorithmic POQ Replenishment,
+    Purchase Order Lifecycles, Manager PO Approval Workflows, and Goods Receipt Batch Influx.
+servers:
+  - url: https://api.stockpulse.io/api/v1
+    description: Production API Server
+  - url: http://localhost:3000/api/v1
+    description: Local Development Server
+
+security:
+  - BearerAuth: []
+  - StoreIdHeader: []
+
+paths:
+  # ===========================================================================
+  # 1. SUPPLIERS DIRECTORY
+  # ===========================================================================
+  /suppliers:
+    get:
+      summary: List Suppliers
+      description: Retrieve list of suppliers contracted by the active store.
+      tags:
+        - Suppliers
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search supplier name or contact
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of suppliers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSuppliersResponseDto'
+
+    post:
+      summary: Create Supplier
+      description: Register a new supplier contract for the active store.
+      tags:
+        - Suppliers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSupplierDto'
+      responses:
+        '201':
+          description: Supplier created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierDetailResponseDto'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /suppliers/{supplierId}:
+    get:
+      summary: Get Supplier Details
+      tags:
+        - Suppliers
+      parameters:
+        - name: supplierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Supplier details with associated catalog SKUs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierDetailResponseDto'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    patch:
+      summary: Update Supplier
+      tags:
+        - Suppliers
+      parameters:
+        - name: supplierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSupplierDto'
+      responses:
+        '200':
+          description: Supplier updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierDetailResponseDto'
+
+    delete:
+      summary: Soft-Delete Supplier
+      tags:
+        - Suppliers
+      parameters:
+        - name: supplierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Supplier soft-deleted
+
+  # ===========================================================================
+  # 2. POQ (PURCHASE ORDER QUANTITY) RECOMMENDATIONS
+  # ===========================================================================
+  /procurement/poq-recommendations:
+    get:
+      summary: Get POQ Replenishment Recommendations
+      description: >
+        Retrieve algorithmic replenishment recommendations based on physical inventory deficits
+        against safety and target stock thresholds.
+      tags:
+        - POQ Recommendations
+      parameters:
+        - name: supplierId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter recommendations for a specific supplier
+      responses:
+        '200':
+          description: List of items needing reorder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoqRecommendationsResponseDto'
+
+  # ===========================================================================
+  # 3. PURCHASE ORDERS
+  # ===========================================================================
+  /procurement/purchase-orders:
+    get:
+      summary: List Purchase Orders
+      description: Retrieve paginated purchase orders with status filtering.
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, sent, confirmed, partially_received, received, cancelled]
+        - name: supplierId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of purchase orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPurchaseOrdersResponseDto'
+
+    post:
+      summary: Create Purchase Order (Draft)
+      description: Create a manual PO draft or auto-populate lines from POQ recommendations.
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePurchaseOrderDto'
+      responses:
+        '201':
+          description: Purchase order draft created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseOrderDetailResponseDto'
+
+  /procurement/purchase-orders/{poId}:
+    get:
+      summary: Get Purchase Order Details
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: poId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Purchase order full detail with lines and receipt history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseOrderDetailResponseDto'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    patch:
+      summary: Update Draft Purchase Order
+      description: Modify items or quantities on an unapproved draft PO.
+      tags:
+        - Purchase Orders
+      parameters:
+        - name: poId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePurchaseOrderDto'
+      responses:
+        '200':
+          description: Purchase order draft updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseOrderDetailResponseDto'
+
+  # ===========================================================================
+  # 4. PO APPROVAL & DISPATCH WORKFLOW
+  # ===========================================================================
+  /procurement/purchase-orders/{poId}/approve:
+    post:
+      summary: Approve Purchase Order
+      description: >
+        Manager/Admin commercial sign-off advancing PO status from 'draft' to 'confirmed'.
+      tags:
+        - PO Approvals
+      parameters:
+        - name: poId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovePoDto'
+      responses:
+        '200':
+          description: Purchase order approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseOrderDetailResponseDto'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /procurement/purchase-orders/{poId}/send:
+    post:
+      summary: Send Purchase Order to Supplier
+      description: Dispatch approved purchase order PDF to supplier via automated email.
+      tags:
+        - PO Approvals
+      parameters:
+        - name: poId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendPoDto'
+      responses:
+        '200':
+          description: Purchase order dispatched to supplier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseOrderDetailResponseDto'
+
+  /procurement/purchase-orders/{poId}/cancel:
+    post:
+      summary: Cancel Purchase Order
+      tags:
+        - PO Approvals
+      parameters:
+        - name: poId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelPoDto'
+      responses:
+        '200':
+          description: Purchase order marked as cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseOrderDetailResponseDto'
+
+  # ===========================================================================
+  # 5. GOODS RECEIPT & BATCH INFLUX
+  # ===========================================================================
+  /procurement/goods-receipt:
+    get:
+      summary: List Goods Receipts
+      description: Retrieve historical delivery check-in records.
+      tags:
+        - Goods Receipt
+      parameters:
+        - name: poId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: supplierId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Paginated goods receipts list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGoodsReceiptResponseDto'
+
+    post:
+      summary: Check-In Delivery (Create Goods Receipt)
+      description: >
+        Record physical delivery of goods against PO, log invoice number, verify discrepancies,
+        and atomically generate new FEFO inventory batches in PostgreSQL.
+      tags:
+        - Goods Receipt
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGoodsReceiptDto'
+      responses:
+        '201':
+          description: Delivery checked in and inventory batches created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoodsReceiptDetailResponseDto'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /procurement/goods-receipt/{receiptId}:
+    get:
+      summary: Get Goods Receipt Details
+      tags:
+        - Goods Receipt
+      parameters:
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed delivery receipt with line items and created batch IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoodsReceiptDetailResponseDto'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+# =============================================================================
+# COMPONENTS & SCHEMAS
+# =============================================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    StoreIdHeader:
+      type: apiKey
+      in: header
+      name: X-Store-Id
+
+  schemas:
+    # -------------------------------------------------------------------------
+    # SUPPLIER SCHEMAS
+    # -------------------------------------------------------------------------
+    CreateSupplierDto:
+      type: object
+      required:
+        - supplierCode
+        - name
+      properties:
+        supplierCode:
+          type: string
+          example: "SUP-001"
+          maxLength: 50
+        name:
+          type: string
+          example: "Metro Foods GmbH"
+          maxLength: 255
+        contactName:
+          type: string
+          example: "Klaus Weber"
+          maxLength: 255
+        phone:
+          type: string
+          example: "+49 30 1234 5678"
+        email:
+          type: string
+          format: email
+          example: "orders@metrofoods.de"
+        leadTimeDays:
+          type: integer
+          minimum: 0
+          default: 1
+          example: 2
+        paymentTerms:
+          type: string
+          example: "Net 30 Days"
+
+    UpdateSupplierDto:
+      type: object
+      properties:
+        name:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        leadTimeDays:
+          type: integer
+          minimum: 0
+        paymentTerms:
+          type: string
+
+    SupplierDetailResponseDto:
+      type: object
+      required:
+        - id
+        - storeId
+        - supplierCode
+        - name
+        - leadTimeDays
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        storeId:
+          type: string
+          format: uuid
+        supplierCode:
+          type: string
+          example: "SUP-001"
+        name:
+          type: string
+          example: "Metro Foods GmbH"
+        contactName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        leadTimeDays:
+          type: integer
+          example: 2
+        paymentTerms:
+          type: string
+          nullable: true
+        lastDeliveryDate:
+          type: string
+          format: date
+          nullable: true
+        associatedSkuCount:
+          type: integer
+          example: 12
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedSuppliersResponseDto:
+      type: object
+      required:
+        - suppliers
+        - meta
+      properties:
+        suppliers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupplierDetailResponseDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+
+    # -------------------------------------------------------------------------
+    # POQ SCHEMAS
+    # -------------------------------------------------------------------------
+    PoqRecommendationItemDto:
+      type: object
+      required:
+        - itemId
+        - sku
+        - itemName
+        - supplierId
+        - supplierName
+        - unit
+        - physicalStock
+        - targetStock
+        - safetyStock
+        - costPerUnit
+        - recommendedOrderQty
+        - estimatedCostEur
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+          example: "SKU-CHK-001"
+        itemName:
+          type: string
+          example: "Chicken Breast"
+        supplierId:
+          type: string
+          format: uuid
+        supplierName:
+          type: string
+          example: "Metro Foods GmbH"
+        unit:
+          type: string
+          example: "kg"
+        physicalStock:
+          type: number
+          example: 24.5
+        targetStock:
+          type: number
+          example: 35.0
+        safetyStock:
+          type: number
+          example: 5.0
+        costPerUnit:
+          type: number
+          example: 4.80
+        recommendedOrderQty:
+          type: number
+          example: 10.5
+        estimatedCostEur:
+          type: number
+          example: 50.40
+
+    PoqRecommendationsResponseDto:
+      type: object
+      required:
+        - recommendations
+        - totalItemsNeedingReorder
+        - totalEstimatedSpendEur
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoqRecommendationItemDto'
+        totalItemsNeedingReorder:
+          type: integer
+          example: 4
+        totalEstimatedSpendEur:
+          type: number
+          example: 312.80
+
+    # -------------------------------------------------------------------------
+    # PURCHASE ORDER SCHEMAS
+    # -------------------------------------------------------------------------
+    PurchaseOrderItemInputDto:
+      type: object
+      required:
+        - itemId
+        - quantityOrdered
+        - unitPrice
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        quantityOrdered:
+          type: number
+          minimum: 0.001
+          example: 50.0
+        unit:
+          type: string
+          enum: [kg, g, L, ml, pcs, can, bottle]
+          example: "kg"
+        unitPrice:
+          type: number
+          minimum: 0
+          example: 4.80
+
+    CreatePurchaseOrderDto:
+      type: object
+      required:
+        - supplierId
+        - orderDate
+        - items
+      properties:
+        supplierId:
+          type: string
+          format: uuid
+        orderDate:
+          type: string
+          format: date
+          example: "2026-08-18"
+        expectedDeliveryDate:
+          type: string
+          format: date
+          example: "2026-08-20"
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PurchaseOrderItemInputDto'
+        notes:
+          type: string
+          maxLength: 500
+          example: "Deliver to back kitchen door before 10:00"
+
+    UpdatePurchaseOrderDto:
+      type: object
+      properties:
+        expectedDeliveryDate:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseOrderItemInputDto'
+        notes:
+          type: string
+
+    PurchaseOrderItemResponseDto:
+      type: object
+      required:
+        - id
+        - itemId
+        - sku
+        - itemName
+        - quantityOrdered
+        - quantityReceived
+        - unit
+        - unitPrice
+        - totalPrice
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+          example: "SKU-CHK-001"
+        itemName:
+          type: string
+          example: "Chicken Breast"
+        quantityOrdered:
+          type: number
+          example: 50.0
+        quantityReceived:
+          type: number
+          example: 50.0
+        unit:
+          type: string
+          example: "kg"
+        unitPrice:
+          type: number
+          example: 4.80
+        totalPrice:
+          type: number
+          example: 240.00
+
+    PurchaseOrderDetailResponseDto:
+      type: object
+      required:
+        - id
+        - storeId
+        - supplierId
+        - supplierName
+        - orderNumber
+        - orderDate
+        - status
+        - subtotal
+        - taxAmount
+        - totalAmount
+        - items
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        storeId:
+          type: string
+          format: uuid
+        supplierId:
+          type: string
+          format: uuid
+        supplierName:
+          type: string
+          example: "Metro Foods GmbH"
+        orderNumber:
+          type: string
+          example: "PO-202608-0012"
+        orderDate:
+          type: string
+          format: date
+          example: "2026-08-18"
+        expectedDeliveryDate:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: [draft, sent, confirmed, partially_received, received, cancelled]
+          example: "confirmed"
+        subtotal:
+          type: number
+          example: 268.91
+        taxAmount:
+          type: number
+          example: 51.09
+        totalAmount:
+          type: number
+          example: 320.00
+        approvedBy:
+          type: string
+          format: uuid
+          nullable: true
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseOrderItemResponseDto'
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedPurchaseOrdersResponseDto:
+      type: object
+      required:
+        - orders
+        - meta
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseOrderDetailResponseDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+
+    ApprovePoDto:
+      type: object
+      properties:
+        comments:
+          type: string
+          example: "Approved within monthly procurement budget"
+
+    SendPoDto:
+      type: object
+      properties:
+        recipientEmail:
+          type: string
+          format: email
+          example: "orders@metrofoods.de"
+        emailSubject:
+          type: string
+          example: "Purchase Order PO-202608-0012 - Bella Cucina"
+
+    CancelPoDto:
+      type: object
+      required:
+        - cancellationReason
+      properties:
+        cancellationReason:
+          type: string
+          example: "Duplicate order placed by mistake"
+
+    # -------------------------------------------------------------------------
+    # GOODS RECEIPT SCHEMAS
+    # -------------------------------------------------------------------------
+    GoodsReceiptItemInputDto:
+      type: object
+      required:
+        - itemId
+        - quantityReceived
+        - pricePerUnit
+        - batchNumber
+        - expiryDate
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        poItemId:
+          type: string
+          format: uuid
+          nullable: true
+        quantityReceived:
+          type: number
+          minimum: 0
+          example: 50.0
+        unit:
+          type: string
+          enum: [kg, g, L, ml, pcs, can, bottle]
+          example: "kg"
+        pricePerUnit:
+          type: number
+          minimum: 0
+          example: 4.80
+        batchNumber:
+          type: string
+          example: "BAT-20260818-001"
+        expiryDate:
+          type: string
+          format: date
+          example: "2026-08-28"
+        isAccepted:
+          type: boolean
+          default: true
+
+    CreateGoodsReceiptDto:
+      type: object
+      required:
+        - supplierId
+        - invoiceNumber
+        - receiptDate
+        - items
+      properties:
+        poId:
+          type: string
+          format: uuid
+          nullable: true
+        supplierId:
+          type: string
+          format: uuid
+        invoiceNumber:
+          type: string
+          example: "INV-99812"
+        receiptDate:
+          type: string
+          format: date
+          example: "2026-08-18"
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/GoodsReceiptItemInputDto'
+        notes:
+          type: string
+          example: "Delivered intact, temp 3.5C verified"
+
+    GoodsReceiptItemResponseDto:
+      type: object
+      required:
+        - id
+        - itemId
+        - sku
+        - itemName
+        - quantityReceived
+        - unit
+        - pricePerUnit
+        - batchNumber
+        - expiryDate
+        - createdBatchId
+        - isAccepted
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+          example: "SKU-CHK-001"
+        itemName:
+          type: string
+          example: "Chicken Breast"
+        quantityReceived:
+          type: number
+          example: 50.0
+        unit:
+          type: string
+          example: "kg"
+        pricePerUnit:
+          type: number
+          example: 4.80
+        batchNumber:
+          type: string
+          example: "BAT-20260818-001"
+        expiryDate:
+          type: string
+          format: date
+          example: "2026-08-28"
+        createdBatchId:
+          type: string
+          format: uuid
+          example: "01915dfa-b1c4-7221-9988-51b72e04e0a1"
+        isAccepted:
+          type: boolean
+          example: true
+
+    GoodsReceiptDetailResponseDto:
+      type: object
+      required:
+        - id
+        - storeId
+        - receiptNumber
+        - invoiceNumber
+        - supplierId
+        - supplierName
+        - receiptDate
+        - totalAmount
+        - status
+        - items
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        storeId:
+          type: string
+          format: uuid
+        poId:
+          type: string
+          format: uuid
+          nullable: true
+        poNumber:
+          type: string
+          nullable: true
+          example: "PO-202608-0012"
+        receiptNumber:
+          type: string
+          example: "GR-202608-0008"
+        invoiceNumber:
+          type: string
+          example: "INV-99812"
+        supplierId:
+          type: string
+          format: uuid
+        supplierName:
+          type: string
+          example: "Metro Foods GmbH"
+        receiptDate:
+          type: string
+          format: date
+          example: "2026-08-18"
+        totalAmount:
+          type: number
+          example: 320.00
+        status:
+          type: string
+          enum: [draft, verified, discrepancy]
+          example: "verified"
+        receivedBy:
+          type: string
+          format: uuid
+        receivedByName:
+          type: string
+          example: "Elena Fischer"
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoodsReceiptItemResponseDto'
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedGoodsReceiptResponseDto:
+      type: object
+      required:
+        - receipts
+        - meta
+      properties:
+        receipts:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoodsReceiptDetailResponseDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+
+    PaginationMetaDto:
+      type: object
+      required:
+        - limit
+        - hasMore
+      properties:
+        limit:
+          type: integer
+          example: 50
+        hasMore:
+          type: boolean
+          example: false
+        nextCursor:
+          type: string
+          nullable: true
+
+    ProblemDetailsDto:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+        - errorCode
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        errorCode:
+          type: string
+
+  responses:
+    ValidationError:
+      description: Invalid payload parameters
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'
+    ForbiddenError:
+      description: User lacks commercial approval permission
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailsDto'

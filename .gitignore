@@ -46,3 +46,5 @@ node_modules
 # misc backups / local tools
 .git copy/
 .codegraph/
+.env
+.agents/

@@ -1,14 +1,13 @@
 # StockPulse - Third-Party Software & Open-Source Register
 
 **Application**: StockPulse F&B Inventory & POS Reconciliation  
-**Version**: 2.4.1 (Build 2026.03.11-rc1)  
-**Target Platforms**: iOS & Android  
-**Audit Date**: 2026-08-13  
-**Compliance Status**: **VERIFIED & COMPLIANT** (100% Permissive Licenses)
+**Target Platforms**: iOS & Android (Mobile App) + NestJS on Google Cloud Run (Backend API)  
+**Audit Date**: 2026-08-18  
+**Compliance Status**: **VERIFIED & COMPLIANT** (100% Permissive Licenses: MIT, Apache-2.0, ISC)
 
 ---
 
-## 1. Third-Party Software Register
+## 1. Frontend Mobile Dependencies (Expo React Native)
 
 | Component | Exact Version | Purpose / Subsystem | Official Source | License | Commercial Use | Redistribution Rights | Notice / Attribution Required |
 |---|---|---|---|:---:|:---:|:---:|---|
@@ -42,21 +41,31 @@
 
 ---
 
-## 2. License Compliance Summary
+## 2. Backend Server Dependencies (NestJS)
 
-- **Total Direct Third-Party Dependencies**: 27
-- **Permissive Open-Source Breakdown**:
-  - **MIT License**: 25 packages (92.6%)
-  - **ISC License**: 1 package (3.7%)
-  - **Apache-2.0 License**: 1 package (3.7% - dev dependency only)
-- **Copyleft / Source-Disclosure Dependencies (GPL/AGPL/LGPL/SSPL)**: **0 (Zero)**
-- **Non-Commercial / Source-Available Dependencies (CC-NC / BUSL)**: **0 (Zero)**
-- **Proprietary / Unknown License Dependencies**: **0 (Zero)**
+| Component | Exact Version | Purpose / Subsystem | Official Source | License | Commercial Use | Redistribution Rights | Notice / Attribution Required |
+|---|---|---|---|:---:|:---:|:---:|---|
+| **@nestjs/core** | `^10.4.15` | Core application framework | npm / github.com/nestjs/nest | **MIT** | Verified | Verified | Preserve NestJS copyright notice |
+| **@nestjs/common** | `^10.4.15` | Common decorators, pipes, guards | npm / github.com/nestjs/nest | **MIT** | Verified | Verified | Preserve NestJS copyright notice |
+| **@nestjs/platform-express** | `^10.4.15` | HTTP server adapter | npm / github.com/nestjs/nest | **MIT** | Verified | Verified | Preserve NestJS copyright notice |
+| **@nestjs/config** | `^3.3.0` | Typed environment configuration | npm / github.com/nestjs/config | **MIT** | Verified | Verified | Preserve NestJS copyright notice |
+| **@nestjs/swagger** | `^8.1.1` | OpenAPI Swagger documentation | npm / github.com/nestjs/swagger | **MIT** | Verified | Verified | Preserve NestJS copyright notice |
+| **@supabase/supabase-js** | `^2.48.1` | Supabase PostgreSQL & Auth client | npm / github.com/supabase/supabase-js | **MIT** | Verified | Verified | Preserve Supabase copyright notice |
+| **@google-cloud/documentai** | `^8.8.0` | Google Cloud Document AI SDK | npm / github.com/googleapis/nodejs-document-ai | **Apache-2.0** | Verified | Verified | Preserve Google Apache-2.0 notice |
+| **class-validator** | `^0.14.1` | DTO validation decorators | npm / github.com/typestack/class-validator | **MIT** | Verified | Verified | Preserve Typestack copyright notice |
+| **class-transformer** | `^0.5.1` | DTO transformation engine | npm / github.com/typestack/class-transformer | **MIT** | Verified | Verified | Preserve Typestack copyright notice |
+| **reflect-metadata** | `^0.2.2` | Decorator metadata reflection | npm / github.com/rbuckton/reflect-metadata | **Apache-2.0** | Verified | Verified | Preserve Apache-2.0 notice |
+| **rxjs** | `^7.8.1` | Reactive streams & interceptors | npm / github.com/ReactiveX/rxjs | **Apache-2.0** | Verified | Verified | Preserve ReactiveX Apache-2.0 notice |
 
 ---
 
-## 3. Asset & Font Provenance
+## 3. License Compliance Summary
 
-1. **Icons**: Exclusively generated using `lucide-react-native` (ISC License). Zero emoji glyphs or unverified SVG icons from internet scrapers.
-2. **Typography**: System default font family stack with standard geometric sans-serif fallback and tabular mono numbers for currency values.
-3. **Illustrations & Graphic Assets**: Native programmatic SVG vector geometries rendered via `react-native-svg`.
+- **Total Direct Third-Party Dependencies**: 38 (27 Frontend + 11 Backend)
+- **Permissive Open-Source Breakdown**:
+  - **MIT License**: 33 packages (86.8%)
+  - **Apache-2.0 License**: 4 packages (10.5%)
+  - **ISC License**: 1 package (2.6%)
+- **Copyleft / Source-Disclosure Dependencies (GPL/AGPL/LGPL/SSPL)**: **0 (Zero)**
+- **Non-Commercial / Source-Available Dependencies (CC-NC / BUSL)**: **0 (Zero)**
+- **Proprietary / Unknown License Dependencies**: **0 (Zero)**
