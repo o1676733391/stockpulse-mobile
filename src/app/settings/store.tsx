@@ -5,6 +5,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_AVAILABLE_STORES,
   INITIAL_STORE_SETTINGS,
@@ -24,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function StoreSettingsScreen() {
   const insets = useSafeAreaInsets();
+  const { t, metadata } = useI18n();
 
   const [store, setStore] = useState<StoreSettings>(() =>
     JSON.parse(JSON.stringify(INITIAL_STORE_SETTINGS))
@@ -57,7 +59,7 @@ export default function StoreSettingsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Store & Inventory" showBack />
+      <TopBar title={t('settings.items.storeConfig')} showBack />
 
       <ScrollView
         contentContainerStyle={[
@@ -90,7 +92,7 @@ export default function StoreSettingsScreen() {
 
         {/* ── Localization & Regional Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Regional Localization" />
+          <SectionHeader title={t('settings.language.title')} />
 
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Operating Currency</Text>
@@ -98,23 +100,23 @@ export default function StoreSettingsScreen() {
           </View>
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Application Language</Text>
-            <Text style={styles.fieldVal}>{store.language}</Text>
+            <Text style={styles.fieldLabel}>{t('settings.items.language')}</Text>
+            <Text style={styles.fieldVal}>{metadata.flag} {metadata.nativeName}</Text>
           </View>
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Local Time Zone</Text>
+            <Text style={styles.fieldLabel}>Time Zone</Text>
             <Text style={styles.fieldVal}>{store.timezone}</Text>
           </View>
         </Card>
 
         {/* ── Inventory Operational Rules Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Inventory Operations" />
+          <SectionHeader title={t('settings.groups.storeOperations')} />
 
           {/* Count Audit Schedule */}
           <View style={styles.controlGroup}>
-            <Text style={styles.controlLabel}>Routine Count Schedule</Text>
+            <Text style={styles.controlLabel}>{t('navigation.stockCount')}</Text>
             <SegmentedControl
               options={['Daily', 'Weekly', 'Monthly']}
               value={countFreq}
@@ -124,7 +126,7 @@ export default function StoreSettingsScreen() {
 
           {/* Units System */}
           <View style={styles.controlGroup}>
-            <Text style={styles.controlLabel}>Measurement System</Text>
+            <Text style={styles.controlLabel}>{t('common.unit')}</Text>
             <SegmentedControl
               options={['Metric', 'Imperial']}
               value={units}
@@ -135,9 +137,9 @@ export default function StoreSettingsScreen() {
           {/* BBD Alert Threshold Stepper */}
           <View style={styles.bbdThresholdBox}>
             <View style={styles.bbdTextCol}>
-              <Text style={styles.bbdTitle}>BBD Expiry Warning Threshold</Text>
+              <Text style={styles.bbdTitle}>{t('settings.items.bbdRules')}</Text>
               <Text style={styles.bbdSub}>
-                Flag batches as &quot;Expiring Soon&quot; when remaining shelf-life reaches this threshold.
+                {t('inventory.shelfLife', { days: bbdDays })}
               </Text>
             </View>
 
@@ -174,7 +176,7 @@ export default function StoreSettingsScreen() {
         {savedSuccess && (
           <View style={styles.savedBanner}>
             <VectorIcon name="Check" size={14} color={Colors.brand.dark} />
-            <Text style={styles.savedBannerText}>Store settings updated</Text>
+            <Text style={styles.savedBannerText}>{t('common.changesSaved')}</Text>
           </View>
         )}
 
@@ -182,7 +184,7 @@ export default function StoreSettingsScreen() {
           onPress={handleSave}
           style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.saveBtnText}>Save Store Configuration</Text>
+          <Text style={styles.saveBtnText}>{t('common.save')}</Text>
         </Pressable>
       </View>
 
@@ -226,7 +228,7 @@ export default function StoreSettingsScreen() {
                     </View>
 
                     {isActive ? (
-                      <Badge variant="green">Active</Badge>
+                      <Badge variant="green">{t('common.active')}</Badge>
                     ) : (
                       <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
                     )}

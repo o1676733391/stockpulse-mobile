@@ -5,6 +5,7 @@ import { TopBar } from '@/components/ui/top-bar';
 import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { Permission, UserRole } from '@/types/rbac';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -38,18 +39,19 @@ export default function MoreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, role, switchRole, logout, hasPermission } = useAuth();
+  const { t } = useI18n();
 
   const [showRoleModal, setShowRoleModal] = useState(false);
 
   const rawSections: MenuSection[] = useMemo(
     () => [
       {
-        title: 'Team & Administration',
+        title: t('team.title'),
         items: [
           {
             icon: 'Users',
-            label: 'Team & Roles',
-            sub: 'Members, roles & permission matrix',
+            label: t('team.title'),
+            sub: t('team.rolesDesc'),
             route: '/team/index',
             iconBg: '#ede9fe',
             iconColor: '#6d28d9',
@@ -58,12 +60,12 @@ export default function MoreScreen() {
         ],
       },
       {
-        title: 'Analytics & Intelligence',
+        title: t('analytics.title'),
         items: [
           {
             icon: 'BarChart2',
-            label: 'Analytics & Trends',
-            sub: 'Valuation, variance, waste & spend',
+            label: t('analytics.title'),
+            sub: t('analytics.trends'),
             route: '/analytics',
             iconBg: '#d1fae5',
             iconColor: Colors.brand.primary,
@@ -71,8 +73,8 @@ export default function MoreScreen() {
           },
           {
             icon: 'FileText',
-            label: 'Reports & Export',
-            sub: 'Generate PDF, Excel & CSV',
+            label: t('analytics.reports'),
+            sub: t('analytics.exportPdf'),
             route: '/analytics/reports',
             iconBg: '#dbeafe',
             iconColor: '#1d4ed8',
@@ -80,8 +82,8 @@ export default function MoreScreen() {
           },
           {
             icon: 'Lightbulb',
-            label: 'Waste Reduction',
-            sub: 'Smart recipe suggestions',
+            label: t('expiration.actions.reduceWaste'),
+            sub: t('expiration.actions.triageBbd'),
             route: '/expiration/waste-reduction',
             iconBg: '#fef3c7',
             iconColor: '#b45309',
@@ -90,12 +92,12 @@ export default function MoreScreen() {
         ],
       },
       {
-        title: 'Operations',
+        title: t('settings.groups.storeOperations'),
         items: [
           {
             icon: 'Truck',
-            label: 'Suppliers & Scorecards',
-            sub: '3 active suppliers · Performance',
+            label: t('analytics.suppliers'),
+            sub: t('analytics.suppliers'),
             route: '/analytics/suppliers',
             iconBg: '#ede9fe',
             iconColor: '#6d28d9',
@@ -103,8 +105,8 @@ export default function MoreScreen() {
           },
           {
             icon: 'Clock',
-            label: 'Expiration Alerts',
-            sub: '2 batches expiring this week',
+            label: t('expiration.title'),
+            sub: t('expiration.urgentAction'),
             route: '/expiration',
             iconBg: '#fee2e2',
             iconColor: '#dc2626',
@@ -113,8 +115,8 @@ export default function MoreScreen() {
           },
           {
             icon: 'ClipboardList',
-            label: 'Stock Audits & Counts',
-            sub: 'Daily, weekly & monthly audits',
+            label: t('navigation.stockCount'),
+            sub: t('stockCount.countSummaryTitle'),
             route: '/stock-count/index',
             iconBg: '#f1f5f9',
             iconColor: '#475569',
@@ -122,8 +124,8 @@ export default function MoreScreen() {
           },
           {
             icon: 'ShoppingCart',
-            label: 'Purchase Orders & POQ',
-            sub: 'Active drafts & history',
+            label: t('orders.title'),
+            sub: t('orders.title'),
             route: '/orders/poq',
             iconBg: '#dcfce7',
             iconColor: '#15803d',
@@ -132,12 +134,12 @@ export default function MoreScreen() {
         ],
       },
       {
-        title: 'Notifications & Alerts',
+        title: t('notifications.title'),
         items: [
           {
             icon: 'Bell',
-            label: 'Notifications',
-            sub: '4 unread alerts',
+            label: t('notifications.title'),
+            sub: t('notifications.types.lowStock'),
             route: '/notifications',
             iconBg: '#dbeafe',
             iconColor: '#1d4ed8',
@@ -146,21 +148,29 @@ export default function MoreScreen() {
         ],
       },
       {
-        title: 'Preferences & System',
+        title: t('navigation.more'),
         items: [
           {
             icon: 'Settings',
-            label: 'Store & App Settings',
-            sub: 'Store, currency, BBD & system',
+            label: t('settings.title'),
+            sub: t('settings.groups.generalSettings'),
             route: '/settings',
             iconBg: '#f1f5f9',
             iconColor: '#475569',
             permission: 'settings:view',
           },
           {
+            icon: 'Globe',
+            label: t('settings.items.language'),
+            sub: t('settings.language.title'),
+            route: '/settings/language',
+            iconBg: '#d1fae5',
+            iconColor: Colors.brand.primary,
+          },
+          {
             icon: 'User',
-            label: 'Account & Security',
-            sub: 'Profile, password & biometrics',
+            label: t('settings.items.userProfile'),
+            sub: t('settings.profile.title'),
             route: '/settings/profile',
             iconBg: '#d1fae5',
             iconColor: Colors.brand.primary,
@@ -168,7 +178,7 @@ export default function MoreScreen() {
         ],
       },
     ],
-    []
+    [t]
   );
 
   // Filter sections by permissions
@@ -187,7 +197,7 @@ export default function MoreScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="More" large />
+      <TopBar title={t('navigation.more')} large />
 
       <ScrollView
         contentContainerStyle={[

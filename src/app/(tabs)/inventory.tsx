@@ -5,6 +5,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { StockMetricBox } from '@/components/ui/stock-metric-box';
 import { TopBar } from '@/components/ui/top-bar';
 import { BadgeVariant, Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { inventoryService } from '@/services/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { useRouter } from 'expo-router';
@@ -22,43 +23,40 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const CATEGORIES = [
-  'All',
-  'Meat & Poultry',
-  'Fish & Seafood',
-  'Vegetables',
-  'Dairy',
-  'Dry Goods',
-];
-
-const STATUS_FILTERS = [
-  'All',
-  'Low Stock',
-  'Expiring',
-  'Overstock',
-  'Variance',
-];
-
-const SORT_OPTIONS = ['Name', 'Physical ↓', 'Variance ↓', 'Expiry ↑'] as const;
-type SortOption = (typeof SORT_OPTIONS)[number];
-
-const STATUS_BADGE: Record<InventoryItem['status'], { label: string; variant: BadgeVariant }> = {
-  healthy:   { label: 'Healthy',   variant: 'green' },
-  low:       { label: 'Low Stock', variant: 'amber' },
-  critical:  { label: 'Critical',  variant: 'red'   },
-  overstock: { label: 'Overstock', variant: 'blue'  },
-};
-
 export default function InventoryListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, formatCurrency, formatNumber } = useI18n();
+
+  const CATEGORIES = [
+    t('inventory.categories.all'),
+    t('inventory.categories.meat'),
+    t('inventory.categories.seafood'),
+    t('inventory.categories.produce'),
+    t('inventory.categories.dairy'),
+    t('inventory.categories.pantry'),
+  ];
+
+  const STATUS_FILTERS = [
+    t('common.all'),
+    t('inventory.statusLabels.low'),
+    t('expiration.title'),
+    t('inventory.statusLabels.overstock'),
+  ];
+
+  const STATUS_BADGE: Record<InventoryItem['status'], { label: string; variant: BadgeVariant }> = {
+    healthy:   { label: t('inventory.statusLabels.healthy'),   variant: 'green' },
+    low:       { label: t('inventory.statusLabels.low'), variant: 'amber' },
+    critical:  { label: t('inventory.statusLabels.critical'),  variant: 'red'   },
+    overstock: { label: t('inventory.statusLabels.overstock'), variant: 'blue'  },
+  };
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [sort, setSort] = useState<SortOption>('Name');
+  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [statusFilter, setStatusFilter] = useState(STATUS_FILTERS[0]);
+  const [sort, setSort] = useState<'Name' | 'Physical' | 'Expiry'>('Name');
   const [showSortModal, setShowSortModal] = useState(false);
 
   const fetchItems = useCallback(async () => {
@@ -89,38 +87,29 @@ export default function InventoryListScreen() {
           item.sku.toLowerCase().includes(query.toLowerCase());
 
         const matchesCategory =
-          category === 'All' || item.category.toLowerCase() === category.toLowerCase();
+          category === CATEGORIES[0] || item.category.toLowerCase() === category.toLowerCase();
 
         let matchesStatus = true;
-        if (statusFilter === 'Low Stock') {
+        if (statusFilter === t('inventory.statusLabels.low')) {
           matchesStatus = item.status === 'low' || item.status === 'critical';
-        } else if (statusFilter === 'Expiring') {
+        } else if (statusFilter === t('expiration.title')) {
           matchesStatus = (item.batches || []).some((b) => b.daysRemaining <= 7);
-        } else if (statusFilter === 'Overstock') {
+        } else if (statusFilter === t('inventory.statusLabels.overstock')) {
           matchesStatus = item.status === 'overstock';
-        } else if (statusFilter === 'Variance') {
-          matchesStatus =
-            item.theoreticalStock > 0 &&
-            Math.abs((item.physicalStock - item.theoreticalStock) / item.theoreticalStock) > 0.05;
         }
 
         return matchesQuery && matchesCategory && matchesStatus;
       })
       .sort((a, b) => {
-        if (sort === 'Physical ↓') return b.physicalStock - a.physicalStock;
-        if (sort === 'Variance ↓') {
-          const varA = Math.abs(a.physicalStock - a.theoreticalStock);
-          const varB = Math.abs(b.physicalStock - b.theoreticalStock);
-          return varB - varA;
-        }
-        if (sort === 'Expiry ↑') {
+        if (sort === 'Physical') return b.physicalStock - a.physicalStock;
+        if (sort === 'Expiry') {
           const minA = a.batches && a.batches.length > 0 ? Math.min(...a.batches.map((x) => x.daysRemaining)) : 999;
           const minB = b.batches && b.batches.length > 0 ? Math.min(...b.batches.map((x) => x.daysRemaining)) : 999;
           return minA - minB;
         }
         return a.name.localeCompare(b.name);
       });
-  }, [items, query, category, statusFilter, sort]);
+  }, [items, query, category, statusFilter, sort, CATEGORIES, t]);
 
   const totalValue = useMemo(() => {
     return items.reduce(
@@ -139,7 +128,7 @@ export default function InventoryListScreen() {
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       {/* ── TopBar ── */}
       <TopBar
-        title="Inventory"
+        title={t('inventory.title')}
         large
         right={
           <Pressable
@@ -159,7 +148,7 @@ export default function InventoryListScreen() {
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search ingredients, SKU…"
+              placeholder={t('common.searchPlaceholder')}
               placeholderTextColor={Colors.neutral.textTertiary}
               style={styles.searchInput}
             />
@@ -188,17 +177,17 @@ export default function InventoryListScreen() {
       <View style={styles.summaryBar}>
         <View style={styles.summaryLeft}>
           <Text style={styles.summaryText}>
-            <Text style={styles.summaryBold}>{filtered.length}</Text> items
+            {t('inventory.itemCount', { count: filtered.length })}
           </Text>
           {alertCount > 0 && (
             <View style={styles.attentionTag}>
               <VectorIcon name="AlertTriangle" size={11} color={Colors.warning.dark} />
-              <Text style={styles.attentionText}>{alertCount} need attention</Text>
+              <Text style={styles.attentionText}>{alertCount} {t('inventory.statusLabels.low')}</Text>
             </View>
           )}
         </View>
         <Text style={styles.summaryText}>
-          Value <Text style={styles.summaryBold}>€{totalValue.toFixed(0)}</Text>
+          {t('common.value')} <Text style={styles.summaryBold}>{formatCurrency(totalValue)}</Text>
         </Text>
       </View>
 
@@ -258,13 +247,13 @@ export default function InventoryListScreen() {
                     )}
                   </View>
                   <Text style={styles.itemSku}>
-                    {item.sku} · {item.category}
+                    {t('inventory.sku', { sku: item.sku })} · {item.category}
                   </Text>
                 </View>
 
                 <View style={styles.badgeColumn}>
                   <Badge variant={variant}>{label}</Badge>
-                  {needsReview && <Badge variant="orange">Needs Review</Badge>}
+                  {needsReview && <Badge variant="orange">{t('stockCount.discrepancyTiers.minor')}</Badge>}
                 </View>
               </View>
 
@@ -284,8 +273,8 @@ export default function InventoryListScreen() {
             <View style={styles.emptyIconCircle}>
               <VectorIcon name="Package" size={28} color={Colors.neutral.textTertiary} />
             </View>
-            <Text style={styles.emptyTitle}>No items found</Text>
-            <Text style={styles.emptySub}>Try adjusting your search terms or filters</Text>
+            <Text style={styles.emptyTitle}>{t('inventory.emptyState')}</Text>
+            <Text style={styles.emptySub}>{t('inventory.emptyStateDesc')}</Text>
           </View>
         )}
       </ScrollView>
@@ -302,8 +291,8 @@ export default function InventoryListScreen() {
           onPress={() => setShowSortModal(false)}
         >
           <View style={styles.sortCard}>
-            <Text style={styles.sortModalTitle}>Sort Items</Text>
-            {SORT_OPTIONS.map((opt) => {
+            <Text style={styles.sortModalTitle}>{t('common.filter')}</Text>
+            {(['Name', 'Physical', 'Expiry'] as const).map((opt) => {
               const isSelected = opt === sort;
               return (
                 <Pressable
@@ -324,7 +313,11 @@ export default function InventoryListScreen() {
                       isSelected && styles.sortOptionTextSelected,
                     ]}
                   >
-                    {opt}
+                    {opt === 'Name'
+                      ? t('common.category')
+                      : opt === 'Physical'
+                      ? t('inventory.physicalStock')
+                      : t('expiration.title')}
                   </Text>
                   {isSelected && (
                     <VectorIcon name="Check" size={16} color={Colors.brand.primary} strokeWidth={2.5} />

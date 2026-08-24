@@ -4,6 +4,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_APPEARANCE,
   settingsService,
@@ -22,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AppearanceScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const [appearance, setAppearance] = useState<AppearancePreferences>(() =>
     JSON.parse(JSON.stringify(INITIAL_APPEARANCE))
@@ -45,7 +47,7 @@ export default function AppearanceScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Appearance & Display" showBack />
+      <TopBar title={t('settings.appearance.title')} showBack />
 
       <ScrollView
         contentContainerStyle={[
@@ -56,30 +58,44 @@ export default function AppearanceScreen() {
       >
         {/* ── Theme Mode Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Color Theme" />
+          <SectionHeader title={t('settings.appearance.theme')} />
 
           <View style={styles.themeControlWrap}>
             <SegmentedControl
-              options={['System', 'Light', 'Dark']}
-              value={theme}
-              onChange={(val) => setTheme(val as any)}
+              options={[
+                t('settings.appearance.system'),
+                t('settings.appearance.light'),
+                t('settings.appearance.dark'),
+              ]}
+              value={
+                theme === 'System'
+                  ? t('settings.appearance.system')
+                  : theme === 'Light'
+                  ? t('settings.appearance.light')
+                  : t('settings.appearance.dark')
+              }
+              onChange={(val) => {
+                if (val === t('settings.appearance.light')) setTheme('Light');
+                else if (val === t('settings.appearance.dark')) setTheme('Dark');
+                else setTheme('System');
+              }}
             />
           </View>
 
           <Text style={styles.themeExplainer}>
-            System mode automatically adjusts StockPulse color palettes to match your device OS preferences.
+            {t('settings.appearance.systemExplainer')}
           </Text>
         </Card>
 
         {/* ── Layout & Accessibility Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Interface & Interactions" />
+          <SectionHeader title={t('settings.groups.preferencesDisplay')} />
 
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextCol}>
-              <Text style={styles.toggleTitle}>Compact Inventory Rows</Text>
+              <Text style={styles.toggleTitle}>{t('settings.appearance.compactRows')}</Text>
               <Text style={styles.toggleSub}>
-                Fit more ingredients per screen by reducing row heights
+                {t('settings.appearance.compactRowsSub')}
               </Text>
             </View>
             <Switch
@@ -91,9 +107,9 @@ export default function AppearanceScreen() {
 
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextCol}>
-              <Text style={styles.toggleTitle}>Haptic Feedback</Text>
+              <Text style={styles.toggleTitle}>{t('settings.appearance.haptics')}</Text>
               <Text style={styles.toggleSub}>
-                Vibrate gently on keypad taps, scan detections, and confirmations
+                {t('settings.appearance.hapticsSub')}
               </Text>
             </View>
             <Switch
@@ -117,7 +133,7 @@ export default function AppearanceScreen() {
         {savedSuccess && (
           <View style={styles.savedBanner}>
             <VectorIcon name="Check" size={14} color={Colors.brand.dark} />
-            <Text style={styles.savedBannerText}>Display preferences saved</Text>
+            <Text style={styles.savedBannerText}>{t('common.changesSaved')}</Text>
           </View>
         )}
 
@@ -125,7 +141,7 @@ export default function AppearanceScreen() {
           onPress={handleSave}
           style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.saveBtnText}>Save Preferences</Text>
+          <Text style={styles.saveBtnText}>{t('common.save')}</Text>
         </Pressable>
       </View>
     </View>

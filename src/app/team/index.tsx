@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function TeamScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { role: currentUserRole } = useAuth();
+  const { hasPermission } = useAuth();
 
   const [tab, setTab] = useState<'members' | 'roles'>('members');
   const [members, setMembers] = useState<AuthUser[]>([]);
@@ -47,7 +47,7 @@ export default function TeamScreen() {
         title="Team & Roles"
         showBack
         right={
-          currentUserRole === 'admin' ? (
+          hasPermission('team:manage') ? (
             <Pressable
               onPress={() => router.push('/team/invite' as any)}
               style={({ pressed }) => [styles.inviteBtn, pressed && styles.pressed]}

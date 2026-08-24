@@ -4,6 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -23,6 +24,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { register } = useAuth();
+  const { t } = useI18n();
 
   const [name, setName] = useState('');
   const [storeName, setStoreName] = useState('');
@@ -35,12 +37,12 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
-      setErrorMsg('Please fill in all required fields (Name, Email, Password).');
+      setErrorMsg(t('auth.fillAllFields'));
       return;
     }
 
     if (password.length < 6) {
-      setErrorMsg('Password must be at least 6 characters.');
+      setErrorMsg(t('auth.passwordMinLength'));
       return;
     }
 
@@ -57,7 +59,7 @@ export default function RegisterScreen() {
       );
       router.replace('/(tabs)' as any);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Registration failed. Please try again.');
+      setErrorMsg(err.message || t('auth.registerFailed'));
     } finally {
       setLoading(false);
     }
@@ -69,8 +71,8 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <TopBar
-        title="Register Store"
-        subtitle="Start Your Free Inventory Setup"
+        title={t('auth.registerStore')}
+        subtitle={t('auth.registerSubtitle')}
         showBack
         onBack={() => router.back()}
       />
@@ -92,11 +94,11 @@ export default function RegisterScreen() {
         )}
 
         <Card style={styles.formCard}>
-          <Text style={styles.formTitle}>Store & Owner Details</Text>
+          <Text style={styles.formTitle}>{t('auth.registerSubtitle')}</Text>
 
           {/* Owner Name */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Your Full Name *</Text>
+            <Text style={styles.inputLabel}>{t('auth.ownerNameLabel')} *</Text>
             <View style={styles.inputWrapper}>
               <VectorIcon name="User" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
@@ -106,7 +108,7 @@ export default function RegisterScreen() {
                   setName(v);
                   setErrorMsg(null);
                 }}
-                placeholder="e.g. Chef Alessandro Romano"
+                placeholder={t('auth.ownerNamePlaceholder')}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 autoCapitalize="words"
               />
@@ -115,14 +117,14 @@ export default function RegisterScreen() {
 
           {/* Restaurant / Store Name */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Restaurant / Outlet Name</Text>
+            <Text style={styles.inputLabel}>{t('auth.storeNameLabel')}</Text>
             <View style={styles.inputWrapper}>
               <VectorIcon name="Store" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
                 style={styles.textInput}
                 value={storeName}
                 onChangeText={setStoreName}
-                placeholder="e.g. Trattoria da Romano"
+                placeholder={t('auth.storeNamePlaceholder')}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 autoCapitalize="words"
               />
@@ -131,7 +133,7 @@ export default function RegisterScreen() {
 
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Business Email *</Text>
+            <Text style={styles.inputLabel}>{t('auth.emailLabel')} *</Text>
             <View style={styles.inputWrapper}>
               <VectorIcon name="Mail" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
@@ -141,7 +143,7 @@ export default function RegisterScreen() {
                   setEmail(v);
                   setErrorMsg(null);
                 }}
-                placeholder="alessandro@trattoria.de"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -152,14 +154,14 @@ export default function RegisterScreen() {
 
           {/* Phone */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone Number</Text>
+            <Text style={styles.inputLabel}>{t('auth.phoneLabel')}</Text>
             <View style={styles.inputWrapper}>
               <VectorIcon name="Phone" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
                 style={styles.textInput}
                 value={phone}
                 onChangeText={setPhone}
-                placeholder="+49 30 1234 5678"
+                placeholder={t('auth.phonePlaceholder')}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 keyboardType="phone-pad"
               />
@@ -168,7 +170,7 @@ export default function RegisterScreen() {
 
           {/* Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password *</Text>
+            <Text style={styles.inputLabel}>{t('auth.passwordLabel')} *</Text>
             <View style={styles.inputWrapper}>
               <VectorIcon name="Lock" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
@@ -178,7 +180,7 @@ export default function RegisterScreen() {
                   setPassword(v);
                   setErrorMsg(null);
                 }}
-                placeholder="Min. 6 characters"
+                placeholder={t('auth.passwordMinLength')}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
@@ -195,7 +197,7 @@ export default function RegisterScreen() {
 
           {/* Submit Button */}
           <Button
-            label={loading ? 'Creating Store...' : 'Create Account & Setup Store'}
+            label={loading ? t('auth.creatingAccount') : t('auth.createAccountButton')}
             variant="primary"
             size="lg"
             fullWidth
@@ -213,9 +215,9 @@ export default function RegisterScreen() {
 
         {/* Existing account prompt */}
         <View style={styles.loginPrompt}>
-          <Text style={styles.loginText}>Already registered?</Text>
+          <Text style={styles.loginText}>{t('auth.alreadyHaveAccount')}</Text>
           <Pressable onPress={() => router.push('/login' as any)}>
-            <Text style={styles.loginLink}>Sign In Here</Text>
+            <Text style={styles.loginLink}>{t('auth.signInButton')}</Text>
           </Pressable>
         </View>
       </ScrollView>

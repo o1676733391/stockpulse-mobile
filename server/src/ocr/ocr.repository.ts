@@ -475,14 +475,14 @@ export class OcrRepository implements IOcrRepository {
     storeId: string,
     documentId: string,
     actorId: string,
-    deductions: Array<{
+    deductions: {
       ocrItemId: string;
       itemId: string;
       quantityDeducted: number;
       unit: string;
       unitCost: number;
       totalCost: number;
-    }>,
+    }[],
   ): Promise<void> {
     this.logger.log(`OcrRepository.applyBomDeductions for doc=${documentId}`);
     const client = this.supabaseService.getAdminClient();

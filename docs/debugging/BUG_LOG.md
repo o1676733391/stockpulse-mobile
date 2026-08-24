@@ -27,6 +27,16 @@ This document tracks reported bugs, root causes, resolution steps, and correspon
 - **Regression Test**: `src/procurement/procurement.service.spec.ts` -> `"should throw BadRequestException if receiving goods against unapproved draft PO"`.
 - **Status**: Verified & Fixed.
 
+### [BUG-003] UUID Version 7 Rejection in Stock Count Item DTO
+- **Date**: 2026-08-20
+- **Module**: Stock Count Module
+- **Severity**: Medium (Validation Pipe Rejection)
+- **Description**: `RecordCountItemDto.itemId` was decorated with `@IsUUID('4')`, causing rejection (HTTP 400) when clients sent standard time-ordered UUIDv7 identifiers.
+- **Root Cause**: Overly strict version restriction `'4'` in `class-validator` decorator.
+- **Fix**: Relaxed decorator to `@IsUUID()` in `server/src/stock-count/dto/stock-count.dto.ts`.
+- **Regression Test**: `test/api/stock-count.e2e-spec.ts` -> `"POST /api/v1/stock-counts/sessions/:id/items - should bulk record count items"`.
+- **Status**: Verified & Fixed.
+
 ---
 
 ## Bug Report Template

@@ -1,8 +1,10 @@
 import { Card } from '@/components/ui/card';
 import { ConfidenceBar } from '@/components/ui/confidence-bar';
 import { VectorIcon } from '@/components/ui/icons';
+import { PermissionGate } from '@/components/ui/permission-gate';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { mockInventoryItems, mockRecipes } from '@/mocks/inventoryMockData';
 import { applyTheoreticalDeductions, calculateBomDeductions } from '@/services/bomService';
 import { INITIAL_MOCK_OCR_ITEMS, ocrService } from '@/services/ocrService';
@@ -23,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function OCRReviewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, formatNumber } = useI18n();
 
   const [items, setItems] = useState<OcrItem[]>(() =>
     JSON.parse(JSON.stringify(INITIAL_MOCK_OCR_ITEMS))
@@ -124,13 +127,14 @@ export default function OCRReviewScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      {/* ── TopBar ── */}
-      <TopBar
-        title="Review POS Scan"
-        subtitle="10 Mar 2026 · Report #2048"
-        showBack
-      />
+    <PermissionGate anyPermissions={['ocr:review', 'pos:ocr_review']}>
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
+        {/* ── TopBar ── */}
+        <TopBar
+          title={t('scan.reviewTitle')}
+          subtitle="10 Mar 2026 · Report #2048"
+          showBack
+        />
 
       <ScrollView
         contentContainerStyle={[
@@ -144,15 +148,15 @@ export default function OCRReviewScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statBoxGreen}>
               <Text style={styles.statValueGreen}>{activeItems.length}</Text>
-              <Text style={styles.statLabelGreen}>Detected Items</Text>
+              <Text style={styles.statLabelGreen}>{t('scan.reviewStats.detected')}</Text>
             </View>
             <View style={styles.statBoxBlue}>
               <Text style={styles.statValueBlue}>{avgConfidence}%</Text>
-              <Text style={styles.statLabelBlue}>Avg Confidence</Text>
+              <Text style={styles.statLabelBlue}>{t('scan.reviewStats.confidence')}</Text>
             </View>
             <View style={styles.statBoxAmber}>
               <Text style={styles.statValueAmber}>{lowConfCount}</Text>
-              <Text style={styles.statLabelAmber}>Review Needed</Text>
+              <Text style={styles.statLabelAmber}>{t('scan.reviewStats.reviewNeeded')}</Text>
             </View>
           </View>
 
@@ -181,7 +185,7 @@ export default function OCRReviewScreen() {
           <View style={styles.lowConfBanner}>
             <VectorIcon name="AlertTriangle" size={16} color={Colors.warning.dark} />
             <Text style={styles.lowConfBannerText}>
-              {lowConfCount} item{lowConfCount > 1 ? 's' : ''} with low confidence — please verify recipe mapping & quantity
+              {lowConfCount} {t('scan.lowConfidenceBanner')}
             </Text>
           </View>
         )}
@@ -189,9 +193,9 @@ export default function OCRReviewScreen() {
         {/* ── Table Column Headers ── */}
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.thText, { width: 36 }]}>#</Text>
-          <Text style={[styles.thText, { flex: 1 }]}>Item / Recipe</Text>
-          <Text style={[styles.thText, { width: 70, textAlign: 'center' }]}>Qty</Text>
-          <Text style={[styles.thText, { width: 66, textAlign: 'right' }]}>Conf.</Text>
+          <Text style={[styles.thText, { flex: 1 }]}>{t('scan.tableHeaders.item')}</Text>
+          <Text style={[styles.thText, { width: 70, textAlign: 'center' }]}>{t('scan.tableHeaders.qty')}</Text>
+          <Text style={[styles.thText, { width: 66, textAlign: 'right' }]}>{t('scan.tableHeaders.confidence')}</Text>
           <Text style={[styles.thText, { width: 26 }]} />
         </View>
 
@@ -221,7 +225,7 @@ export default function OCRReviewScreen() {
                     </View>
                     {isLowConf && (
                       <View style={styles.reviewTag}>
-                        <Text style={styles.reviewTagText}>Review</Text>
+                        <Text style={styles.reviewTagText}>{t('common.details')}</Text>
                       </View>
                     )}
                   </Pressable>
@@ -271,7 +275,7 @@ export default function OCRReviewScreen() {
             style={({ pressed }) => [styles.addItemBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Plus" size={16} color={Colors.brand.primary} strokeWidth={2.5} />
-            <Text style={styles.addItemBtnText}>Add missing item</Text>
+            <Text style={styles.addItemBtnText}>{t('common.add')}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -287,23 +291,25 @@ export default function OCRReviewScreen() {
       >
         <View style={styles.infoNoteBox}>
           <Text style={styles.infoNoteText}>
-            <Text style={styles.infoNoteBold}>Note:</Text> This will deduct theoretical inventory using recipe/BOM mappings. Physical stock is not affected.
+            <Text style={styles.infoNoteBold}>Note:</Text> {t('scan.theoreticalDeductionNotice')}
           </Text>
         </View>
 
-        <Pressable
-          onPress={handleConfirmDeduct}
-          style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}
-        >
-          <VectorIcon name="CheckCircle2" size={18} color="#ffffff" />
-          <Text style={styles.confirmBtnText}>Confirm & Deduct Stock</Text>
-        </Pressable>
+        <PermissionGate anyPermissions={['ocr:confirm', 'pos:bom_deduct']} hideIfDenied>
+          <Pressable
+            onPress={handleConfirmDeduct}
+            style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}
+          >
+            <VectorIcon name="CheckCircle2" size={18} color="#ffffff" />
+            <Text style={styles.confirmBtnText}>{t('scan.confirmAndDeduct')}</Text>
+          </Pressable>
+        </PermissionGate>
 
         <Pressable
           onPress={() => router.replace('/(tabs)/scan' as any)}
           style={({ pressed }) => [styles.retakeBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.retakeBtnText}>Retake Photo</Text>
+          <Text style={styles.retakeBtnText}>{t('scan.retakeButton')}</Text>
         </Pressable>
       </View>
 
@@ -409,6 +415,7 @@ export default function OCRReviewScreen() {
         </Pressable>
       </Modal>
     </View>
+    </PermissionGate>
   );
 }
 

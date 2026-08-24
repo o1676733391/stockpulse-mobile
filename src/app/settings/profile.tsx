@@ -4,6 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_USER_PROFILE,
   settingsService,
@@ -28,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const [profile, setProfile] = useState<UserProfile>(() =>
     JSON.parse(JSON.stringify(INITIAL_USER_PROFILE))
@@ -59,25 +61,25 @@ export default function ProfileScreen() {
 
   const handleChangePassword = () => {
     if (!currentPass || !newPass || !confirmPass) {
-      Alert.alert('Error', 'Please fill in all password fields.');
+      Alert.alert(t('errors.invalidInput'), t('auth.fillAllFields'));
       return;
     }
     if (newPass !== confirmPass) {
-      Alert.alert('Error', 'New passwords do not match.');
+      Alert.alert(t('errors.invalidInput'), t('auth.passwordMinLength'));
       return;
     }
     setShowPasswordModal(false);
     setCurrentPass('');
     setNewPass('');
     setConfirmPass('');
-    Alert.alert('Success', 'Your password has been changed successfully.');
+    Alert.alert(t('common.done'), t('common.changesSaved'));
   };
 
-  const biometricLabel = Platform.OS === 'ios' ? 'Face ID / Touch ID Login' : 'Fingerprint / Biometric Login';
+  const biometricLabel = Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Fingerprint';
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Profile & Account" showBack />
+      <TopBar title={t('settings.profile.title')} showBack />
 
       <ScrollView
         contentContainerStyle={[
@@ -94,7 +96,7 @@ export default function ProfileScreen() {
           <View style={styles.avatarHeroInfo}>
             <Text style={styles.heroName}>{name}</Text>
             <View style={styles.heroBadgeRow}>
-              <Badge variant="purple">Store Admin</Badge>
+              <Badge variant="purple">{t('auth.adminRole')}</Badge>
               <Text style={styles.heroStoreText}>{profile.storeName}</Text>
             </View>
           </View>
@@ -102,34 +104,34 @@ export default function ProfileScreen() {
 
         {/* ── Personal Info Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Personal Information" />
+          <SectionHeader title={t('settings.profile.title')} />
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
+            <Text style={styles.inputLabel}>{t('settings.profile.fullName')}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
               style={styles.textInput}
-              placeholder="Your full name"
+              placeholder={t('settings.profile.fullName')}
               placeholderTextColor={Colors.neutral.textTertiary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t('settings.profile.email')}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.textInput}
-              placeholder="Email address"
+              placeholder={t('settings.profile.email')}
               placeholderTextColor={Colors.neutral.textTertiary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone Number</Text>
+            <Text style={styles.inputLabel}>{t('settings.profile.phone')}</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
@@ -143,13 +145,13 @@ export default function ProfileScreen() {
 
         {/* ── Security & Authentication Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Security & Authentication" />
+          <SectionHeader title={t('settings.groups.accountSecurity')} />
 
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextCol}>
               <Text style={styles.toggleTitle}>{biometricLabel}</Text>
               <Text style={styles.toggleSub}>
-                Quick and secure login without entering password
+                {t('settings.appearance.hapticsSub')}
               </Text>
             </View>
             <Switch
@@ -164,20 +166,20 @@ export default function ProfileScreen() {
             style={({ pressed }) => [styles.changePassBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Lock" size={16} color={Colors.neutral.textPrimary} />
-            <Text style={styles.changePassBtnText}>Change Account Password</Text>
+            <Text style={styles.changePassBtnText}>{t('auth.passwordLabel')}</Text>
             <VectorIcon name="ChevronRight" size={14} color={Colors.neutral.textTertiary} />
           </Pressable>
         </Card>
 
         {/* ── Role & Store Association Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Assigned Store & Role" />
+          <SectionHeader title={t('team.title')} />
           <View style={styles.infoFieldRow}>
-            <Text style={styles.infoFieldLabel}>Role</Text>
-            <Badge variant="purple">Store Admin</Badge>
+            <Text style={styles.infoFieldLabel}>{t('settings.profile.role')}</Text>
+            <Badge variant="purple">{t('auth.adminRole')}</Badge>
           </View>
           <View style={styles.infoFieldRow}>
-            <Text style={styles.infoFieldLabel}>Assigned Store</Text>
+            <Text style={styles.infoFieldLabel}>{t('settings.profile.store')}</Text>
             <Text style={styles.infoFieldValue}>{profile.storeName}</Text>
           </View>
         </Card>
@@ -195,7 +197,7 @@ export default function ProfileScreen() {
         {savedSuccess && (
           <View style={styles.savedBanner}>
             <VectorIcon name="Check" size={14} color={Colors.brand.dark} />
-            <Text style={styles.savedBannerText}>Profile changes saved</Text>
+            <Text style={styles.savedBannerText}>{t('common.changesSaved')}</Text>
           </View>
         )}
 
@@ -203,7 +205,7 @@ export default function ProfileScreen() {
           onPress={handleSave}
           style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.saveBtnText}>Save Profile Changes</Text>
+          <Text style={styles.saveBtnText}>{t('settings.profile.saveChanges')}</Text>
         </Pressable>
       </View>
 
@@ -219,7 +221,7 @@ export default function ProfileScreen() {
             <View style={styles.modalGrabber} />
 
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Change Password</Text>
+              <Text style={styles.modalTitle}>{t('auth.passwordLabel')}</Text>
               <Pressable
                 onPress={() => setShowPasswordModal(false)}
                 style={styles.closeBtn}
@@ -230,36 +232,36 @@ export default function ProfileScreen() {
 
             <View style={styles.modalInputsCol}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Current Password</Text>
+                <Text style={styles.inputLabel}>{t('auth.passwordLabel')}</Text>
                 <TextInput
                   secureTextEntry
                   value={currentPass}
                   onChangeText={setCurrentPass}
-                  placeholder="Enter current password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   placeholderTextColor={Colors.neutral.textTertiary}
                   style={styles.textInput}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>New Password</Text>
+                <Text style={styles.inputLabel}>{t('auth.passwordLabel')}</Text>
                 <TextInput
                   secureTextEntry
                   value={newPass}
                   onChangeText={setNewPass}
-                  placeholder="Enter new password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   placeholderTextColor={Colors.neutral.textTertiary}
                   style={styles.textInput}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Confirm New Password</Text>
+                <Text style={styles.inputLabel}>{t('auth.passwordLabel')}</Text>
                 <TextInput
                   secureTextEntry
                   value={confirmPass}
                   onChangeText={setConfirmPass}
-                  placeholder="Confirm new password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   placeholderTextColor={Colors.neutral.textTertiary}
                   style={styles.textInput}
                 />
@@ -270,7 +272,7 @@ export default function ProfileScreen() {
               onPress={handleChangePassword}
               style={({ pressed }) => [styles.submitPasswordBtn, pressed && styles.pressed]}
             >
-              <Text style={styles.submitPasswordBtnText}>Update Password</Text>
+              <Text style={styles.submitPasswordBtnText}>{t('common.save')}</Text>
             </Pressable>
           </View>
         </View>

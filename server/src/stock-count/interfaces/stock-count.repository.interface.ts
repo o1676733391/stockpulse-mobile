@@ -42,25 +42,25 @@ export interface IStockCountRepository {
     storeId: string,
     targetCategoryIds?: string[],
   ): Promise<
-    Array<{
+    {
       id: string;
       sku: string;
       name: string;
       unit: string;
       physicalStock: number;
       costPerUnit: number;
-    }>
+    }[]
   >;
 
   findSessionCountedItems(
     sessionId: string,
   ): Promise<
-    Array<{
+    {
       itemId: string;
       countedQuantity: number;
       unit: string;
       notes?: string;
-    }>
+    }[]
   >;
 
   saveVarianceResults(

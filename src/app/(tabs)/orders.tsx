@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { BadgeVariant, Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { procurementService } from '@/services/procurementService';
 import { OrderStatus, PurchaseOrder } from '@/types/procurement';
 import { useRouter } from 'expo-router';
@@ -17,21 +18,23 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const STATUS_CONFIG: Record<
-  OrderStatus,
-  { label: string; variant: BadgeVariant; stepIdx: number }
-> = {
-  draft:     { label: 'Draft',     variant: 'gray',  stepIdx: 0 },
-  sent:      { label: 'Sent',      variant: 'blue',  stepIdx: 1 },
-  confirmed: { label: 'Confirmed', variant: 'amber', stepIdx: 2 },
-  received:  { label: 'Received',  variant: 'green', stepIdx: 3 },
-};
-
-const TIMELINE_STEPS = ['Draft', 'Sent', 'Confirmed', 'Received'] as const;
+const TIMELINE_STEPS = ['Draft', 'Sent', 'Confirmed', 'Received'];
 
 export default function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, formatCurrency } = useI18n();
+
+  const STATUS_CONFIG: Record<
+    OrderStatus,
+    { label: string; variant: BadgeVariant; stepIdx: number }
+  > = {
+    draft:     { label: t('orders.status.draft'),     variant: 'gray',  stepIdx: 0 },
+    sent:      { label: t('orders.status.sent'),      variant: 'blue',  stepIdx: 1 },
+    confirmed: { label: t('orders.status.confirmed'), variant: 'amber', stepIdx: 2 },
+    received:  { label: t('orders.status.received'),  variant: 'green', stepIdx: 3 },
+  };
+
   const [tab, setTab] = useState<'active' | 'history'>('active');
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,7 +83,7 @@ export default function OrdersScreen() {
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       {/* ── TopBar ── */}
       <TopBar
-        title="Purchase Orders"
+        title={t('orders.title')}
         large
         right={
           <Pressable
@@ -88,7 +91,7 @@ export default function OrdersScreen() {
             style={({ pressed }) => [styles.newOrderBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Plus" size={14} color="#ffffff" strokeWidth={2.5} />
-            <Text style={styles.newOrderBtnText}>New</Text>
+            <Text style={styles.newOrderBtnText}>{t('common.add')}</Text>
           </Pressable>
         }
       />
@@ -105,7 +108,7 @@ export default function OrdersScreen() {
               tab === 'active' && styles.tabButtonTextActive,
             ]}
           >
-            Active
+            {t('common.active')}
           </Text>
           {activeOrders.length > 0 && (
             <View style={styles.tabBadge}>
@@ -124,7 +127,7 @@ export default function OrdersScreen() {
               tab === 'history' && styles.tabButtonTextActive,
             ]}
           >
-            History
+            {t('analytics.title')}
           </Text>
         </Pressable>
       </View>

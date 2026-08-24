@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_STORE_SETTINGS,
   INITIAL_USER_PROFILE,
@@ -36,17 +37,18 @@ interface SettingsGroup {
 export default function SettingsHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, metadata } = useI18n();
 
   const [profile] = useState(INITIAL_USER_PROFILE);
   const [store] = useState(INITIAL_STORE_SETTINGS);
 
   const groups: SettingsGroup[] = [
     {
-      title: 'Store & Operations',
+      title: t('settings.groups.storeOperations'),
       items: [
         {
           icon: 'Store',
-          label: 'Store Configuration',
+          label: t('settings.items.storeConfig'),
           val: store.name,
           route: '/settings/store',
           iconBg: '#dbeafe',
@@ -54,8 +56,8 @@ export default function SettingsHubScreen() {
         },
         {
           icon: 'Clock',
-          label: 'BBD & Expiration Rules',
-          val: `${store.bbdAlertDays} days threshold`,
+          label: t('settings.items.bbdRules'),
+          val: `${store.bbdAlertDays}d`,
           route: '/settings/store',
           iconBg: '#fee2e2',
           iconColor: '#dc2626',
@@ -63,12 +65,12 @@ export default function SettingsHubScreen() {
       ],
     },
     {
-      title: 'Notifications & Alerts',
+      title: t('settings.groups.notificationsAlerts'),
       items: [
         {
           icon: 'Bell',
-          label: 'Notification Channels',
-          val: 'Push enabled',
+          label: t('settings.items.notificationChannels'),
+          val: t('common.active'),
           route: '/settings/notifications',
           iconBg: '#fef3c7',
           iconColor: '#b45309',
@@ -76,32 +78,32 @@ export default function SettingsHubScreen() {
       ],
     },
     {
-      title: 'Preferences & Display',
+      title: t('settings.groups.preferencesDisplay'),
       items: [
         {
           icon: 'Sun',
-          label: 'Appearance & Theme',
-          val: 'System mode',
+          label: t('settings.items.appearance'),
+          val: t('settings.appearance.system'),
           route: '/settings/appearance',
           iconBg: '#f1f5f9',
           iconColor: '#475569',
         },
         {
           icon: 'Globe',
-          label: 'Language & Currency',
-          val: `${store.language} · ${store.currencySymbol}`,
-          route: '/settings/store',
+          label: t('settings.items.language'),
+          val: `${metadata.flag} ${metadata.nativeName}`,
+          route: '/settings/language',
           iconBg: '#dcfce7',
           iconColor: '#15803d',
         },
       ],
     },
     {
-      title: 'Account & Security',
+      title: t('settings.groups.accountSecurity'),
       items: [
         {
           icon: 'User',
-          label: 'Profile & Credentials',
+          label: t('settings.items.profile'),
           val: profile.email,
           route: '/settings/profile',
           iconBg: '#ede9fe',
@@ -110,11 +112,11 @@ export default function SettingsHubScreen() {
       ],
     },
     {
-      title: 'Support & Legal',
+      title: t('settings.groups.supportLegal'),
       items: [
         {
           icon: 'Info',
-          label: 'About & Licenses',
+          label: t('settings.items.about'),
           val: 'v2.4.1',
           route: '/settings/about',
           iconBg: '#f1f5f9',
@@ -126,12 +128,12 @@ export default function SettingsHubScreen() {
 
   const handleSignOut = () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out of StockPulse?',
+      t('settings.signOutConfirm.title'),
+      t('settings.signOutConfirm.message'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Sign Out',
+          text: t('settings.items.signOut'),
           style: 'destructive',
           onPress: () => router.replace('/(tabs)' as any),
         },
@@ -141,7 +143,7 @@ export default function SettingsHubScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Settings" large showBack />
+      <TopBar title={t('settings.title')} large showBack />
 
       <ScrollView
         contentContainerStyle={[
@@ -211,7 +213,7 @@ export default function SettingsHubScreen() {
           style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
         >
           <VectorIcon name="LogOut" size={16} color={Colors.critical.main} />
-          <Text style={styles.signOutBtnText}>Sign Out</Text>
+          <Text style={styles.signOutBtnText}>{t('settings.items.signOut')}</Text>
         </Pressable>
       </ScrollView>
     </View>

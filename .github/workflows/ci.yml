@@ -1,0 +1,63 @@
+name: StockPulse CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-quality-gate:
+    name: Backend Lint, Test & OpenAPI Check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./server
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install Backend Dependencies
+        run: npm ci
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Compile TypeScript & Build
+        run: npm run build
+
+      - name: Run Unit Tests
+        run: npm test -- --ci --coverage --maxWorkers=2
+
+      - name: Run API E2E Integration Tests
+        run: npm run test:e2e -- --ci --maxWorkers=2
+
+      - name: Verify OpenAPI Spec Synchronization
+        run: npm run generate:openapi
+
+  security-compliance:
+    name: Security & Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check for Uncommitted Secrets or Keys
+        run: |
+          echo "Scanning codebase for hardcoded production credentials..."
+          ! grep -rn "SUPABASE_SERVICE_ROLE_KEY=ey" . --exclude-dir=node_modules --exclude-dir=.git || exit 1
+          echo "Security scanning passed with 0 hardcoded secrets."

@@ -29,12 +29,16 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User context not established');
     }
 
-    // SuperAdmins bypass all role restrictions
-    if (user.role === 'superadmin') {
+    // Admins and SuperAdmins bypass all role restrictions
+    if (user.role === 'superadmin' || user.role === 'admin') {
       return true;
     }
 
-    const hasRole = requiredRoles.includes(user.role);
+    const hasRole =
+      requiredRoles.includes(user.role) ||
+      (user.role === 'admin' && requiredRoles.includes('superadmin')) ||
+      (user.role === 'superadmin' && requiredRoles.includes('admin'));
+
     if (!hasRole) {
       throw new ForbiddenException(
         `User role '${user.role}' lacks the required role: [${requiredRoles.join(', ')}]`,

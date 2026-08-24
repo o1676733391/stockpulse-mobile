@@ -4,6 +4,7 @@ import { MobilePreviewContainer } from '@/components/web/mobile-preview-containe
 import { Colors } from '@/constants/theme';
 import { AuthProvider } from '@/context/AuthContext';
 import { OfflineProvider } from '@/context/OfflineContext';
+import { I18nProvider } from '@/i18n/I18nContext';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -20,13 +21,14 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <OfflineProvider>
-          <MobilePreviewContainer>
-            <StatusBar style="dark" />
-            <OfflineBanner />
-            <ConflictResolutionModal />
-            <Stack
+      <I18nProvider>
+        <AuthProvider>
+          <OfflineProvider>
+            <MobilePreviewContainer>
+              <StatusBar style="dark" />
+              <OfflineBanner />
+              <ConflictResolutionModal />
+              <Stack
               screenOptions={{
                 headerShown: false,
                 contentStyle: { backgroundColor: Colors.neutral.surface },
@@ -192,6 +194,13 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name="settings/language"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
                 name="team/index"
                 options={{
                   headerShown: false,
@@ -216,6 +225,7 @@ export default function RootLayout() {
           </MobilePreviewContainer>
         </OfflineProvider>
       </AuthProvider>
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }

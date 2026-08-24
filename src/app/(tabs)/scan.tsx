@@ -1,5 +1,6 @@
 import { VectorIcon } from '@/components/ui/icons';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [flash, setFlash] = useState(false);
   const isIOS = Platform.OS === 'ios';
 
@@ -54,7 +56,7 @@ export default function ScanScreen() {
 
         {/* Viewfinder Guidance Text */}
         <Text style={styles.guidanceText}>
-          Position the entire POS report inside the frame
+          {t('scan.instructions')}
         </Text>
       </View>
 
@@ -75,10 +77,10 @@ export default function ScanScreen() {
             color="#ffffff"
             strokeWidth={2.5}
           />
-          <Text style={styles.cancelText}>{isIOS ? 'Cancel' : ''}</Text>
+          <Text style={styles.cancelText}>{isIOS ? t('common.cancel') : ''}</Text>
         </Pressable>
 
-        <Text style={styles.topTitle}>Scan POS Report</Text>
+        <Text style={styles.topTitle}>{t('scan.title')}</Text>
 
         <Pressable
           onPress={() => setFlash(!flash)}
@@ -115,7 +117,7 @@ export default function ScanScreen() {
             <View style={styles.sideIconBox}>
               <VectorIcon name="Image" size={20} color="#ffffff" />
             </View>
-            <Text style={styles.sideControlLabel}>Gallery</Text>
+            <Text style={styles.sideControlLabel}>{t('scan.galleryButton')}</Text>
           </Pressable>
 
           {/* Shutter Button */}
@@ -137,7 +139,7 @@ export default function ScanScreen() {
 
         {/* Tip Text */}
         <Text style={styles.tipText}>
-          Supports multi-column · Low-light · Rotated documents
+          {t('scan.ocrSubtitle')}
         </Text>
       </View>
     </View>

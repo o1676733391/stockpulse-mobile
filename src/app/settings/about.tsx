@@ -4,6 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { INITIAL_ABOUT } from '@/services/settingsService';
 import React, { useState } from 'react';
 import {
@@ -19,29 +20,30 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const THIRD_PARTY_LICENSES = [
   { name: 'Expo', version: '~57.0.0', license: 'MIT' },
-  { name: 'React Native', version: '0.81.5', license: 'MIT' },
-  { name: 'Expo Router', version: '~57.0.0', license: 'MIT' },
-  { name: 'React Native SVG', version: '15.15.1', license: 'MIT' },
-  { name: 'Lucide React Native', version: '1.16.0', license: 'ISC' },
-  { name: 'React Native Safe Area Context', version: '5.6.2', license: 'MIT' },
+  { name: 'React Native', version: '0.86.2', license: 'MIT' },
+  { name: 'Expo Router', version: '~57.0.12', license: 'MIT' },
+  { name: 'React Native SVG', version: '15.15.4', license: 'MIT' },
+  { name: 'Lucide React Native', version: '1.31.0', license: 'ISC' },
+  { name: 'React Native Safe Area Context', version: '5.7.0', license: 'MIT' },
 ];
 
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [about] = useState(INITIAL_ABOUT);
   const [showLicenseModal, setShowLicenseModal] = useState(false);
 
   const handleContactSupport = () => {
     Alert.alert(
-      'StockPulse Support Desk',
-      'For technical assistance or kitchen workflow questions, email us at support@stockpulse.app or contact your store account representative.',
-      [{ text: 'OK' }]
+      t('settings.about.helpDesk'),
+      'support@stockpulse.app · 24/7 Priority Support',
+      [{ text: t('common.done') }]
     );
   };
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="About & Support" showBack />
+      <TopBar title={t('settings.about.title')} showBack />
 
       <ScrollView
         contentContainerStyle={[
@@ -55,8 +57,8 @@ export default function AboutScreen() {
           <View style={styles.appLogoCircle}>
             <VectorIcon name="Activity" size={32} color={Colors.brand.primary} strokeWidth={2.5} />
           </View>
-          <Text style={styles.appName}>StockPulse</Text>
-          <Text style={styles.appTagline}>F&B Inventory Intelligence & POS Reconciliation</Text>
+          <Text style={styles.appName}>{t('common.appName')}</Text>
+          <Text style={styles.appTagline}>{t('common.tagline')}</Text>
           <View style={styles.versionBadgeRow}>
             <Badge variant="green">v{about.version}</Badge>
             <Text style={styles.buildText}>Build {about.buildNumber}</Text>
@@ -65,7 +67,7 @@ export default function AboutScreen() {
 
         {/* ── Support & Help Desk Card ── */}
         <Card style={styles.infoCard}>
-          <SectionHeader title="Help & Support Desk" />
+          <SectionHeader title={t('settings.about.helpDesk')} />
 
           <Pressable
             onPress={handleContactSupport}
@@ -75,22 +77,22 @@ export default function AboutScreen() {
               <VectorIcon name="Headphones" size={16} color="#1d4ed8" />
             </View>
             <View style={styles.actionInfo}>
-              <Text style={styles.actionTitle}>Contact Technical Support</Text>
-              <Text style={styles.actionSub}>support@stockpulse.app · 24/7 Priority</Text>
+              <Text style={styles.actionTitle}>{t('settings.about.contactSupport')}</Text>
+              <Text style={styles.actionSub}>{t('settings.about.contactSupportSub')}</Text>
             </View>
             <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
           </Pressable>
 
           <Pressable
-            onPress={() => Alert.alert('User Guide', 'Digital operating manuals and kitchen checklists are available at docs.stockpulse.app.')}
+            onPress={() => Alert.alert(t('settings.about.userGuide'), 'docs.stockpulse.app')}
             style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
           >
             <View style={[styles.actionIconBox, { backgroundColor: '#ede9fe' }]}>
               <VectorIcon name="BookOpen" size={16} color="#6d28d9" />
             </View>
             <View style={styles.actionInfo}>
-              <Text style={styles.actionTitle}>Kitchen User Guide & FAQs</Text>
-              <Text style={styles.actionSub}>BOM reconciliation, OCR scans & BBD triage</Text>
+              <Text style={styles.actionTitle}>{t('settings.about.userGuide')}</Text>
+              <Text style={styles.actionSub}>{t('settings.about.userGuideSub')}</Text>
             </View>
             <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
           </Pressable>
@@ -98,7 +100,7 @@ export default function AboutScreen() {
 
         {/* ── Legal & Open Source Compliance Card ── */}
         <Card style={styles.infoCard}>
-          <SectionHeader title="Legal & Software Compliance" />
+          <SectionHeader title={t('settings.about.compliance')} />
 
           <Pressable
             onPress={() => setShowLicenseModal(true)}
@@ -108,29 +110,29 @@ export default function AboutScreen() {
               <VectorIcon name="ShieldCheck" size={16} color={Colors.brand.primary} />
             </View>
             <View style={styles.actionInfo}>
-              <Text style={styles.actionTitle}>Open-Source Software Register</Text>
-              <Text style={styles.actionSub}>MIT / ISC verified third-party components</Text>
+              <Text style={styles.actionTitle}>{t('settings.about.openSourceRegister')}</Text>
+              <Text style={styles.actionSub}>{t('settings.about.openSourceRegisterSub')}</Text>
             </View>
             <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
           </Pressable>
 
           <Pressable
-            onPress={() => Alert.alert('Privacy Policy', 'StockPulse adheres to European GDPR data privacy directives.')}
+            onPress={() => Alert.alert(t('settings.about.privacyPolicy'), t('settings.about.privacyPolicySub'))}
             style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
           >
             <View style={[styles.actionIconBox, { backgroundColor: '#f1f5f9' }]}>
               <VectorIcon name="Lock" size={16} color="#475569" />
             </View>
             <View style={styles.actionInfo}>
-              <Text style={styles.actionTitle}>Privacy Policy</Text>
-              <Text style={styles.actionSub}>GDPR & enterprise data compliance</Text>
+              <Text style={styles.actionTitle}>{t('settings.about.privacyPolicy')}</Text>
+              <Text style={styles.actionSub}>{t('settings.about.privacyPolicySub')}</Text>
             </View>
             <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
           </Pressable>
         </Card>
 
         <Text style={styles.copyrightText}>
-          © 2026 StockPulse Technologies GmbH. All rights reserved.
+          {t('settings.about.copyright')}
         </Text>
       </ScrollView>
 
@@ -146,7 +148,7 @@ export default function AboutScreen() {
             <View style={styles.modalGrabber} />
 
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Third-Party Software Register</Text>
+              <Text style={styles.modalTitle}>{t('settings.about.openSourceRegister')}</Text>
               <Pressable
                 onPress={() => setShowLicenseModal(false)}
                 style={styles.closeBtn}

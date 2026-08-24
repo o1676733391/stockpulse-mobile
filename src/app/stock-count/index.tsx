@@ -4,6 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { mockCountSchedules } from '@/mocks/inventoryMockData';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -19,13 +20,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function StockCountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const inProgress = mockCountSchedules.filter((s) => s.status === 'in_progress');
   const scheduled = mockCountSchedules.filter((s) => s.status === 'scheduled');
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Stock Counts" showBack large />
+      <TopBar title={t('stockCount.title')} showBack large />
 
       <ScrollView
         contentContainerStyle={[
@@ -37,14 +39,14 @@ export default function StockCountScreen() {
         {/* ── Active In-Progress Counts ── */}
         {inProgress.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Active</Text>
+            <Text style={styles.sectionHeader}>{t('common.active')}</Text>
             {inProgress.map((s) => (
               <Card key={s.id} style={styles.inProgressCard}>
                 <View style={styles.inProgressTop}>
                   <View style={styles.inProgressTitleBox}>
                     <View style={styles.inProgressHeaderRow}>
                       <Text style={styles.inProgressTitle}>{s.label}</Text>
-                      <Badge variant="amber">In Progress</Badge>
+                      <Badge variant="amber">{t('common.inProgress')}</Badge>
                     </View>
                     <View style={styles.inProgressSubRow}>
                       <VectorIcon name="Clock" size={12} color={Colors.neutral.textSecondary} />
@@ -65,7 +67,7 @@ export default function StockCountScreen() {
 
                 <View style={styles.progressMetaRow}>
                   <Text style={styles.progressMetaText}>
-                    {s.total - s.progress} items remaining
+                    {t('stockCount.itemsToCount', { count: s.total - s.progress })}
                   </Text>
                   <Text style={styles.progressMetaPct}>
                     {Math.round((s.progress / s.total) * 100)}% complete
@@ -78,7 +80,7 @@ export default function StockCountScreen() {
                   style={({ pressed }) => [styles.continueBtn, pressed && styles.pressed]}
                 >
                   <VectorIcon name="Play" size={16} color="#ffffff" />
-                  <Text style={styles.continueBtnText}>Continue Count</Text>
+                  <Text style={styles.continueBtnText}>{t('stockCount.title')}</Text>
                 </Pressable>
               </Card>
             ))}
@@ -87,7 +89,7 @@ export default function StockCountScreen() {
 
         {/* ── Scheduled Counts ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Scheduled</Text>
+          <Text style={styles.sectionHeader}>{t('common.filter')}</Text>
           <View style={styles.scheduledStack}>
             {scheduled.map((s) => (
               <Card key={s.id} style={styles.scheduledCard}>
@@ -99,7 +101,7 @@ export default function StockCountScreen() {
                   <View style={styles.scheduledInfo}>
                     <Text style={styles.scheduledTitle}>{s.label}</Text>
                     <Text style={styles.scheduledSub}>
-                      {s.sub} · {s.total} items
+                      {s.sub} · {s.total} {t('inventory.itemCount', { count: s.total })}
                     </Text>
                   </View>
 
@@ -107,7 +109,7 @@ export default function StockCountScreen() {
                     onPress={() => router.push('/stock-count/active' as any)}
                     style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
                   >
-                    <Text style={styles.startBtnText}>Start</Text>
+                    <Text style={styles.startBtnText}>{t('common.add')}</Text>
                   </Pressable>
                 </View>
               </Card>
@@ -123,7 +125,7 @@ export default function StockCountScreen() {
             </View>
 
             <View style={styles.lastCompletedInfo}>
-              <Text style={styles.lastCompletedTitle}>Last completed count</Text>
+              <Text style={styles.lastCompletedTitle}>{t('stockCount.countSummaryTitle')}</Text>
               <Text style={styles.lastCompletedSub}>
                 Daily Count · 08 Mar 2026 · 68 items
               </Text>
@@ -134,7 +136,7 @@ export default function StockCountScreen() {
               onPress={() => router.push('/stock-count/summary' as any)}
               style={({ pressed }) => [styles.reportLink, pressed && styles.pressed]}
             >
-              <Text style={styles.reportLinkText}>Report</Text>
+              <Text style={styles.reportLinkText}>{t('analytics.reports')}</Text>
               <VectorIcon name="ChevronRight" size={14} color={Colors.brand.primary} />
             </Pressable>
           </View>

@@ -32,6 +32,18 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   SUPABASE_SERVICE_ROLE_KEY: string = '';
+
+  @IsString()
+  @IsOptional()
+  OCR_DEFAULT_PROVIDER: string = 'gemini_vision';
+
+  @IsString()
+  @IsOptional()
+  GEMINI_API_KEY: string = '';
+
+  @IsString()
+  @IsOptional()
+  GEMINI_MODEL: string = 'gemini-2.0-flash';
 }
 
 export function validate(config: Record<string, unknown>) {

@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -27,7 +28,8 @@ export class PresignedUploadRequestDto {
 
   @ApiProperty({ example: 204800, description: 'File size in bytes (max 10MB)' })
   @IsNumber()
-  @Min(1)
+  @Min(1, { message: 'File size must be greater than 0 bytes' })
+  @Max(10485760, { message: 'File size cannot exceed 10MB (10485760 bytes)' })
   fileSizeBytes!: number;
 
   @ApiProperty({

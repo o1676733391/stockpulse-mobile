@@ -1,5 +1,6 @@
 import { VectorIcon } from '@/components/ui/icons';
 import { Colors, Radius, Shadows, Spacing } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -7,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const bottomInset = insets.bottom > 0 ? insets.bottom : Spacing.sm;
 
   return (
@@ -34,7 +36,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('navigation.home'),
           tabBarIcon: ({ color, focused }) => (
             <VectorIcon
               name="Home"
@@ -48,7 +50,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="inventory"
         options={{
-          title: 'Inventory',
+          title: t('navigation.inventory'),
           tabBarIcon: ({ color, focused }) => (
             <VectorIcon
               name="Package"
@@ -62,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="scan"
         options={{
-          title: 'Scan',
+          title: t('navigation.scan'),
           tabBarIcon: ({ focused }) => (
             <View
               style={[
@@ -78,14 +80,16 @@ export default function TabLayout() {
             </View>
           ),
           tabBarLabel: ({ color }) => (
-            <Text style={[styles.scanLabel, { color: color as string }]}>Scan</Text>
+            <Text style={[styles.scanLabel, { color: color as string }]}>
+              {t('navigation.scan')}
+            </Text>
           ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'Orders',
+          title: t('navigation.orders'),
           tabBarIcon: ({ color, focused }) => (
             <VectorIcon
               name="ShoppingCart"
@@ -99,7 +103,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="more"
         options={{
-          title: 'More',
+          title: t('navigation.more'),
           tabBarIcon: ({ color, focused }) => (
             <VectorIcon
               name="MoreHorizontal"

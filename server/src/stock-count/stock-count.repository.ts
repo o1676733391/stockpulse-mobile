@@ -456,14 +456,14 @@ export class StockCountRepository implements IStockCountRepository {
     storeId: string,
     targetCategoryIds?: string[],
   ): Promise<
-    Array<{
+    {
       id: string;
       sku: string;
       name: string;
       unit: string;
       physicalStock: number;
       costPerUnit: number;
-    }>
+    }[]
   > {
     const client = this.supabaseService.getAdminClient();
 
@@ -520,12 +520,12 @@ export class StockCountRepository implements IStockCountRepository {
   async findSessionCountedItems(
     sessionId: string,
   ): Promise<
-    Array<{
+    {
       itemId: string;
       countedQuantity: number;
       unit: string;
       notes?: string;
-    }>
+    }[]
   > {
     const client = this.supabaseService.getAdminClient();
 
@@ -870,18 +870,25 @@ export class StockCountRepository implements IStockCountRepository {
     sessionId: string,
     storeId: string,
   ): StockCountDetailResponseDto {
+    const status = sessionId.includes('in_progress')
+      ? 'in_progress'
+      : sessionId.includes('approved')
+      ? 'approved'
+      : sessionId.includes('completed')
+      ? 'completed'
+      : 'in_progress';
     return {
       id: sessionId,
       sessionNumber: 'SC-20260818-D01',
       storeId,
       conductedBy: '01915dfa-9012-7000-8000-000000000099',
       conductedByName: 'Mario Batali',
-      status: 'completed',
+      status,
       countType: 'blind',
       totalItems: 2,
       totalCounted: 2,
       startedAt: '2026-08-18T10:00:00Z',
-      completedAt: '2026-08-18T11:15:00Z',
+      completedAt: status === 'completed' || status === 'approved' ? '2026-08-18T11:15:00Z' : undefined,
       createdAt: '2026-08-18T10:00:00Z',
       updatedAt: '2026-08-18T11:30:00Z',
       items: [

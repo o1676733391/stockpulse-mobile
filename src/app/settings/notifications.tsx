@@ -3,6 +3,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_NOTIF_PREFERENCES,
   settingsService,
@@ -21,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function NotificationPreferencesScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const [prefs, setPrefs] = useState<NotificationPreferences>(() =>
     JSON.parse(JSON.stringify(INITIAL_NOTIF_PREFERENCES))
@@ -50,7 +52,7 @@ export default function NotificationPreferencesScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Notification Channels" showBack />
+      <TopBar title={t('settings.items.notificationChannels')} showBack />
 
       <ScrollView
         contentContainerStyle={[
@@ -61,13 +63,13 @@ export default function NotificationPreferencesScreen() {
       >
         {/* ── Global Master Switches Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Master Delivery Channels" />
+          <SectionHeader title={t('settings.groups.notificationsAlerts')} />
 
           <View style={styles.globalToggleRow}>
             <View style={styles.globalTextCol}>
               <Text style={styles.globalTitle}>Push Notifications</Text>
               <Text style={styles.globalSub}>
-                Real-time instant banners on mobile lock screen & status bar
+                {t('notifications.types.lowStock')} & {t('notifications.types.expiringSoon')}
               </Text>
             </View>
             <Switch
@@ -81,7 +83,7 @@ export default function NotificationPreferencesScreen() {
             <View style={styles.globalTextCol}>
               <Text style={styles.globalTitle}>Email Alerts & Digests</Text>
               <Text style={styles.globalSub}>
-                Send critical daily summary digests to registered store email
+                {t('analytics.title')}
               </Text>
             </View>
             <Switch
@@ -94,11 +96,11 @@ export default function NotificationPreferencesScreen() {
 
         {/* ── Granular Channel Matrix Card ── */}
         <Card style={styles.matrixCard}>
-          <SectionHeader title="Alert Subscriptions" />
+          <SectionHeader title={t('notifications.title')} />
 
           {/* Matrix Header */}
           <View style={styles.matrixHeaderRow}>
-            <Text style={styles.matrixHeaderLabel}>Alert Type</Text>
+            <Text style={styles.matrixHeaderLabel}>{t('common.status')}</Text>
             <Text style={styles.matrixColHeader}>Push</Text>
             <Text style={styles.matrixColHeader}>Email</Text>
           </View>

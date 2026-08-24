@@ -48,7 +48,7 @@ export class StartStockCountSessionDto {
 
 export class RecordCountItemDto {
   @ApiProperty({ example: '01915dfa-b1c4-7221-9988-51b72e04e0a1', description: 'Inventory item UUID' })
-  @IsUUID('4', { message: 'Item ID must be a valid UUID' })
+  @IsUUID(undefined, { message: 'Item ID must be a valid UUID' })
   @IsNotEmpty()
   itemId!: string;
 

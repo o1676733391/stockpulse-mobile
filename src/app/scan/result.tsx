@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
@@ -18,16 +19,17 @@ export default function OCRResultScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ totalPortions?: string; menuItemCount?: string }>();
+  const { t, formatCurrency } = useI18n();
 
   const portionsSold = params.totalPortions || '49';
   const menuCount = params.menuItemCount || '5';
 
   const sampleDeductions = [
-    { name: 'Chicken Breast', delta: -12.4, unit: 'kg', cost: '€59.52' },
-    { name: 'Potatoes',       delta: -8.2,  unit: 'kg', cost: '€7.38'  },
-    { name: 'Cooking Oil',    delta: -1.8,  unit: 'L',  cost: '€4.32'  },
-    { name: 'Gouda Cheese',   delta: -4.1,  unit: 'kg', cost: '€34.85' },
-    { name: 'Ground Beef',    delta: -6.25, unit: 'kg', cost: '€38.75' },
+    { name: 'Chicken Breast', delta: -12.4, unit: 'kg', cost: formatCurrency(59.52) },
+    { name: 'Potatoes',       delta: -8.2,  unit: 'kg', cost: formatCurrency(7.38)  },
+    { name: 'Cooking Oil',    delta: -1.8,  unit: 'L',  cost: formatCurrency(4.32)  },
+    { name: 'Gouda Cheese',   delta: -4.1,  unit: 'kg', cost: formatCurrency(34.85) },
+    { name: 'Ground Beef',    delta: -6.25, unit: 'kg', cost: formatCurrency(38.75) },
   ];
 
   return (
@@ -45,24 +47,24 @@ export default function OCRResultScreen() {
           <View style={styles.headerTitleBox}>
             <View style={styles.titleWithIcon}>
               <VectorIcon name="CheckCircle2" size={22} color={Colors.brand.primary} />
-              <Text style={styles.headerTitle}>POS Report Processed</Text>
+              <Text style={styles.headerTitle}>{t('scan.resultTitle')}</Text>
             </View>
             <Text style={styles.headerSub}>
               10 Mar 2026 · Report #2048 · Lunch shift
             </Text>
           </View>
-          <Badge variant="green">Complete</Badge>
+          <Badge variant="green">{t('stockCount.status.completed')}</Badge>
         </View>
 
         {/* 2-Stat Metric Grid */}
         <View style={styles.statGrid}>
           <View style={styles.statBoxGreen}>
             <Text style={styles.statValueGreen}>{menuCount}</Text>
-            <Text style={styles.statLabelGreen}>Menu items detected</Text>
+            <Text style={styles.statLabelGreen}>{t('scan.reviewStats.detected')}</Text>
           </View>
           <View style={styles.statBoxBlue}>
             <Text style={styles.statValueBlue}>{portionsSold}</Text>
-            <Text style={styles.statLabelBlue}>Total portions sold</Text>
+            <Text style={styles.statLabelBlue}>{t('scan.totalPortionsSold')}</Text>
           </View>
         </View>
       </View>
@@ -75,7 +77,7 @@ export default function OCRResultScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <SectionHeader title="Ingredients Deducted from Theoretical Stock" />
+        <SectionHeader title={t('scan.ingredientsDeductedTitle')} />
 
         <View style={styles.deductionList}>
           {sampleDeductions.map((d) => (
@@ -108,10 +110,10 @@ export default function OCRResultScreen() {
         <View style={styles.theoreticalNotice}>
           <View style={styles.noticeHeaderRow}>
             <VectorIcon name="CheckCircle2" size={16} color={Colors.brand.dark} />
-            <Text style={styles.noticeTitle}>Theoretical inventory updated</Text>
+            <Text style={styles.noticeTitle}>{t('scan.theoreticalUpdatedTitle')}</Text>
           </View>
           <Text style={styles.noticeText}>
-            {sampleDeductions.length} ingredient stocks have been automatically updated based on recipe/BOM mappings. Physical stock is unchanged until your next stock count.
+            {t('scan.theoreticalDeductionNotice')}
           </Text>
         </View>
       </ScrollView>
@@ -129,14 +131,14 @@ export default function OCRResultScreen() {
           onPress={() => router.push('/(tabs)/inventory' as any)}
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.primaryBtnText}>View Inventory Impact</Text>
+          <Text style={styles.primaryBtnText}>{t('navigation.inventory')}</Text>
         </Pressable>
 
         <Pressable
           onPress={() => router.replace('/(tabs)/scan' as any)}
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.secondaryBtnText}>Scan Another Report</Text>
+          <Text style={styles.secondaryBtnText}>{t('scan.retakeButton')}</Text>
         </Pressable>
       </View>
     </View>

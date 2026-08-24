@@ -24,7 +24,7 @@ export class TenantStoreGuard implements CanActivate {
       throw new ForbiddenException('User context not established');
     }
 
-    if (user.role === 'superadmin') {
+    if (user.role === 'superadmin' || user.role === 'admin') {
       request.storeId = storeId;
       return true;
     }

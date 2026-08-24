@@ -8,6 +8,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TopBar } from '@/components/ui/top-bar';
 import { VariancePill } from '@/components/ui/variance-pill';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { mockInventoryItems, mockStockTrend } from '@/mocks/inventoryMockData';
 import { inventoryService } from '@/services/inventoryService';
 import { InventoryItem } from '@/types/inventory';
@@ -22,40 +23,41 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const TX_CONFIG: Record<
-  string,
-  { icon: string; bg: string; color: string; label: string }
-> = {
-  pos_deduction: {
-    icon: 'TrendingDown',
-    bg: Colors.info.subtle,
-    color: Colors.info.main,
-    label: 'POS Deduction',
-  },
-  manual_count: {
-    icon: 'CheckCircle',
-    bg: Colors.brand.subtle,
-    color: Colors.brand.primary,
-    label: 'Manual Count',
-  },
-  goods_receipt: {
-    icon: 'Plus',
-    bg: Colors.purple.subtle,
-    color: Colors.purple.main,
-    label: 'Goods Receipt',
-  },
-  adjustment: {
-    icon: 'Pencil',
-    bg: Colors.warning.subtle,
-    color: Colors.warning.dark,
-    label: 'Adjustment',
-  },
-};
-
 export default function InventoryDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t, formatNumber } = useI18n();
+
+  const TX_CONFIG: Record<
+    string,
+    { icon: string; bg: string; color: string; label: string }
+  > = {
+    pos_deduction: {
+      icon: 'TrendingDown',
+      bg: Colors.info.subtle,
+      color: Colors.info.main,
+      label: 'POS Deduction',
+    },
+    manual_count: {
+      icon: 'CheckCircle',
+      bg: Colors.brand.subtle,
+      color: Colors.brand.primary,
+      label: t('navigation.stockCount'),
+    },
+    goods_receipt: {
+      icon: 'Plus',
+      bg: Colors.purple.subtle,
+      color: Colors.purple.main,
+      label: t('scan.title'),
+    },
+    adjustment: {
+      icon: 'Pencil',
+      bg: Colors.warning.subtle,
+      color: Colors.warning.dark,
+      label: 'Adjustment',
+    },
+  };
 
   const [range, setRange] = useState<'7D' | '30D' | '3M'>('7D');
   const [item, setItem] = useState<InventoryItem>(
@@ -81,7 +83,7 @@ export default function InventoryDetailScreen() {
       {/* ── TopBar ── */}
       <TopBar
         title={item.name}
-        subtitle={`${item.sku} · ${item.category}`}
+        subtitle={`${t('inventory.sku', { sku: item.sku })} · ${item.category}`}
         showBack
         right={
           <Pressable
@@ -103,7 +105,7 @@ export default function InventoryDetailScreen() {
       >
         {/* ── 1. Stock Comparison Card ── */}
         <Card style={styles.sectionCard}>
-          <Text style={styles.sectionHeading}>Stock Comparison</Text>
+          <Text style={styles.sectionHeading}>{t('inventory.variance')}</Text>
 
           {/* Big Two-Column Comparison */}
           <View style={styles.compareGrid}>
@@ -111,20 +113,20 @@ export default function InventoryDetailScreen() {
             <View style={styles.physicalCol}>
               <View style={styles.colHeader}>
                 <View style={styles.greenDot} />
-                <Text style={styles.physicalColLabel}>PHYSICAL / IS</Text>
+                <Text style={styles.physicalColLabel}>{t('inventory.physicalStock').toUpperCase()}</Text>
               </View>
               <Text style={styles.physicalColValue}>{item.physicalStock}</Text>
-              <Text style={styles.physicalColUnit}>{item.unit} on hand</Text>
+              <Text style={styles.physicalColUnit}>{item.unit}</Text>
             </View>
 
             {/* Theory (Should) */}
             <View style={styles.theoryCol}>
               <View style={styles.colHeader}>
                 <View style={styles.slateDot} />
-                <Text style={styles.theoryColLabel}>THEORY / SHOULD</Text>
+                <Text style={styles.theoryColLabel}>{t('inventory.theoreticalStock').toUpperCase()}</Text>
               </View>
               <Text style={styles.theoryColValue}>{item.theoreticalStock}</Text>
-              <Text style={styles.theoryColUnit}>{item.unit} expected</Text>
+              <Text style={styles.theoryColUnit}>{item.unit}</Text>
             </View>
           </View>
 
@@ -149,7 +151,7 @@ export default function InventoryDetailScreen() {
             ]}
           >
             <View>
-              <Text style={styles.varianceLabel}>Variance (Is − Should)</Text>
+              <Text style={styles.varianceLabel}>{t('inventory.variance')}</Text>
               <Text
                 style={[
                   styles.varianceValue,
@@ -172,13 +174,13 @@ export default function InventoryDetailScreen() {
           {/* Target / Safety / Recommended Order 3-box Grid */}
           <View style={styles.targetGrid}>
             <View style={styles.targetBox}>
-              <Text style={styles.targetBoxLabel}>Target</Text>
+              <Text style={styles.targetBoxLabel}>{t('inventory.parLevel')}</Text>
               <Text style={styles.targetBoxValue}>{item.targetStock}</Text>
               <Text style={styles.targetBoxUnit}>{item.unit}</Text>
             </View>
 
             <View style={styles.targetBox}>
-              <Text style={styles.targetBoxLabel}>Safety</Text>
+              <Text style={styles.targetBoxLabel}>{t('inventory.reorderPoint')}</Text>
               <Text style={styles.targetBoxValue}>{item.safetyStock}</Text>
               <Text style={styles.targetBoxUnit}>{item.unit}</Text>
             </View>
@@ -195,7 +197,7 @@ export default function InventoryDetailScreen() {
                   recommended > 0 && { color: Colors.info.dark },
                 ]}
               >
-                Rec. Order
+                {t('orders.title')}
               </Text>
               <Text
                 style={[
@@ -213,15 +215,15 @@ export default function InventoryDetailScreen() {
         {/* ── 2. Count Schedule Card ── */}
         <Card style={styles.sectionCard}>
           <View style={styles.scheduleHeaderRow}>
-            <Text style={styles.sectionHeading}>Count Schedule</Text>
-            <Badge variant="amber">In Progress</Badge>
+            <Text style={styles.sectionHeading}>{t('navigation.stockCount')}</Text>
+            <Badge variant="amber">{t('common.inProgress')}</Badge>
           </View>
 
           <View style={styles.activeScheduleBox}>
             <View style={styles.activeScheduleTop}>
               <View>
-                <Text style={styles.activeScheduleTitle}>Daily Stock Count</Text>
-                <Text style={styles.activeScheduleSub}>Today, 10 March 2026</Text>
+                <Text style={styles.activeScheduleTitle}>{t('navigation.stockCount')}</Text>
+                <Text style={styles.activeScheduleSub}>{t('common.today')}</Text>
               </View>
               <View style={styles.activeScheduleRight}>
                 <Text style={styles.activeScheduleCount}>42</Text>
@@ -232,7 +234,7 @@ export default function InventoryDetailScreen() {
             <ProgressBar value={42} max={68} variant="green" height={6} />
 
             <View style={styles.activeScheduleBottom}>
-              <Text style={styles.activeScheduleRemain}>26 items remaining</Text>
+              <Text style={styles.activeScheduleRemain}>{t('stockCount.itemsToCount', { count: 26 })}</Text>
               <Text style={styles.activeSchedulePct}>62%</Text>
             </View>
           </View>
@@ -243,32 +245,14 @@ export default function InventoryDetailScreen() {
             style={({ pressed }) => [styles.continueBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Play" size={15} color="#ffffff" />
-            <Text style={styles.continueBtnText}>Continue Count</Text>
+            <Text style={styles.continueBtnText}>{t('stockCount.title')}</Text>
           </Pressable>
-
-          {/* Other Schedules */}
-          <View style={styles.otherSchedules}>
-            <View style={styles.otherScheduleRow}>
-              <Text style={styles.otherScheduleLabel}>Weekly Count</Text>
-              <View style={styles.otherScheduleRight}>
-                <Text style={styles.otherScheduleDue}>Due 14 Mar</Text>
-                <Badge variant="gray">Scheduled</Badge>
-              </View>
-            </View>
-            <View style={[styles.otherScheduleRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.otherScheduleLabel}>Monthly Inventory</Text>
-              <View style={styles.otherScheduleRight}>
-                <Text style={styles.otherScheduleDue}>Due 31 Mar</Text>
-                <Badge variant="gray">Scheduled</Badge>
-              </View>
-            </View>
-          </View>
         </Card>
 
         {/* ── 3. Stock Trend Line Chart ── */}
         <Card style={styles.sectionCard}>
           <View style={styles.trendHeader}>
-            <Text style={styles.sectionHeading}>Stock Trend</Text>
+            <Text style={styles.sectionHeading}>{t('analytics.trends')}</Text>
             <SegmentedControl
               options={['7D', '30D', '3M']}
               value={range}
@@ -291,18 +275,18 @@ export default function InventoryDetailScreen() {
           <View style={styles.chartLegend}>
             <View style={styles.legendItem}>
               <View style={styles.physLineSample} />
-              <Text style={styles.legendText}>Physical (Is)</Text>
+              <Text style={styles.legendText}>{t('inventory.physicalStock')}</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={styles.theoLineSample} />
-              <Text style={styles.legendText}>Theoretical (Should)</Text>
+              <Text style={styles.legendText}>{t('inventory.theoreticalStock')}</Text>
             </View>
           </View>
         </Card>
 
         {/* ── 4. Batches & Expiration ── */}
         <Card style={styles.sectionCard}>
-          <SectionHeader title="Batches & Expiration" />
+          <SectionHeader title={t('expiration.title')} />
           <View style={styles.batchList}>
             {item.batches.map((batch) => {
               const isCritical = batch.daysRemaining <= 2;
@@ -320,8 +304,8 @@ export default function InventoryDetailScreen() {
                     </View>
                     <Badge variant={variant}>
                       {batch.daysRemaining === 1
-                        ? 'Tomorrow'
-                        : `${batch.daysRemaining}d left`}
+                        ? t('common.today')
+                        : t('inventory.daysRemaining', { count: batch.daysRemaining })}
                     </Badge>
                   </View>
 
@@ -342,7 +326,7 @@ export default function InventoryDetailScreen() {
 
         {/* ── 5. Recent Transactions ── */}
         <Card style={styles.sectionCard}>
-          <SectionHeader title="Recent Transactions" action="View History" />
+          <SectionHeader title={t('dashboard.recentActivityTitle')} />
           <View style={styles.txList}>
             {item.transactions.map((tx) => {
               const cfg = TX_CONFIG[tx.type] ?? TX_CONFIG.adjustment;
@@ -387,7 +371,7 @@ export default function InventoryDetailScreen() {
             style={({ pressed }) => [styles.primaryActionBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="CheckCircle" size={18} color="#ffffff" />
-            <Text style={styles.primaryActionText}>Count Item</Text>
+            <Text style={styles.primaryActionText}>{t('stockCount.title')}</Text>
           </Pressable>
 
           <Pressable
@@ -395,7 +379,7 @@ export default function InventoryDetailScreen() {
             style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Pencil" size={18} color={Colors.neutral.textPrimary} />
-            <Text style={styles.secondaryActionText}>Adjust Stock</Text>
+            <Text style={styles.secondaryActionText}>{t('common.edit')}</Text>
           </Pressable>
 
           {item.status === 'low' || item.status === 'critical' ? (
@@ -404,7 +388,7 @@ export default function InventoryDetailScreen() {
               style={({ pressed }) => [styles.warningActionBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="ShoppingCart" size={18} color={Colors.warning.dark} />
-              <Text style={styles.warningActionText}>Reorder</Text>
+              <Text style={styles.warningActionText}>{t('orders.title')}</Text>
             </Pressable>
           ) : (
             <Pressable
@@ -412,7 +396,7 @@ export default function InventoryDetailScreen() {
               style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="History" size={18} color={Colors.neutral.textPrimary} />
-              <Text style={styles.secondaryActionText}>History</Text>
+              <Text style={styles.secondaryActionText}>{t('analytics.title')}</Text>
             </Pressable>
           )}
         </View>

@@ -68,13 +68,13 @@ export interface IOcrRepository {
     storeId: string,
     documentId: string,
     actorId: string,
-    deductions: Array<{
+    deductions: {
       ocrItemId: string;
       itemId: string;
       quantityDeducted: number;
       unit: string;
       unitCost: number;
       totalCost: number;
-    }>,
+    }[],
   ): Promise<void>;
 }

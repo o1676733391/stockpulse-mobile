@@ -6,6 +6,7 @@ import { KpiCard } from '@/components/ui/kpi-card';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   mockActivityItems,
   mockAdminKpis,
@@ -35,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function DashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, formatDate, formatCurrency, formatNumber } = useI18n();
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [expiryItems, setExpiryItems] = useState<DashboardExpiryItem[]>(mockExpiryItems);
@@ -53,7 +55,7 @@ export default function DashboardScreen() {
         setAdminKpis((prev) => [
           {
             ...prev[0],
-            value: `€${valRes.totalValuation.toLocaleString('de-DE')}`,
+            value: formatCurrency(valRes.totalValuation),
           },
           prev[1],
           {
@@ -70,17 +72,17 @@ export default function DashboardScreen() {
             id: e.id,
             name: e.name,
             qty: `${e.qty} ${e.unit}`,
-            exp: e.days === 1 ? 'Expires tomorrow' : `Expires in ${e.days} days`,
+            exp: t('inventory.daysRemaining', { count: e.days }),
             days: e.days,
             urgency: e.status === 'critical' ? 'critical' : 'warning',
-            value: `€${e.value.toFixed(2)}`,
+            value: formatCurrency(e.value),
           }))
         );
       }
     } catch {
       // Fallback already logged by service
     }
-  }, []);
+  }, [formatCurrency, t]);
 
   useEffect(() => {
     loadData();
@@ -94,7 +96,7 @@ export default function DashboardScreen() {
 
   const criticalExpiry = expiryItems.filter((e) => e.urgency === 'critical');
   const totalValueAtRisk = expiryItems.reduce(
-    (sum, item) => sum + parseFloat(item.value.replace('€', '').replace(',', '.')),
+    (sum, item) => sum + parseFloat(item.value.replace(/[^0-9.-]+/g, '') || '0'),
     0
   );
 
@@ -121,7 +123,7 @@ export default function DashboardScreen() {
               </View>
             )}
             <View>
-              <Text style={styles.storeSub}>Current store</Text>
+              <Text style={styles.storeSub}>{t('dashboard.activeStore', { store: '' })}</Text>
               <View style={styles.storeNameRow}>
                 <Text style={styles.storeName}>Bella Cucina</Text>
                 <VectorIcon name="ChevronDown" size={14} color={Colors.brand.primary} strokeWidth={2.5} />
@@ -133,7 +135,7 @@ export default function DashboardScreen() {
           <View style={styles.headerRight}>
             <View style={styles.dateBadge}>
               <VectorIcon name="Calendar" size={12} color={Colors.neutral.textSecondary} />
-              <Text style={styles.dateText}>10 Mar</Text>
+              <Text style={styles.dateText}>{formatDate(new Date(), { month: 'short', day: 'numeric' })}</Text>
             </View>
 
             <Pressable
@@ -173,10 +175,10 @@ export default function DashboardScreen() {
             <VectorIcon name="AlertTriangle" size={18} color={Colors.critical.main} />
             <View style={styles.alertTextContainer}>
               <Text style={styles.alertTitle}>
-                {criticalExpiry.length} items expire within 24 hours
+                {t('dashboard.tasks.expiringBrd', { count: criticalExpiry.length })}
               </Text>
               <Text style={styles.alertSub}>
-                Fresh Salmon · Romaine Lettuce · €74.86 at risk
+                {t('dashboard.tasks.expiringBrdSub')}
               </Text>
             </View>
             <View style={styles.alertActions}>
@@ -185,7 +187,7 @@ export default function DashboardScreen() {
                 hitSlop={4}
                 style={({ pressed }) => pressed && styles.pressed}
               >
-                <Text style={styles.alertLink}>View</Text>
+                <Text style={styles.alertLink}>{t('common.details')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => setAlertDismissed(true)}
@@ -201,18 +203,46 @@ export default function DashboardScreen() {
         {/* ── KPI Overview Grid ── */}
         <View style={styles.section}>
           <SectionHeader
-            title="Overview"
-            action="Details"
+            title={t('common.overview')}
+            action={t('common.details')}
             onAction={() => router.push('/inventory' as any)}
           />
           <View style={styles.kpiGrid}>
             <View style={styles.kpiRow}>
-              <KpiCard {...mockAdminKpis[0]} onPress={() => router.push('/inventory' as any)} />
-              <KpiCard {...mockAdminKpis[1]} onPress={() => router.push('/inventory' as any)} />
+              <KpiCard
+                label={t('dashboard.kpis.totalValuation')}
+                value={adminKpis[0]?.value || '€48,920.00'}
+                sub={adminKpis[0]?.sub}
+                variant={adminKpis[0]?.variant}
+                trend={adminKpis[0]?.trend}
+                onPress={() => router.push('/inventory' as any)}
+              />
+              <KpiCard
+                label={t('dashboard.kpis.healthyRate')}
+                value={adminKpis[1]?.value || '82.4%'}
+                sub={adminKpis[1]?.sub}
+                variant={adminKpis[1]?.variant}
+                trend={adminKpis[1]?.trend}
+                onPress={() => router.push('/inventory' as any)}
+              />
             </View>
             <View style={styles.kpiRow}>
-              <KpiCard {...mockAdminKpis[2]} onPress={() => router.push('/inventory' as any)} />
-              <KpiCard {...mockAdminKpis[3]} onPress={() => router.push('/inventory' as any)} />
+              <KpiCard
+                label={t('dashboard.kpis.expiringSoon')}
+                value={adminKpis[2]?.value || '7'}
+                sub={adminKpis[2]?.sub}
+                variant={adminKpis[2]?.variant}
+                trend={adminKpis[2]?.trend}
+                onPress={() => router.push('/expiration' as any)}
+              />
+              <KpiCard
+                label={t('dashboard.kpis.openOrders')}
+                value={adminKpis[3]?.value || '3'}
+                sub={adminKpis[3]?.sub}
+                variant={adminKpis[3]?.variant}
+                trend={adminKpis[3]?.trend}
+                onPress={() => router.push('/orders' as any)}
+              />
             </View>
           </View>
 
@@ -226,8 +256,8 @@ export default function DashboardScreen() {
                 <VectorIcon name="ShoppingCart" size={18} color={Colors.info.main} />
               </View>
               <View style={styles.pendingPoText}>
-                <Text style={styles.poTitle}>Pending Purchase Orders</Text>
-                <Text style={styles.poSub}>€485.00 total outstanding</Text>
+                <Text style={styles.poTitle}>{t('orders.title')}</Text>
+                <Text style={styles.poSub}>{formatCurrency(485)} {t('common.total')}</Text>
               </View>
             </View>
             <View style={styles.pendingPoRight}>
@@ -241,7 +271,7 @@ export default function DashboardScreen() {
 
         {/* ── Today's Tasks ── */}
         <View style={styles.section}>
-          <SectionHeader title="Today's Tasks" action="View all" />
+          <SectionHeader title={t('dashboard.urgentTasksTitle')} action={t('common.viewAll')} />
           <View style={styles.taskStack}>
             {mockDashboardTasks.map((task) => (
               <Card
@@ -288,7 +318,7 @@ export default function DashboardScreen() {
 
         {/* ── Quick Actions ── */}
         <View style={styles.section}>
-          <SectionHeader title="Quick Actions" />
+          <SectionHeader title={t('dashboard.quickActions')} />
           <View style={styles.quickActionGrid}>
             {mockQuickActions.map((action) => (
               <Pressable
@@ -299,7 +329,15 @@ export default function DashboardScreen() {
                 <View style={[styles.actionIconBox, { backgroundColor: action.bg }]}>
                   <VectorIcon name={action.iconName} size={20} color={action.iconColor} />
                 </View>
-                <Text style={styles.actionLabel}>{action.label}</Text>
+                <Text style={styles.actionLabel}>
+                  {action.id === 'count'
+                    ? t('dashboard.quickActionButtons.count')
+                    : action.id === 'scan'
+                    ? t('dashboard.quickActionButtons.scan')
+                    : action.id === 'order'
+                    ? t('dashboard.quickActionButtons.order')
+                    : t('dashboard.quickActionButtons.expiry')}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -308,8 +346,8 @@ export default function DashboardScreen() {
         {/* ── Stock Health ── */}
         <View style={styles.section}>
           <SectionHeader
-            title="Stock Health"
-            action="View all"
+            title={t('dashboard.stockHealthTitle')}
+            action={t('common.viewAll')}
             onAction={() => router.push('/inventory' as any)}
           />
           <Card style={styles.stockHealthCard}>
@@ -319,14 +357,22 @@ export default function DashboardScreen() {
                 size={86}
                 strokeWidth={8}
                 centerNumber="100"
-                centerLabel="items"
+                centerLabel={t('navigation.inventory')}
               />
 
               <View style={styles.healthLegend}>
                 {mockStockHealth.map((item) => (
                   <View key={item.label} style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                    <Text style={styles.legendLabel}>{item.label}</Text>
+                    <Text style={styles.legendLabel}>
+                      {item.label === 'Optimal'
+                        ? t('dashboard.stockHealth.healthy')
+                        : item.label === 'Low Stock'
+                        ? t('dashboard.stockHealth.low')
+                        : item.label === 'Critical'
+                        ? t('dashboard.stockHealth.critical')
+                        : t('dashboard.stockHealth.overstock')}
+                    </Text>
                     <Text style={styles.legendCount}>{item.count}</Text>
                     <Text style={styles.legendPct}>{item.pct}%</Text>
                   </View>
@@ -338,41 +384,21 @@ export default function DashboardScreen() {
             <View style={{ marginVertical: Spacing.md }}>
               <StockBar segments={mockStockHealth} height={8} />
             </View>
-
-            {/* Sparkline 7-day trend */}
-            <View style={styles.sparklineSection}>
-              <View style={styles.sparklineHeader}>
-                <Text style={styles.sparklineTitle}>Inventory value — 7 day trend</Text>
-                <View style={styles.sparklineTrend}>
-                  <VectorIcon name="TrendingUp" size={11} color={Colors.brand.primary} />
-                  <Text style={styles.sparklineTrendText}>+2.1%</Text>
-                </View>
-              </View>
-
-              <View style={styles.sparklineContainer}>
-                <Sparkline data={mockSparklineTrend} width={300} height={42} />
-              </View>
-
-              <View style={styles.sparklineDates}>
-                <Text style={styles.sparklineDate}>4 Mar</Text>
-                <Text style={styles.sparklineDate}>10 Mar</Text>
-              </View>
-            </View>
           </Card>
         </View>
 
         {/* ── Expiration Alerts ── */}
         <View style={styles.section}>
           <SectionHeader
-            title="Expiration Alerts"
-            action="View all"
+            title={t('expiration.title')}
+            action={t('common.viewAll')}
             onAction={() => router.push('/expiration' as any)}
           />
 
           <View style={styles.riskSummaryRow}>
             <VectorIcon name="AlertTriangle" size={12} color={Colors.critical.main} />
             <Text style={styles.riskSummaryText}>
-              €{totalValueAtRisk.toFixed(2)} at risk across {mockExpiryItems.length} products
+              {t('expiration.potentialLoss', { value: formatCurrency(totalValueAtRisk) })}
             </Text>
           </View>
 
@@ -425,7 +451,7 @@ export default function DashboardScreen() {
                         },
                       ]}
                     >
-                      {item.days === 1 ? 'day' : 'days'}
+                      {t('common.date')}
                     </Text>
                   </View>
 
@@ -436,7 +462,7 @@ export default function DashboardScreen() {
 
                   <View style={styles.expiryRight}>
                     <Badge variant={item.urgency === 'critical' ? 'red' : 'amber'}>
-                      {item.urgency === 'critical' ? 'Critical' : 'Warning'}
+                      {item.urgency === 'critical' ? t('dashboard.stockHealth.critical') : t('dashboard.stockHealth.low')}
                     </Badge>
                     <Text style={styles.expiryValue}>{item.value}</Text>
                   </View>
@@ -448,7 +474,7 @@ export default function DashboardScreen() {
 
         {/* ── Recent Activity ── */}
         <View style={styles.section}>
-          <SectionHeader title="Recent Activity" />
+          <SectionHeader title={t('dashboard.recentActivityTitle')} />
           <Card noPadding style={styles.activityCard}>
             {mockActivityItems.map((item, index) => (
               <View

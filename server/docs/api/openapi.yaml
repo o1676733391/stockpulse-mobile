@@ -1,0 +1,4429 @@
+openapi: 3.0.0
+paths:
+  /api/v1/auth/login:
+    post:
+      operationId: AuthController_login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginDto"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponseDto"
+        "401":
+          description: Invalid credentials
+      summary: Authenticate user and issue JWT access/refresh token pair
+      tags: &a1
+        - Authentication
+  /api/v1/auth/signup:
+    post:
+      operationId: AuthController_signup
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupDto"
+      responses:
+        "201":
+          description: Registration and workspace initialized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponseDto"
+        "400":
+          description: Validation error or email already exists
+      summary: Register new tenant organization and superadmin owner account
+      tags: *a1
+  /api/v1/auth/refresh:
+    post:
+      operationId: AuthController_refreshToken
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenDto"
+      responses:
+        "200":
+          description: Tokens rotated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponseDto"
+        "401":
+          description: Invalid or expired refresh token
+      summary: Rotate refresh token and issue fresh JWT session
+      tags: *a1
+  /api/v1/auth/logout:
+    post:
+      operationId: AuthController_logout
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session terminated
+      security:
+        - BearerAuth: []
+      summary: Revoke active session token
+      tags: *a1
+  /api/v1/auth/me:
+    get:
+      operationId: AuthController_getProfile
+      parameters: []
+      responses:
+        "200":
+          description: Authenticated user profile
+      security:
+        - BearerAuth: []
+      summary: Get current authenticated user profile, permissions, and store access
+      tags: *a1
+  /api/v1/auth/switch-store:
+    post:
+      operationId: AuthController_switchStore
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwitchStoreDto"
+      responses:
+        "200":
+          description: Switched store context successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponseDto"
+      security:
+        - BearerAuth: []
+      summary: Switch active store context for multi-store supervisors/managers
+      tags: *a1
+  /api/v1/auth/webhook:
+    post:
+      operationId: AuthController_handleWebhook
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncUserWebhookDto"
+      responses:
+        "200":
+          description: Webhook event processed
+      summary: Supabase Auth Webhook receiver for automatic user synchronization
+      tags: *a1
+  /api/v1/users/me:
+    get:
+      operationId: UsersController_getMe
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Get profile of authenticated user
+      tags: &a2
+        - Users
+  /api/v1/users/{id}:
+    get:
+      operationId: UsersController_findById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Get user by ID
+      tags: *a2
+    patch:
+      operationId: UsersController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserDto"
+      responses:
+        "200":
+          description: ""
+      summary: Update user profile and store assignments
+      tags: *a2
+    delete:
+      operationId: UsersController_delete
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Deactivate / Delete user
+      tags: *a2
+  /api/v1/users:
+    post:
+      operationId: UsersController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserDto"
+      responses:
+        "201":
+          description: ""
+      summary: Create a new team member
+      tags: *a2
+  /api/v1/organizations/{id}:
+    get:
+      operationId: OrganizationsController_findById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Get organization details and subscription status
+      tags: &a3
+        - Organizations
+    patch:
+      operationId: OrganizationsController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationDto"
+      responses:
+        "200":
+          description: ""
+      summary: Update organization details
+      tags: *a3
+  /api/v1/organizations:
+    post:
+      operationId: OrganizationsController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationDto"
+      responses:
+        "201":
+          description: ""
+      summary: Create new organization tenant
+      tags: *a3
+  /api/v1/stores/{id}:
+    get:
+      operationId: StoresController_findById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Get store location details
+      tags: &a4
+        - Stores
+    patch:
+      operationId: StoresController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStoreDto"
+      responses:
+        "200":
+          description: ""
+      summary: Update store location settings
+      tags: *a4
+  /api/v1/stores:
+    post:
+      operationId: StoresController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStoreDto"
+      responses:
+        "201":
+          description: ""
+      summary: Create new store location
+      tags: *a4
+  /api/v1/inventory:
+    get:
+      operationId: InventoryController_findPaginated
+      parameters:
+        - &a5
+          name: X-Store-Id
+          in: header
+          description: Active store tenant UUID context
+          required: true
+          schema:
+            type: string
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            default: 1
+            example: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: Number of items per page
+          schema:
+            default: 20
+            example: 20
+            type: number
+        - name: offset
+          required: false
+          in: query
+          description: Offset for cursor queries
+          schema:
+            default: 0
+            example: 0
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Search term for name/SKU/code
+          schema:
+            example: milk
+            type: string
+        - name: sortBy
+          required: false
+          in: query
+          description: Field to sort by
+          schema:
+            default: createdAt
+            example: created_at
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            default: DESC
+            example: DESC
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            type: string
+        - name: categoryId
+          required: false
+          in: query
+          description: Filter by category UUID
+          schema:
+            example: 01915dfa-b1c4-7221-9988-51b72e04e010
+            type: string
+        - name: status
+          required: false
+          in: query
+          description: Filter by dynamic stock health status
+          schema:
+            example: low
+            enum:
+              - healthy
+              - low
+              - critical
+              - overstock
+            type: string
+        - name: storageArea
+          required: false
+          in: query
+          description: Filter by storage zone
+          schema:
+            example: Walk-in Chiller
+            type: string
+        - name: includeArchived
+          required: false
+          in: query
+          description: Whether to include soft-deleted/archived items
+          schema:
+            default: false
+            example: false
+            type: boolean
+      responses:
+        "200":
+          description: Paginated list of inventory items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponseDto"
+      security: &a6
+        - BearerAuth: []
+      summary: List paginated inventory items with filters and search
+      tags: &a7
+        - Inventory
+    post:
+      operationId: InventoryController_create
+      parameters:
+        - *a5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInventoryItemDto"
+      responses:
+        "201":
+          description: Inventory item created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItemResponseDto"
+        "400":
+          description: Validation error
+        "409":
+          description: SKU code already exists in store
+      security: *a6
+      summary: Create a new inventory SKU definition in the store
+      tags: *a7
+  /api/v1/inventory/{id}:
+    get:
+      operationId: InventoryController_findById
+      parameters:
+        - *a5
+        - name: id
+          required: true
+          in: path
+          description: Inventory item UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventory item details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItemDetailResponseDto"
+        "404":
+          description: Inventory item not found
+      security: *a6
+      summary: Get comprehensive inventory item details including FEFO batches
+      tags: *a7
+    patch:
+      operationId: InventoryController_update
+      parameters:
+        - *a5
+        - name: id
+          required: true
+          in: path
+          description: Inventory item UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInventoryItemDto"
+      responses:
+        "200":
+          description: Inventory item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItemResponseDto"
+        "404":
+          description: Inventory item not found
+        "409":
+          description: Optimistic locking conflict
+      security: *a6
+      summary: Update existing inventory item master attributes with optimistic locking
+      tags: *a7
+    delete:
+      operationId: InventoryController_archive
+      parameters:
+        - *a5
+        - name: id
+          required: true
+          in: path
+          description: Inventory item UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventory item archived successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiveItemResponseDto"
+        "404":
+          description: Inventory item not found
+      security: *a6
+      summary: Archive (soft-delete) an inventory SKU
+      tags: *a7
+  /api/v1/inventory/{id}/adjustments:
+    post:
+      operationId: InventoryController_adjustStock
+      parameters:
+        - *a5
+        - name: id
+          required: true
+          in: path
+          description: Inventory item UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockAdjustmentDto"
+      responses:
+        "201":
+          description: Stock adjustment applied and recorded in ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAdjustmentResponseDto"
+        "400":
+          description: Adjustment would result in negative balance
+        "404":
+          description: Inventory item not found
+      security: *a6
+      summary: Execute manual stock adjustment with ledger sync
+      tags: *a7
+  /api/v1/stock-counts/sessions:
+    post:
+      operationId: StockCountController_startSession
+      parameters:
+        - &a8
+          name: X-Store-Id
+          in: header
+          description: Active store tenant UUID context
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartStockCountSessionDto"
+      responses:
+        "201":
+          description: Stock count session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockCountSessionResponseDto"
+      security: &a9
+        - BearerAuth: []
+      summary: Instantiate a new stocktaking audit session
+      tags: &a10
+        - Stock Counts
+  /api/v1/stock-counts/sessions/{sessionId}/items/{itemId}:
+    put:
+      operationId: StockCountController_recordItemCount
+      parameters:
+        - *a8
+        - name: sessionId
+          required: true
+          in: path
+          description: Stock count session UUID
+          schema:
+            type: string
+        - name: itemId
+          required: true
+          in: path
+          description: Inventory item UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordCountItemDto"
+      responses:
+        "200":
+          description: Counted quantity recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockCountItemResponseDto"
+      security: *a9
+      summary: Record counted quantity for SKU in active session
+      tags: *a10
+  /api/v1/stock-counts/sessions/{sessionId}/items:
+    post:
+      operationId: StockCountController_bulkRecordItemCounts
+      parameters:
+        - *a8
+        - name: sessionId
+          required: true
+          in: path
+          description: Stock count session UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkRecordCountItemsDto"
+      responses:
+        "200":
+          description: ""
+      security: *a9
+      summary: Bulk record multiple counted SKUs
+      tags: *a10
+  /api/v1/stock-counts/sessions/{sessionId}/submit:
+    post:
+      operationId: StockCountController_submitCount
+      parameters:
+        - *a8
+        - name: sessionId
+          required: true
+          in: path
+          description: Stock count session UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitCountSessionDto"
+      responses:
+        "200":
+          description: Count submitted and variance calculated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VarianceReviewResponseDto"
+      security: *a9
+      summary: Submit count session and trigger algorithmic variance calculation
+      tags: *a10
+  /api/v1/stock-counts/sessions/{sessionId}/variance:
+    get:
+      operationId: StockCountController_getVarianceSummary
+      parameters:
+        - *a8
+        - name: sessionId
+          required: true
+          in: path
+          description: Stock count session UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Variance analysis and shrinkage breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VarianceReviewResponseDto"
+      security: *a9
+      summary: Get variance breakdown for count session
+      tags: *a10
+  /api/v1/stock-counts/sessions/{sessionId}/variance/approve:
+    post:
+      operationId: StockCountController_approveVariance
+      parameters:
+        - *a8
+        - name: sessionId
+          required: true
+          in: path
+          description: Stock count session UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Variance approved and physical stocks synchronized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveVarianceResponseDto"
+      security: *a9
+      summary: Approve variance and synchronize physical stock ledger
+      tags: *a10
+  /api/v1/stock-counts/history:
+    get:
+      operationId: StockCountController_findHistory
+      parameters:
+        - *a8
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            default: 1
+            example: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: Number of items per page
+          schema:
+            default: 20
+            example: 20
+            type: number
+        - name: offset
+          required: false
+          in: query
+          description: Offset for cursor queries
+          schema:
+            default: 0
+            example: 0
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Search term for name/SKU/code
+          schema:
+            example: milk
+            type: string
+        - name: sortBy
+          required: false
+          in: query
+          description: Field to sort by
+          schema:
+            default: createdAt
+            example: created_at
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            default: DESC
+            example: DESC
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            type: string
+        - name: status
+          required: false
+          in: query
+          schema:
+            example: completed
+            enum:
+              - draft
+              - in_progress
+              - completed
+              - approved
+              - rejected
+            type: string
+        - name: countType
+          required: false
+          in: query
+          schema:
+            example: blind
+            enum:
+              - blind
+              - standard
+            type: string
+        - name: startDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-01
+            type: string
+        - name: endDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-31
+            type: string
+        - name: conductedBy
+          required: false
+          in: query
+          schema:
+            example: 01915dfa-b1c4-7221-9988-51b72e04e001
+            type: string
+      responses:
+        "200":
+          description: Paginated stock count history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponseDto"
+      security: *a9
+      summary: List historical stocktaking sessions with pagination
+      tags: *a10
+  /api/v1/stock-counts/sessions/{sessionId}:
+    get:
+      operationId: StockCountController_findSessionById
+      parameters:
+        - *a8
+        - name: sessionId
+          required: true
+          in: path
+          description: Stock count session UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock count session details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockCountDetailResponseDto"
+      security: *a9
+      summary: Get detailed stock count session by ID
+      tags: *a10
+  /api/v1/procurement/purchase-orders:
+    post:
+      operationId: ProcurementController_createPurchaseOrder
+      parameters:
+        - &a11
+          name: X-Store-Id
+          in: header
+          description: Active store tenant UUID context
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseOrderDto"
+      responses:
+        "201":
+          description: Purchase order created in draft state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderDetailResponseDto"
+      security: &a12
+        - BearerAuth: []
+      summary: Draft a new Purchase Order for supplier
+      tags: &a13
+        - Procurement
+    get:
+      operationId: ProcurementController_findPurchaseOrders
+      parameters:
+        - *a11
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            default: 1
+            example: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: Number of items per page
+          schema:
+            default: 20
+            example: 20
+            type: number
+        - name: offset
+          required: false
+          in: query
+          description: Offset for cursor queries
+          schema:
+            default: 0
+            example: 0
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Search term for name/SKU/code
+          schema:
+            example: milk
+            type: string
+        - name: sortBy
+          required: false
+          in: query
+          description: Field to sort by
+          schema:
+            default: createdAt
+            example: created_at
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            default: DESC
+            example: DESC
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            type: string
+        - name: status
+          required: false
+          in: query
+          schema:
+            example: approved
+            enum:
+              - draft
+              - submitted
+              - approved
+              - received
+              - cancelled
+              - partially_received
+              - sent
+              - confirmed
+            type: string
+        - name: supplierId
+          required: false
+          in: query
+          schema:
+            example: 01915dfa-b1c4-7221-9988-51b72e04e020
+            type: string
+        - name: startDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-01
+            type: string
+        - name: endDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-31
+            type: string
+      responses:
+        "200":
+          description: Paginated purchase orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponseDto"
+      security: *a12
+      summary: List paginated Purchase Orders with status filters
+      tags: *a13
+  /api/v1/procurement/purchase-orders/{id}:
+    get:
+      operationId: ProcurementController_findPurchaseOrderById
+      parameters:
+        - *a11
+        - name: id
+          required: true
+          in: path
+          description: Purchase order UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Purchase order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderDetailResponseDto"
+      security: *a12
+      summary: Get Purchase Order detail with line items
+      tags: *a13
+    patch:
+      operationId: ProcurementController_updatePurchaseOrder
+      parameters:
+        - *a11
+        - name: id
+          required: true
+          in: path
+          description: Purchase order UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePurchaseOrderDto"
+      responses:
+        "200":
+          description: ""
+      security: *a12
+      summary: Update Purchase Order draft metadata or line items
+      tags: *a13
+  /api/v1/procurement/purchase-orders/{id}/submit:
+    post:
+      operationId: ProcurementController_submitOrder
+      parameters:
+        - *a11
+        - name: id
+          required: true
+          in: path
+          description: Purchase order UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      security: *a12
+      summary: "Transition PO state: draft -> submitted"
+      tags: *a13
+  /api/v1/procurement/purchase-orders/{id}/approve:
+    post:
+      operationId: ProcurementController_approveOrder
+      parameters:
+        - *a11
+        - name: id
+          required: true
+          in: path
+          description: Purchase order UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      security: *a12
+      summary: "Transition PO state: submitted -> approved"
+      tags: *a13
+  /api/v1/procurement/purchase-orders/{id}/cancel:
+    post:
+      operationId: ProcurementController_cancelOrder
+      parameters:
+        - *a11
+        - name: id
+          required: true
+          in: path
+          description: Purchase order UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelPurchaseOrderDto"
+      responses:
+        "200":
+          description: ""
+      security: *a12
+      summary: "Transition PO state: draft/submitted/approved -> cancelled"
+      tags: *a13
+  /api/v1/procurement/goods-receipts:
+    post:
+      operationId: ProcurementController_receiveGoods
+      parameters:
+        - *a11
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGoodsReceiptDto"
+      responses:
+        "201":
+          description: Goods receipt created and stock synchronized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoodsReceiptDetailResponseDto"
+      security: *a12
+      summary: Receive supplier delivery, update inventory stocks, and add batches
+      tags: *a13
+    get:
+      operationId: ProcurementController_findGoodsReceipts
+      parameters:
+        - *a11
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            default: 1
+            example: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: Number of items per page
+          schema:
+            default: 20
+            example: 20
+            type: number
+        - name: offset
+          required: false
+          in: query
+          description: Offset for cursor queries
+          schema:
+            default: 0
+            example: 0
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Search term for name/SKU/code
+          schema:
+            example: milk
+            type: string
+        - name: sortBy
+          required: false
+          in: query
+          description: Field to sort by
+          schema:
+            default: createdAt
+            example: created_at
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            default: DESC
+            example: DESC
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            type: string
+        - name: supplierId
+          required: false
+          in: query
+          schema:
+            example: 01915dfa-b1c4-7221-9988-51b72e04e020
+            type: string
+        - name: poId
+          required: false
+          in: query
+          schema:
+            example: 01915dfa-b1c4-7221-9988-51b72e04e055
+            type: string
+        - name: startDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-01
+            type: string
+        - name: endDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-31
+            type: string
+      responses:
+        "200":
+          description: Paginated goods receipts list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponseDto"
+      security: *a12
+      summary: List paginated Goods Receipts history
+      tags: *a13
+  /api/v1/procurement/goods-receipts/{id}:
+    get:
+      operationId: ProcurementController_findGoodsReceiptById
+      parameters:
+        - *a11
+        - name: id
+          required: true
+          in: path
+          description: Goods receipt UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Goods receipt details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoodsReceiptDetailResponseDto"
+      security: *a12
+      summary: Get Goods Receipt details with batch numbers and line items
+      tags: *a13
+  /api/v1/suppliers:
+    get:
+      operationId: SuppliersController_findAll
+      parameters:
+        - &a14
+          name: X-Store-Id
+          in: header
+          description: Active store tenant UUID context
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of active contracted suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupplierResponseDto"
+      security: &a15
+        - BearerAuth: []
+      summary: List contracted suppliers for store
+      tags: &a16
+        - Suppliers
+    post:
+      operationId: SuppliersController_create
+      parameters:
+        - *a14
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierDto"
+      responses:
+        "201":
+          description: Supplier registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierResponseDto"
+        "400":
+          description: Validation error
+      security: *a15
+      summary: Register new vendor / supplier
+      tags: *a16
+  /api/v1/suppliers/{id}:
+    get:
+      operationId: SuppliersController_findById
+      parameters:
+        - *a14
+        - name: id
+          required: true
+          in: path
+          description: Supplier UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierResponseDto"
+        "404":
+          description: Supplier not found
+      security: *a15
+      summary: Get supplier details by ID
+      tags: *a16
+    patch:
+      operationId: SuppliersController_update
+      parameters:
+        - *a14
+        - name: id
+          required: true
+          in: path
+          description: Supplier UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSupplierDto"
+      responses:
+        "200":
+          description: Supplier updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierResponseDto"
+        "404":
+          description: Supplier not found
+      security: *a15
+      summary: Update supplier details
+      tags: *a16
+    delete:
+      operationId: SuppliersController_delete
+      parameters:
+        - *a14
+        - name: id
+          required: true
+          in: path
+          description: Supplier UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier archived
+        "404":
+          description: Supplier not found
+      security: *a15
+      summary: Soft-delete / archive supplier
+      tags: *a16
+  /api/v1/ocr/presigned-upload:
+    post:
+      operationId: OcrController_generatePresignedUpload
+      parameters:
+        - &a17
+          name: X-Store-Id
+          in: header
+          description: Active store tenant UUID context
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresignedUploadRequestDto"
+      responses:
+        "200":
+          description: Signed URL and storage path generated
+      security: &a18
+        - BearerAuth: []
+      summary: Generate pre-signed upload URL for direct receipt upload
+      tags: &a19
+        - OCR
+  /api/v1/ocr/scan:
+    post:
+      operationId: OcrController_triggerScan
+      parameters:
+        - *a17
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TriggerScanRequestDto"
+      responses:
+        "200":
+          description: OCR processing triggered
+      security: *a18
+      summary: Trigger OCR scan for uploaded receipt document
+      tags: *a19
+  /api/v1/ocr/documents:
+    get:
+      operationId: OcrController_findDocuments
+      parameters:
+        - *a17
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            default: 1
+            example: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: Number of items per page
+          schema:
+            default: 20
+            example: 20
+            type: number
+        - name: offset
+          required: false
+          in: query
+          description: Offset for cursor queries
+          schema:
+            default: 0
+            example: 0
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Search term for name/SKU/code
+          schema:
+            example: milk
+            type: string
+        - name: sortBy
+          required: false
+          in: query
+          description: Field to sort by
+          schema:
+            default: createdAt
+            example: created_at
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            default: DESC
+            example: DESC
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            type: string
+        - name: status
+          required: false
+          in: query
+          schema:
+            example: review_pending
+            enum:
+              - processing
+              - review_pending
+              - confirmed
+              - rejected
+              - failed
+            type: string
+        - name: documentType
+          required: false
+          in: query
+          schema:
+            example: pos_z_report
+            enum:
+              - pos_z_report
+              - supplier_invoice
+              - generic_receipt
+            type: string
+        - name: startDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-01
+            type: string
+        - name: endDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-31
+            type: string
+      responses:
+        "200":
+          description: Paginated OCR documents list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponseDto"
+      security: *a18
+      summary: List historical OCR documents with pagination and status filters
+      tags: *a19
+  /api/v1/ocr/documents/{id}:
+    get:
+      operationId: OcrController_getDocumentById
+      parameters:
+        - *a17
+        - name: id
+          required: true
+          in: path
+          description: OCR document UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document extraction details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OcrDocumentDetailResponseDto"
+      security: *a18
+      summary: Get full OCR document details, extracted lines, confidence scores, and
+        BOM previews
+      tags: *a19
+  /api/v1/ocr/documents/{id}/items/{itemId}:
+    patch:
+      operationId: OcrController_updateDocumentItem
+      parameters:
+        - *a17
+        - name: id
+          required: true
+          in: path
+          description: OCR document UUID
+          schema:
+            type: string
+        - name: itemId
+          required: true
+          in: path
+          description: OCR line item UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOcrItemDto"
+      responses:
+        "200":
+          description: Line item corrected
+      security: *a18
+      summary: Manually correct an extracted line item during review workflow
+      tags: *a19
+  /api/v1/ocr/documents/{id}/confirm:
+    post:
+      operationId: OcrController_confirmReview
+      parameters:
+        - *a17
+        - name: id
+          required: true
+          in: path
+          description: OCR document UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmOcrDeductionDto"
+      responses:
+        "200":
+          description: Document confirmed and inventory ledger synchronized
+      security: *a18
+      summary: Confirm document review and execute automated BOM ingredient deductions
+      tags: *a19
+  /api/v1/ocr/documents/{id}/reject:
+    post:
+      operationId: OcrController_rejectDocument
+      parameters:
+        - *a17
+        - name: id
+          required: true
+          in: path
+          description: OCR document UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectOcrDocumentDto"
+      responses:
+        "200":
+          description: Document marked as rejected
+      security: *a18
+      summary: Reject OCR extraction results
+      tags: *a19
+  /api/v1/notifications:
+    get:
+      operationId: NotificationsController_findNotifications
+      parameters:
+        - &a20
+          name: X-Store-Id
+          in: header
+          description: Active store tenant UUID context
+          required: true
+          schema:
+            type: string
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            default: 1
+            example: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: Number of items per page
+          schema:
+            default: 20
+            example: 20
+            type: number
+        - name: offset
+          required: false
+          in: query
+          description: Offset for cursor queries
+          schema:
+            default: 0
+            example: 0
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Search term for name/SKU/code
+          schema:
+            example: milk
+            type: string
+        - name: sortBy
+          required: false
+          in: query
+          description: Field to sort by
+          schema:
+            default: createdAt
+            example: created_at
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            default: DESC
+            example: DESC
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            type: string
+        - name: isRead
+          required: false
+          in: query
+          description: Filter unread (false) or read (true)
+          schema:
+            example: false
+            type: boolean
+        - name: urgency
+          required: false
+          in: query
+          schema:
+            example: CRITICAL
+            enum:
+              - NORMAL
+              - CRITICAL
+            type: string
+        - name: eventType
+          required: false
+          in: query
+          description: Filter by event type identifier
+          schema:
+            example: LOW_STOCK
+            type: string
+        - name: startDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-01
+            type: string
+        - name: endDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-31
+            type: string
+      responses:
+        "200":
+          description: Paginated in-app notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponseDto"
+      security: &a21
+        - BearerAuth: []
+      summary: List in-app notification history with pagination
+      tags: &a22
+        - Notifications
+  /api/v1/notifications/unread-count:
+    get:
+      operationId: NotificationsController_getUnreadCount
+      parameters:
+        - *a20
+      responses:
+        "200":
+          description: Unread badge counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCountResponseDto"
+      security: *a21
+      summary: Get unread notification count badge
+      tags: *a22
+  /api/v1/notifications/{id}/read:
+    patch:
+      operationId: NotificationsController_markAsRead
+      parameters:
+        - *a20
+        - name: id
+          required: true
+          in: path
+          description: Notification UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponseDto"
+      security: *a21
+      summary: Mark an in-app notification as read
+      tags: *a22
+  /api/v1/notifications/read-all:
+    post:
+      operationId: NotificationsController_markAllAsRead
+      parameters:
+        - *a20
+      responses:
+        "200":
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchMarkReadResponseDto"
+      security: *a21
+      summary: Mark all unread notifications in store as read
+      tags: *a22
+  /api/v1/notifications/preferences:
+    get:
+      operationId: NotificationsController_getPreferences
+      parameters:
+        - *a20
+      responses:
+        "200":
+          description: User notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferencesResponseDto"
+      security: *a21
+      summary: Get current user notification channel and event preferences
+      tags: *a22
+    put:
+      operationId: NotificationsController_updatePreferences
+      parameters:
+        - *a20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationPreferencesDto"
+      responses:
+        "200":
+          description: Preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferencesResponseDto"
+      security: *a21
+      summary: Update user notification channel and category preferences
+      tags: *a22
+  /api/v1/notifications/device-tokens:
+    post:
+      operationId: NotificationsController_registerDeviceToken
+      parameters:
+        - *a20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDeviceTokenDto"
+      responses:
+        "201":
+          description: Device token registered
+      security: *a21
+      summary: Register Expo device push token for push notifications
+      tags: *a22
+  /api/v1/notifications/device-tokens/{token}:
+    delete:
+      operationId: NotificationsController_unregisterDeviceToken
+      parameters:
+        - *a20
+        - name: token
+          required: true
+          in: path
+          description: Expo push token
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      security: *a21
+      summary: Unregister Expo push token on user logout
+      tags: *a22
+  /api/v1/notifications/send:
+    post:
+      operationId: NotificationsController_sendNotification
+      parameters:
+        - *a20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNotificationDto"
+      responses:
+        "201":
+          description: Notification created and dispatched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponseDto"
+      security: *a21
+      summary: Send system alert or custom store notification
+      tags: *a22
+  /api/v1/audit/logs:
+    get:
+      operationId: AuditController_searchAuditLogs
+      parameters:
+        - &a23
+          name: X-Store-Id
+          in: header
+          description: Active store tenant UUID context
+          required: true
+          schema:
+            type: string
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            default: 1
+            example: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: Number of items per page
+          schema:
+            default: 20
+            example: 20
+            type: number
+        - name: offset
+          required: false
+          in: query
+          description: Offset for cursor queries
+          schema:
+            default: 0
+            example: 0
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Search term for name/SKU/code
+          schema:
+            example: milk
+            type: string
+        - name: sortBy
+          required: false
+          in: query
+          description: Field to sort by
+          schema:
+            default: createdAt
+            example: created_at
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            default: DESC
+            example: DESC
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            type: string
+        - name: eventAction
+          required: false
+          in: query
+          description: Filter by event action identifier
+          schema:
+            example: INVENTORY_ADJUST
+            type: string
+        - name: entityType
+          required: false
+          in: query
+          description: Filter by entity domain type
+          schema:
+            example: inventory_item
+            type: string
+        - name: actorId
+          required: false
+          in: query
+          description: Filter by performing actor UUID
+          schema:
+            example: 01915dfa-b1c4-7221-9988-51b72e04e001
+            type: string
+        - name: startDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-01
+            type: string
+        - name: endDate
+          required: false
+          in: query
+          schema:
+            example: 2026-08-31
+            type: string
+      responses:
+        "200":
+          description: Paginated audit records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponseDto"
+      security: &a24
+        - BearerAuth: []
+      summary: Search immutable audit logs with pagination and filters
+      tags: &a25
+        - Audit
+    post:
+      operationId: AuditController_logEvent
+      parameters:
+        - *a23
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAuditLogDto"
+      responses:
+        "201":
+          description: Audit record appended to immutable ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogResponseDto"
+      security: *a24
+      summary: Append an immutable audit event (internal / system use)
+      tags: *a25
+  /api/v1/audit/logs/{id}:
+    get:
+      operationId: AuditController_findById
+      parameters:
+        - *a23
+        - name: id
+          required: true
+          in: path
+          description: Audit record UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audit log record details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogResponseDto"
+      security: *a24
+      summary: Get single audit record detail with state before/after diff
+      tags: *a25
+  /api/v1/audit/verify-chain:
+    get:
+      operationId: AuditController_verifyChainIntegrity
+      parameters:
+        - *a23
+      responses:
+        "200":
+          description: Audit chain verification report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditChainVerificationResponseDto"
+      security: *a24
+      summary: Verify cryptographic SHA-256 hash chain integrity of store audit ledger
+      tags: *a25
+info:
+  title: StockPulse SaaS API
+  description: >
+    ## Multi-Tenant F&B Inventory & Intelligence Platform API
+
+
+    StockPulse provides unified backend capabilities for restaurant and cloud
+    kitchen inventory intelligence, FEFO lot management, Document AI & Gemini
+    Vision OCR processing, and finite-state procurement workflows.
+
+
+    ### Universal Request Protocols
+
+    - **Authentication**: Bearer JWT token issued by Supabase Auth
+    (`Authorization: Bearer <token>`).
+
+    - **Multi-Tenancy Context**: Store location context must be passed via the
+    `X-Store-Id` header.
+
+    - **Idempotency**: Critical mutations support `Idempotency-Key` header for
+    replay protection.
+
+    - **Concurrency**: Optimistic locking supported via version tags.
+  version: 1.0.0
+  contact: {}
+tags:
+  - name: Authentication
+    description: Authentication, Tenant Registration, Store Switching, and Supabase Webhooks
+  - name: Inventory
+    description: Master catalog, stock balances, FEFO batch tracking, and manual adjustments
+  - name: Stock Counts
+    description: Blind & standard count sessions, shrinkage calculation, and
+      variance ledger sync
+  - name: OCR
+    description: Google Gemini Multimodal Vision & Document AI OCR, review workflow,
+      and BOM deductions
+  - name: Procurement
+    description: Purchase Orders (Draft/Submit/Approve/Receive/Cancel) and Goods Receipts
+  - name: Suppliers
+    description: Supplier master directory, payment terms, and lead time tracking
+  - name: Notifications
+    description: In-app notifications, device push tokens, and notification preferences
+  - name: Audit
+    description: Cryptographic WORM audit logging, SHA-256 hash chaining, and ledger
+      integrity verification
+servers: []
+components:
+  securitySchemes:
+    BearerAuth:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+      name: JWT
+      description: Enter Supabase JWT Access Token
+      in: header
+    StoreIdHeader:
+      type: apiKey
+      in: header
+      name: X-Store-Id
+      description: Active store tenant UUID context
+  schemas:
+    LoginDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: mario@stockpulse.app
+          description: User account email address
+        password:
+          type: string
+          example: Secret123!
+          description: User password (min 6 characters)
+      required:
+        - email
+        - password
+    AuthUserSummaryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        email:
+          type: string
+          example: mario@stockpulse.app
+        name:
+          type: string
+          example: Mario Batali
+        role:
+          type: string
+          example: manager
+          enum:
+            - superadmin
+            - manager
+            - supervisor
+            - staff
+            - auditor
+        organizationId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000001
+        organizationName:
+          type: string
+          example: StockPulse Demo Cafe Group
+        defaultStoreId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        assignedStoreIds:
+          example:
+            - 01915dfa-9012-7000-8000-000000000002
+            - 01915dfa-9012-7000-8000-000000000003
+          type: array
+          items:
+            type: string
+        permissions:
+          example:
+            - inventory:view
+            - inventory:create
+            - inventory:update
+            - inventory:adjust
+            - procurement:create
+            - procurement:approve
+            - ocr:upload
+            - ocr:confirm
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - email
+        - name
+        - role
+        - organizationId
+        - assignedStoreIds
+        - permissions
+    AuthResponseDto:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: Supabase JWT access token for Bearer authentication
+        refreshToken:
+          type: string
+          example: v1.refresh-token-abc123xyz...
+          description: Refresh token to renew expired access tokens
+        expiresIn:
+          type: number
+          example: 3600
+          description: Token lifespan in seconds
+        tokenType:
+          type: string
+          example: Bearer
+          description: Token authorization type
+        user:
+          description: Authenticated user profile and permissions
+          allOf:
+            - $ref: "#/components/schemas/AuthUserSummaryDto"
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - tokenType
+        - user
+    SignupDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: chef@restaurant.com
+          description: Tenant owner email
+        password:
+          type: string
+          example: StrongPassword123!
+          description: Secure password (min 8 characters)
+        name:
+          type: string
+          example: Gordon Ramsay
+          description: Full name of tenant administrator
+        organizationName:
+          type: string
+          example: Union Street Cafe Group
+          description: Name of the business organization
+        organizationSlug:
+          type: string
+          example: union-street-cafe
+          description: Unique organization subdomain / slug
+        phone:
+          type: string
+          example: +1 555-0144
+          description: Contact phone number
+      required:
+        - email
+        - password
+        - name
+        - organizationName
+    RefreshTokenDto:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          example: v1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: Supabase Auth refresh token
+      required:
+        - refreshToken
+    SwitchStoreDto:
+      type: object
+      properties:
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+          description: Target store location UUID
+      required:
+        - storeId
+    SyncUserWebhookDto:
+      type: object
+      properties:
+        type:
+          type: string
+          example: INSERT
+          enum:
+            - INSERT
+            - UPDATE
+            - DELETE
+        table:
+          type: string
+          example: users
+        schema:
+          type: string
+          example: auth
+        record:
+          type: object
+          example:
+            id: 01915dfa-b1c4-7221-9988-51b72e04e001
+            email: mario@stockpulse.app
+            raw_user_meta_data:
+              full_name: Mario Batali
+              role: manager
+        old_record:
+          type: object
+          example:
+            id: 01915dfa-b1c4-7221-9988-51b72e04e001
+      required:
+        - type
+        - table
+        - schema
+        - record
+    CreateUserDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: staff1@stockpulse.app
+        name:
+          type: string
+          example: Luigi Mario
+        role:
+          type: string
+          example: staff
+          enum:
+            - superadmin
+            - manager
+            - supervisor
+            - staff
+            - auditor
+        organizationId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000001
+        assignedStoreIds:
+          example:
+            - 01915dfa-9012-7000-8000-000000000002
+          type: array
+          items:
+            type: string
+      required:
+        - email
+        - name
+        - role
+        - organizationId
+        - assignedStoreIds
+    UpdateUserDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Luigi Mario Jr
+        role:
+          type: string
+          example: supervisor
+          enum:
+            - superadmin
+            - manager
+            - supervisor
+            - staff
+            - auditor
+        assignedStoreIds:
+          example:
+            - 01915dfa-9012-7000-8000-000000000002
+          type: array
+          items:
+            type: string
+    CreateOrganizationDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Union Street Cafe Group
+        slug:
+          type: string
+          example: union-street-cafe
+        taxIdentifier:
+          type: string
+          example: US-99201923
+      required:
+        - name
+        - slug
+    UpdateOrganizationDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Union Street Cafe Global Group
+        taxIdentifier:
+          type: string
+          example: US-99201923
+    CreateStoreDto:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000001
+        storeCode:
+          type: string
+          example: STR-01
+        name:
+          type: string
+          example: Downtown Bistro & Cafe
+        address:
+          type: string
+          example: 123 Main Street, Suite 100
+        currency:
+          type: string
+          example: EUR
+          default: EUR
+        timezone:
+          type: string
+          example: Europe/Berlin
+          default: Europe/Berlin
+      required:
+        - organizationId
+        - storeCode
+        - name
+    UpdateStoreDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Downtown Bistro & Lounge
+        address:
+          type: string
+          example: 123 Main Street, Suite 200
+        currency:
+          type: string
+          example: EUR
+        timezone:
+          type: string
+          example: Europe/Berlin
+    PaginationMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+          description: Current page number
+        limit:
+          type: number
+          example: 20
+          description: Items requested per page
+        total:
+          type: number
+          example: 45
+          description: Total records across all pages
+        totalPages:
+          type: number
+          example: 3
+          description: Total available pages
+        hasNextPage:
+          type: boolean
+          example: true
+          description: Whether next page exists
+        hasPreviousPage:
+          type: boolean
+          example: false
+          description: Whether previous page exists
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+        - hasNextPage
+        - hasPreviousPage
+    PaginatedResponseDto:
+      type: object
+      properties:
+        data:
+          description: List of records
+          type: array
+          items:
+            type: array
+        meta:
+          description: Pagination metadata
+          allOf:
+            - $ref: "#/components/schemas/PaginationMetaDto"
+      required:
+        - data
+        - meta
+    InventoryBatchSummaryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e099
+        batchNumber:
+          type: string
+          example: LOT-20260820-001
+        quantity:
+          type: number
+          example: 20
+        costPerUnit:
+          type: number
+          example: 1.25
+        expiryDate:
+          type: string
+          example: 2026-09-10
+        receivedDate:
+          type: string
+          example: 2026-08-20
+        status:
+          type: string
+          example: active
+          enum:
+            - active
+            - depleted
+            - expired
+      required:
+        - id
+        - batchNumber
+        - quantity
+        - costPerUnit
+        - expiryDate
+        - receivedDate
+        - status
+    InventoryTransactionSummaryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e088
+        transactionNumber:
+          type: string
+          example: TX-20260820-0001
+        transactionType:
+          type: string
+          example: MANUAL_ADJUSTMENT
+        delta:
+          type: number
+          example: -2.5
+        previousStock:
+          type: number
+          example: 25
+        newStock:
+          type: number
+          example: 22.5
+        costImpact:
+          type: number
+          example: -3.125
+        actorName:
+          type: string
+          example: Mario Batali
+        referenceType:
+          type: string
+          example: MANUAL_ADJUSTMENT
+        note:
+          type: string
+          example: Spoilage loss
+        createdAt:
+          type: string
+          example: 2026-08-20T07:45:00.000Z
+      required:
+        - id
+        - transactionNumber
+        - transactionType
+        - delta
+        - previousStock
+        - newStock
+        - costImpact
+        - createdAt
+    InventoryItemDetailResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        organizationId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000001
+        sku:
+          type: string
+          example: DAI-001
+        name:
+          type: string
+          example: Whole Milk 3.5% Fat (1L)
+        categoryId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e010
+        categoryName:
+          type: string
+          example: Dairy & Eggs
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+        supplierName:
+          type: string
+          example: Fresh Farms Direct
+        unit:
+          type: string
+          example: L
+        physicalStock:
+          type: number
+          example: 22.5
+        theoreticalStock:
+          type: number
+          example: 22.5
+        targetStock:
+          type: number
+          example: 40
+        safetyStock:
+          type: number
+          example: 10
+        reorderPoint:
+          type: number
+          example: 15
+        costPerUnit:
+          type: number
+          example: 1.25
+        totalValue:
+          type: number
+          example: 28.125
+        barcode:
+          type: string
+          example: "8935001234567"
+        storageArea:
+          type: string
+          example: Walk-in Chiller
+        shelfLifeDays:
+          type: number
+          example: 14
+        status:
+          type: string
+          example: healthy
+          enum: &a26
+            - healthy
+            - low
+            - critical
+            - overstock
+        version:
+          type: number
+          example: 4
+        isArchived:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          example: 2026-08-20T00:00:00.000Z
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        batches:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryBatchSummaryDto"
+        recentTransactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryTransactionSummaryDto"
+      required:
+        - id
+        - storeId
+        - sku
+        - name
+        - unit
+        - physicalStock
+        - theoreticalStock
+        - targetStock
+        - safetyStock
+        - reorderPoint
+        - costPerUnit
+        - totalValue
+        - status
+        - version
+        - isArchived
+        - createdAt
+        - updatedAt
+        - batches
+        - recentTransactions
+    CreateInventoryItemDto:
+      type: object
+      properties:
+        sku:
+          type: string
+          example: DAI-001
+          description: Unique Stock Keeping Unit code
+        name:
+          type: string
+          example: Whole Milk 3.5% Fat (1L)
+          description: Product descriptive name
+        categoryId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e010
+          description: Category UUID
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+          description: Primary supplier UUID
+        unit:
+          type: string
+          example: L
+          enum:
+            - kg
+            - g
+            - L
+            - ml
+            - pcs
+            - can
+            - bottle
+            - pack
+        targetStock:
+          type: number
+          example: 40
+          description: Target optimal inventory level
+        safetyStock:
+          type: number
+          example: 10
+          description: Safety stock minimum buffer threshold
+        costPerUnit:
+          type: number
+          example: 1.25
+          description: Cost price per unit of measure
+        barcode:
+          type: string
+          example: "8935001234567"
+          description: EAN/UPC barcode string
+        storageArea:
+          type: string
+          example: Walk-in Chiller A2
+          description: Storage zone location
+        shelfLifeDays:
+          type: number
+          example: 14
+          description: Shelf life duration in days for FEFO
+      required:
+        - sku
+        - name
+        - unit
+        - targetStock
+        - safetyStock
+        - costPerUnit
+    InventoryItemResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        organizationId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000001
+        sku:
+          type: string
+          example: DAI-001
+        name:
+          type: string
+          example: Whole Milk 3.5% Fat (1L)
+        categoryId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e010
+        categoryName:
+          type: string
+          example: Dairy & Eggs
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+        supplierName:
+          type: string
+          example: Fresh Farms Direct
+        unit:
+          type: string
+          example: L
+        physicalStock:
+          type: number
+          example: 22.5
+        theoreticalStock:
+          type: number
+          example: 22.5
+        targetStock:
+          type: number
+          example: 40
+        safetyStock:
+          type: number
+          example: 10
+        reorderPoint:
+          type: number
+          example: 15
+        costPerUnit:
+          type: number
+          example: 1.25
+        totalValue:
+          type: number
+          example: 28.125
+        barcode:
+          type: string
+          example: "8935001234567"
+        storageArea:
+          type: string
+          example: Walk-in Chiller
+        shelfLifeDays:
+          type: number
+          example: 14
+        status:
+          type: string
+          example: healthy
+          enum: *a26
+        version:
+          type: number
+          example: 4
+        isArchived:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          example: 2026-08-20T00:00:00.000Z
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+      required:
+        - id
+        - storeId
+        - sku
+        - name
+        - unit
+        - physicalStock
+        - theoreticalStock
+        - targetStock
+        - safetyStock
+        - reorderPoint
+        - costPerUnit
+        - totalValue
+        - status
+        - version
+        - isArchived
+        - createdAt
+        - updatedAt
+    UpdateInventoryItemDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Whole Milk 3.5% Fat (1L Carton)
+        categoryId:
+          type: object
+          example: 01915dfa-b1c4-7221-9988-51b72e04e010
+        supplierId:
+          type: object
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+        unit:
+          type: string
+          example: L
+          enum:
+            - kg
+            - g
+            - L
+            - ml
+            - pcs
+            - can
+            - bottle
+            - pack
+        targetStock:
+          type: number
+          example: 50
+        safetyStock:
+          type: number
+          example: 15
+        costPerUnit:
+          type: number
+          example: 1.3
+        barcode:
+          type: string
+          example: "8935001234567"
+        storageArea:
+          type: string
+          example: Walk-in Chiller Shelf 1
+        shelfLifeDays:
+          type: number
+          example: 14
+        version:
+          type: number
+          example: 3
+          description: Optimistic concurrency control version tag
+    ArchiveItemResponseDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Item archived successfully
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        archivedAt:
+          type: string
+          example: 2026-08-20T08:15:00.000Z
+      required:
+        - success
+        - message
+        - id
+        - archivedAt
+    CreateStockAdjustmentDto:
+      type: object
+      properties:
+        delta:
+          type: number
+          example: -2.5
+          description: Stock delta adjustment (+ to increment, - to decrement)
+        batchId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e099
+          description: Batch UUID if adjusting a specific FEFO lot
+        reasonCode:
+          type: string
+          example: SPOILAGE_TRIM_LOSS
+          enum:
+            - SPOILAGE_TRIM_LOSS
+            - PREPARATION_WASTE
+            - STORAGE_FAILURE
+            - UNRECORDED_USAGE
+            - SUPPLIER_SHORTAGE
+            - MANUAL_CORRECTION
+          description: Audit shrinkage reason classification
+        note:
+          type: string
+          example: Milk expired past safe temperature window
+          description: Detailed justification
+      required:
+        - delta
+        - reasonCode
+    StockAdjustmentResponseDto:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e088
+        transactionNumber:
+          type: string
+          example: TX-20260820-0001
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        previousStock:
+          type: number
+          example: 25
+        newStock:
+          type: number
+          example: 22.5
+        delta:
+          type: number
+          example: -2.5
+        costImpact:
+          type: number
+          example: -3.125
+        status:
+          type: string
+          example: healthy
+        version:
+          type: number
+          example: 4
+        timestamp:
+          type: string
+          example: 2026-08-20T07:45:00.000Z
+      required:
+        - transactionId
+        - transactionNumber
+        - itemId
+        - previousStock
+        - newStock
+        - delta
+        - costImpact
+        - status
+        - version
+        - timestamp
+    StartStockCountSessionDto:
+      type: object
+      properties:
+        scheduleId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e030
+          description: Schedule UUID if linked to planned recurring count
+        countType:
+          type: string
+          example: blind
+          enum:
+            - blind
+            - standard
+          description: Blind count hides system theoretical stock from staff during counting
+        targetCategoryIds:
+          example:
+            - 01915dfa-b1c4-7221-9988-51b72e04e010
+          description: Category filters for cycle count (omitted for full store audit)
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          example: Friday end-of-day bar audit
+      required:
+        - countType
+    StockCountSessionResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        sessionNumber:
+          type: string
+          example: SC-20260820-0001
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        scheduleId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e030
+        conductedBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        conductedByName:
+          type: string
+          example: Mario Batali
+        status:
+          type: string
+          example: completed
+          enum: &a27
+            - draft
+            - in_progress
+            - completed
+            - approved
+            - rejected
+        countType:
+          type: string
+          example: blind
+          enum: &a28
+            - blind
+            - standard
+        totalItems:
+          type: number
+          example: 25
+        totalCounted:
+          type: number
+          example: 25
+        startedAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        completedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+        notes:
+          type: string
+          example: Evening audit
+        netVarianceValue:
+          type: number
+          example: -12.5
+        itemsWithDiscrepancies:
+          type: number
+          example: 2
+        createdAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+      required:
+        - id
+        - sessionNumber
+        - storeId
+        - conductedBy
+        - status
+        - countType
+        - totalItems
+        - totalCounted
+        - startedAt
+        - createdAt
+        - updatedAt
+    RecordCountItemDto:
+      type: object
+      properties:
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+          description: Inventory item UUID
+        countedQty:
+          type: number
+          example: 38.5
+          description: Physical quantity counted by staff
+        unit:
+          type: string
+          example: L
+          enum:
+            - kg
+            - g
+            - L
+            - ml
+            - pcs
+            - can
+            - bottle
+            - pack
+        notes:
+          type: string
+          example: Partial container counted on shelf 2
+      required:
+        - itemId
+        - countedQty
+        - unit
+    StockCountItemResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e077
+        stockCountId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        sku:
+          type: string
+          example: DAI-001
+        name:
+          type: string
+          example: Whole Milk 3.5%
+        unit:
+          type: string
+          example: L
+        countedQuantity:
+          type: number
+          example: 38.5
+        expectedQuantity:
+          type: number
+          example: 40
+        notes:
+          type: string
+          example: Counted on shelf
+        recordedAt:
+          type: string
+          example: 2026-08-20T08:10:00.000Z
+      required:
+        - id
+        - stockCountId
+        - itemId
+        - sku
+        - name
+        - unit
+        - countedQuantity
+        - recordedAt
+    BulkRecordCountItemsDto:
+      type: object
+      properties:
+        items:
+          description: Array of counted inventory items
+          type: array
+          items:
+            $ref: "#/components/schemas/RecordCountItemDto"
+      required:
+        - items
+    SubmitCountSessionDto:
+      type: object
+      properties:
+        notes:
+          type: string
+          example: Count completed by evening shift
+    VarianceItemDto:
+      type: object
+      properties:
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        sku:
+          type: string
+          example: DAI-001
+        name:
+          type: string
+          example: Whole Milk 3.5%
+        unit:
+          type: string
+          example: L
+        unitCost:
+          type: number
+          example: 1.25
+        expectedQty:
+          type: number
+          example: 40
+        countedQty:
+          type: number
+          example: 38.5
+        varianceQty:
+          type: number
+          example: -1.5
+        variancePercentage:
+          type: number
+          example: -3.75
+        varianceValue:
+          type: number
+          example: -1.875
+        discrepancyTier:
+          type: string
+          example: minor
+          enum:
+            - none
+            - minor
+            - critical
+      required:
+        - itemId
+        - sku
+        - name
+        - unit
+        - unitCost
+        - expectedQty
+        - countedQty
+        - varianceQty
+        - variancePercentage
+        - varianceValue
+        - discrepancyTier
+    VarianceReviewResponseDto:
+      type: object
+      properties:
+        varianceId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e066
+        sessionId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        sessionNumber:
+          type: string
+          example: SC-20260820-0001
+        totalExpectedValue:
+          type: number
+          example: 500
+        totalCountedValue:
+          type: number
+          example: 487.5
+        netVarianceValue:
+          type: number
+          example: -12.5
+        totalItemsCounted:
+          type: number
+          example: 25
+        itemsWithDiscrepancyCount:
+          type: number
+          example: 2
+        approvedBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        approvedByName:
+          type: string
+          example: Mario Batali
+        approvedAt:
+          type: string
+          example: 2026-08-20T08:45:00.000Z
+        ledgerSyncedAt:
+          type: string
+          example: 2026-08-20T08:45:00.000Z
+        notes:
+          type: string
+          example: Variance approved by manager
+        varianceItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/VarianceItemDto"
+      required:
+        - varianceId
+        - sessionId
+        - sessionNumber
+        - totalExpectedValue
+        - totalCountedValue
+        - netVarianceValue
+        - totalItemsCounted
+        - itemsWithDiscrepancyCount
+        - varianceItems
+    ApproveVarianceResponseDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Stock variance approved and physical stock synchronized with audit
+            ledger
+        sessionId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        varianceId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e066
+        syncedItemsCount:
+          type: number
+          example: 2
+        netVarianceValue:
+          type: number
+          example: -12.5
+        ledgerSyncedAt:
+          type: string
+          example: 2026-08-20T08:45:00.000Z
+      required:
+        - success
+        - message
+        - sessionId
+        - varianceId
+        - syncedItemsCount
+        - netVarianceValue
+        - ledgerSyncedAt
+    StockCountDetailResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        sessionNumber:
+          type: string
+          example: SC-20260820-0001
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        scheduleId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e030
+        conductedBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        conductedByName:
+          type: string
+          example: Mario Batali
+        status:
+          type: string
+          example: completed
+          enum: *a27
+        countType:
+          type: string
+          example: blind
+          enum: *a28
+        totalItems:
+          type: number
+          example: 25
+        totalCounted:
+          type: number
+          example: 25
+        startedAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        completedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+        notes:
+          type: string
+          example: Evening audit
+        netVarianceValue:
+          type: number
+          example: -12.5
+        itemsWithDiscrepancies:
+          type: number
+          example: 2
+        createdAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockCountItemResponseDto"
+        variance:
+          type: object
+          description: Calculated shrinkage variance metrics
+      required:
+        - id
+        - sessionNumber
+        - storeId
+        - conductedBy
+        - status
+        - countType
+        - totalItems
+        - totalCounted
+        - startedAt
+        - createdAt
+        - updatedAt
+        - items
+    PurchaseOrderItemInputDto:
+      type: object
+      properties:
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+          description: Inventory item UUID
+        quantityOrdered:
+          type: number
+          example: 50
+          description: Quantity to order from supplier
+        unit:
+          type: string
+          example: L
+          enum:
+            - kg
+            - g
+            - L
+            - ml
+            - pcs
+            - can
+            - bottle
+            - pack
+        unitPrice:
+          type: number
+          example: 1.25
+          description: Agreed unit price
+      required:
+        - itemId
+        - quantityOrdered
+        - unit
+        - unitPrice
+    CreatePurchaseOrderDto:
+      type: object
+      properties:
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+          description: Supplier UUID
+        orderDate:
+          type: string
+          example: 2026-08-20
+          description: Purchase order date (ISO string)
+        expectedDeliveryDate:
+          type: string
+          example: 2026-08-22
+          description: Expected supplier delivery date
+        items:
+          description: List of order lines
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItemInputDto"
+        notes:
+          type: string
+          example: Urgent weekend dairy restock
+      required:
+        - supplierId
+        - orderDate
+        - items
+    PurchaseOrderItemResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e033
+        poId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        sku:
+          type: string
+          example: DAI-001
+        name:
+          type: string
+          example: Whole Milk 3.5%
+        quantityOrdered:
+          type: number
+          example: 50
+        quantityReceived:
+          type: number
+          example: 0
+        unit:
+          type: string
+          example: L
+        unitPrice:
+          type: number
+          example: 1.25
+        totalPrice:
+          type: number
+          example: 62.5
+      required:
+        - id
+        - poId
+        - itemId
+        - sku
+        - name
+        - quantityOrdered
+        - quantityReceived
+        - unit
+        - unitPrice
+        - totalPrice
+    PurchaseOrderDetailResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+        supplierName:
+          type: string
+          example: Fresh Farms Direct
+        orderNumber:
+          type: string
+          example: PO-20260820-0001
+        orderDate:
+          type: string
+          example: 2026-08-20
+        expectedDeliveryDate:
+          type: string
+          example: 2026-08-22
+        status:
+          type: string
+          example: draft
+          enum:
+            - draft
+            - submitted
+            - approved
+            - received
+            - cancelled
+        subtotal:
+          type: number
+          example: 100
+        taxAmount:
+          type: number
+          example: 10
+        totalAmount:
+          type: number
+          example: 110
+        itemCount:
+          type: number
+          example: 2
+        submittedBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        submittedAt:
+          type: string
+          example: 2026-08-20T08:15:00.000Z
+        approvedBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        approvedByName:
+          type: string
+          example: Mario Batali
+        approvedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+        cancelledBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        cancelledAt:
+          type: string
+          example: 2026-08-20T08:45:00.000Z
+        cancellationReason:
+          type: string
+          example: Duplicate order
+        notes:
+          type: string
+          example: Urgent order
+        createdAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItemResponseDto"
+      required:
+        - id
+        - storeId
+        - supplierId
+        - orderNumber
+        - orderDate
+        - status
+        - subtotal
+        - taxAmount
+        - totalAmount
+        - itemCount
+        - createdAt
+        - updatedAt
+        - items
+    UpdatePurchaseOrderDto:
+      type: object
+      properties:
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+        orderDate:
+          type: string
+          example: 2026-08-20
+        expectedDeliveryDate:
+          type: string
+          example: 2026-08-22
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItemInputDto"
+        notes:
+          type: string
+          example: Updated notes
+    CancelPurchaseOrderDto:
+      type: object
+      properties:
+        reason:
+          type: string
+          example: Supplier out of stock / pricing mismatch
+          description: Mandatory cancellation reason
+      required:
+        - reason
+    GoodsReceiptItemInputDto:
+      type: object
+      properties:
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        poItemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e033
+        quantityReceived:
+          type: number
+          example: 50
+          description: Actual quantity received at loading dock
+        unit:
+          type: string
+          example: L
+        pricePerUnit:
+          type: number
+          example: 1.25
+        batchNumber:
+          type: string
+          example: LOT-20260820-001
+          description: Batch number for FEFO lot tracking
+        expiryDate:
+          type: string
+          example: 2026-09-10
+          description: Perishable expiration date
+      required:
+        - itemId
+        - quantityReceived
+        - unit
+        - pricePerUnit
+        - batchNumber
+        - expiryDate
+    CreateGoodsReceiptDto:
+      type: object
+      properties:
+        poId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+          description: Linked PO UUID
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+          description: Supplier UUID
+        invoiceNumber:
+          type: string
+          example: INV-99201
+          description: Delivery invoice number
+        receiptDate:
+          type: string
+          example: 2026-08-20
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoodsReceiptItemInputDto"
+        notes:
+          type: string
+          example: All crates intact and temperature checked 3.8C
+      required:
+        - supplierId
+        - invoiceNumber
+        - receiptDate
+        - items
+    GoodsReceiptItemResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e044
+        goodsReceiptId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e066
+        itemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        sku:
+          type: string
+          example: DAI-001
+        name:
+          type: string
+          example: Whole Milk 3.5%
+        poItemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e033
+        quantityReceived:
+          type: number
+          example: 50
+        unit:
+          type: string
+          example: L
+        pricePerUnit:
+          type: number
+          example: 1.25
+        totalPrice:
+          type: number
+          example: 62.5
+        batchNumber:
+          type: string
+          example: LOT-20260820-001
+        expiryDate:
+          type: string
+          example: 2026-09-10
+      required:
+        - id
+        - goodsReceiptId
+        - itemId
+        - sku
+        - name
+        - quantityReceived
+        - unit
+        - pricePerUnit
+        - totalPrice
+        - batchNumber
+        - expiryDate
+    GoodsReceiptDetailResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e066
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        receiptNumber:
+          type: string
+          example: GR-20260820-0001
+        invoiceNumber:
+          type: string
+          example: INV-99201
+        poId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        poOrderNumber:
+          type: string
+          example: PO-20260820-0001
+        supplierId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+        supplierName:
+          type: string
+          example: Fresh Farms Direct
+        receiptDate:
+          type: string
+          example: 2026-08-20
+        totalAmount:
+          type: number
+          example: 62.5
+        status:
+          type: string
+          example: verified
+          enum:
+            - draft
+            - verified
+            - discrepancy
+        itemCount:
+          type: number
+          example: 1
+        receivedBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        receivedByName:
+          type: string
+          example: Mario Batali
+        notes:
+          type: string
+          example: Delivery checked in
+        createdAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoodsReceiptItemResponseDto"
+      required:
+        - id
+        - storeId
+        - receiptNumber
+        - invoiceNumber
+        - supplierId
+        - receiptDate
+        - totalAmount
+        - status
+        - itemCount
+        - receivedBy
+        - createdAt
+        - updatedAt
+        - items
+    SupplierResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e020
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        supplierCode:
+          type: string
+          example: SUP-001
+        name:
+          type: string
+          example: Fresh Farms Direct
+        contactName:
+          type: string
+          example: John Miller
+        email:
+          type: string
+          example: orders@freshfarms.com
+        phone:
+          type: string
+          example: +1 555-0199
+        leadTimeDays:
+          type: number
+          example: 2
+        paymentTerms:
+          type: string
+          example: Net 30
+        createdAt:
+          type: string
+          example: 2026-08-20T00:00:00.000Z
+      required:
+        - id
+        - storeId
+        - supplierCode
+        - name
+        - leadTimeDays
+        - createdAt
+    CreateSupplierDto:
+      type: object
+      properties:
+        supplierCode:
+          type: string
+          example: SUP-001
+          description: Unique vendor identifier code
+        name:
+          type: string
+          example: Fresh Farms Direct
+          description: Supplier commercial business name
+        contactName:
+          type: string
+          example: John Miller
+          description: Primary contact representative
+        email:
+          type: string
+          example: orders@freshfarms.com
+        phone:
+          type: string
+          example: +1 555-0199
+        leadTimeDays:
+          type: number
+          example: 2
+          default: 1
+          description: Order lead time in business days
+        paymentTerms:
+          type: string
+          example: Net 30
+          description: Agreed commercial payment terms
+      required:
+        - supplierCode
+        - name
+    UpdateSupplierDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Fresh Farms Direct LLC
+        contactName:
+          type: string
+          example: John Miller
+        email:
+          type: string
+          example: orders@freshfarms.com
+        phone:
+          type: string
+          example: +1 555-0199
+        leadTimeDays:
+          type: number
+          example: 2
+        paymentTerms:
+          type: string
+          example: Net 15
+    PresignedUploadRequestDto:
+      type: object
+      properties:
+        mimeType:
+          type: string
+          example: image/jpeg
+          enum:
+            - image/jpeg
+            - image/png
+            - image/webp
+            - application/pdf
+          description: MIME type of receipt or POS Z-report image
+        fileSizeBytes:
+          type: number
+          example: 204800
+          description: File size in bytes (max 10MB)
+        documentType:
+          type: string
+          example: pos_z_report
+          enum:
+            - pos_z_report
+            - supplier_invoice
+            - generic_receipt
+          description: Document classification type
+      required:
+        - mimeType
+        - fileSizeBytes
+        - documentType
+    TriggerScanRequestDto:
+      type: object
+      properties:
+        storagePath:
+          type: string
+          example: stores/store-01/ocr/raw/pos_z_report_20260820.jpg
+          description: Storage path returned from presigned upload step
+        documentType:
+          type: string
+          example: pos_z_report
+          enum:
+            - pos_z_report
+            - supplier_invoice
+            - generic_receipt
+      required:
+        - storagePath
+        - documentType
+    OcrItemResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e088
+        lineNumber:
+          type: number
+          example: 1
+        rawText:
+          type: string
+          example: 2x Caffe Latte $8.00
+        description:
+          type: string
+          example: Caffe Latte
+        articleNumber:
+          type: string
+          example: ART-101
+        quantity:
+          type: number
+          example: 2
+        unitPrice:
+          type: number
+          example: 4
+        totalPrice:
+          type: number
+          example: 8
+        confidence:
+          type: number
+          example: 0.96
+          description: Document AI OCR parsing confidence (0.0 to 1.0)
+        matchedRecipeId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e077
+        matchedRecipeName:
+          type: string
+          example: Caffe Latte Recipe
+        matchStatus:
+          type: string
+          example: exact
+          enum:
+            - exact
+            - fuzzy
+            - unmatched
+        needsReview:
+          type: boolean
+          example: false
+          description: True if confidence < 80% or unmatched recipe
+      required:
+        - id
+        - lineNumber
+        - rawText
+        - description
+        - quantity
+        - confidence
+        - matchStatus
+        - needsReview
+    OcrBomPreviewItemDto:
+      type: object
+      properties:
+        ocrItemId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e088
+        recipeName:
+          type: string
+          example: Caffe Latte
+        ingredientId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        ingredientName:
+          type: string
+          example: Whole Milk 3.5%
+        quantityDeducted:
+          type: number
+          example: 0.4
+        unit:
+          type: string
+          example: L
+        unitCost:
+          type: number
+          example: 1.25
+        totalCost:
+          type: number
+          example: 0.5
+      required:
+        - ocrItemId
+        - recipeName
+        - ingredientId
+        - ingredientName
+        - quantityDeducted
+        - unit
+        - unitCost
+        - totalCost
+    OcrDocumentDetailResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e055
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        documentType:
+          type: string
+          example: pos_z_report
+        fileName:
+          type: string
+          example: pos_z_report_20260820.jpg
+        storagePath:
+          type: string
+          example: stores/store-01/ocr/raw/pos_z_report_20260820.jpg
+        mimeType:
+          type: string
+          example: image/jpeg
+        fileSizeBytes:
+          type: number
+          example: 204800
+        status:
+          type: string
+          example: review_pending
+          enum:
+            - processing
+            - review_pending
+            - confirmed
+            - rejected
+            - failed
+        overallConfidence:
+          type: number
+          example: 0.94
+        needsReview:
+          type: boolean
+          example: false
+        processedAt:
+          type: string
+          example: 2026-08-20T08:05:00.000Z
+        confirmedBy:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        confirmedByName:
+          type: string
+          example: Mario Batali
+        confirmedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+        errorMessage:
+          type: string
+          example: Low resolution image
+        createdAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:05:00.000Z
+        metadata:
+          type: object
+          example:
+            documentNumber: Z-10029
+            date: 2026-08-20
+            totalAmount: 185.5
+        extractedLines:
+          type: array
+          items:
+            $ref: "#/components/schemas/OcrItemResponseDto"
+        bomPreview:
+          type: array
+          items:
+            $ref: "#/components/schemas/OcrBomPreviewItemDto"
+      required:
+        - id
+        - storeId
+        - documentType
+        - fileName
+        - storagePath
+        - mimeType
+        - fileSizeBytes
+        - status
+        - needsReview
+        - createdAt
+        - updatedAt
+        - extractedLines
+        - bomPreview
+    UpdateOcrItemDto:
+      type: object
+      properties:
+        description:
+          type: string
+          example: Espresso Double Shot (2x)
+          description: Corrected line item description
+        quantity:
+          type: number
+          example: 4
+          description: Corrected quantity
+        unitPrice:
+          type: number
+          example: 3.5
+        totalPrice:
+          type: number
+          example: 14
+        matchedRecipeId:
+          type: object
+          example: 01915dfa-b1c4-7221-9988-51b72e04e077
+          description: Matched BOM recipe UUID
+    ConfirmOcrDeductionDto:
+      type: object
+      properties:
+        notes:
+          type: string
+          example: POS shift reconciliation confirmed by supervisor
+        applyDeductions:
+          type: boolean
+          example: true
+          default: true
+          description: Whether to deduct raw ingredients via BOM recipes
+    RejectOcrDocumentDto:
+      type: object
+      properties:
+        reason:
+          type: string
+          example: Image is unreadable or blurry
+          description: Mandatory rejection reason
+      required:
+        - reason
+    UnreadCountResponseDto:
+      type: object
+      properties:
+        unreadCount:
+          type: number
+          example: 3
+          description: Total unread notifications
+        criticalCount:
+          type: number
+          example: 1
+          description: Critical unread notifications count
+      required:
+        - unreadCount
+        - criticalCount
+    NotificationResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e099
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        userId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        notificationNumber:
+          type: string
+          example: NOTIF-20260820-0001
+        eventType:
+          type: string
+          example: LOW_STOCK
+        title:
+          type: string
+          example: "Critical Low Stock: Whole Milk"
+        message:
+          type: string
+          example: Whole Milk 3.5% (8L) is below safety threshold (15L).
+        urgency:
+          type: string
+          example: CRITICAL
+          enum:
+            - NORMAL
+            - CRITICAL
+        route:
+          type: string
+          example: /inventory/01915dfa-b1c4-7221-9988-51b72e04e0a1
+        metadata:
+          type: object
+          example:
+            sku: DAI-001
+        isRead:
+          type: boolean
+          example: false
+        readAt:
+          type: string
+          example: 2026-08-20T08:15:00.000Z
+        createdAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+      required:
+        - id
+        - storeId
+        - notificationNumber
+        - eventType
+        - title
+        - message
+        - urgency
+        - isRead
+        - createdAt
+    BatchMarkReadResponseDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        markedReadCount:
+          type: number
+          example: 3
+          description: Number of notifications marked as read
+      required:
+        - success
+        - markedReadCount
+    NotificationPreferencesResponseDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        inAppEnabled:
+          type: boolean
+          example: true
+        pushEnabled:
+          type: boolean
+          example: true
+        emailEnabled:
+          type: boolean
+          example: false
+        lowStockAlerts:
+          type: boolean
+          example: true
+        expiringBatches:
+          type: boolean
+          example: true
+        poStatusUpdates:
+          type: boolean
+          example: true
+        stockCountReminders:
+          type: boolean
+          example: true
+        ocrScanCompleted:
+          type: boolean
+          example: true
+        quietHoursStart:
+          type: string
+          example: 22:00
+        quietHoursEnd:
+          type: string
+          example: 07:00
+        updatedAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+      required:
+        - userId
+        - storeId
+        - inAppEnabled
+        - pushEnabled
+        - emailEnabled
+        - lowStockAlerts
+        - expiringBatches
+        - poStatusUpdates
+        - stockCountReminders
+        - ocrScanCompleted
+        - updatedAt
+    UpdateNotificationPreferencesDto:
+      type: object
+      properties:
+        inAppEnabled:
+          type: boolean
+          example: true
+          description: Enable in-app notifications
+        pushEnabled:
+          type: boolean
+          example: true
+          description: Enable mobile push notifications
+        emailEnabled:
+          type: boolean
+          example: false
+          description: Enable email digest notifications
+        lowStockAlerts:
+          type: boolean
+          example: true
+          description: Receive alerts when stock is critically low
+        expiringBatches:
+          type: boolean
+          example: true
+          description: Receive warnings before FEFO batch expiry
+        poStatusUpdates:
+          type: boolean
+          example: true
+          description: Receive purchase order lifecycle updates
+        stockCountReminders:
+          type: boolean
+          example: true
+          description: Receive scheduled stock count alarms
+        ocrScanCompleted:
+          type: boolean
+          example: true
+          description: Receive notice when Document AI OCR scan completes
+        quietHoursStart:
+          type: string
+          example: 22:00
+          description: Quiet window start (HH:MM 24-hour)
+        quietHoursEnd:
+          type: string
+          example: 07:00
+          description: Quiet window end (HH:MM 24-hour)
+    RegisterDeviceTokenDto:
+      type: object
+      properties:
+        expoPushToken:
+          type: string
+          example: ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
+          description: Expo Push Notification Device Token
+        platform:
+          type: string
+          example: ios
+          enum:
+            - ios
+            - android
+            - web
+          description: Client mobile platform
+        appVersion:
+          type: string
+          example: 1.2.0
+          description: Installed application version
+      required:
+        - expoPushToken
+        - platform
+    SendNotificationDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+          description: Target user UUID (omitted for store-wide broadcasts)
+        eventType:
+          type: string
+          example: LOW_STOCK
+        title:
+          type: string
+          example: "Critical Low Stock: Whole Milk"
+        message:
+          type: string
+          example: Whole Milk 3.5% (8L) is below safety stock threshold (15L).
+        urgency:
+          type: string
+          example: CRITICAL
+          enum:
+            - NORMAL
+            - CRITICAL
+          default: NORMAL
+        route:
+          type: string
+          example: /inventory/01915dfa-b1c4-7221-9988-51b72e04e0a1
+          description: In-app deep link route
+        metadata:
+          type: object
+          example:
+            itemId: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+            sku: DAI-001
+      required:
+        - eventType
+        - title
+        - message
+    AuditLogResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e033
+        organizationId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000001
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        eventNumber:
+          type: string
+          example: AUD-20260820-0001
+        actorId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        actorName:
+          type: string
+          example: Mario Batali
+        actorRole:
+          type: string
+          example: manager
+        ipAddress:
+          type: string
+          example: 192.168.1.50
+        userAgent:
+          type: string
+          example: StockPulse iOS/1.2.0
+        eventAction:
+          type: string
+          example: INVENTORY_ADJUST
+        entityType:
+          type: string
+          example: inventory_item
+        entityId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        entityIdentifier:
+          type: string
+          example: DAI-001 (Whole Milk)
+        stateBefore:
+          type: object
+          example:
+            physicalStock: 25
+        stateAfter:
+          type: object
+          example:
+            physicalStock: 22.5
+        stateDiff:
+          type: object
+          example:
+            delta: -2.5
+        reasonCode:
+          type: string
+          example: SPOILAGE_TRIM_LOSS
+        prevHash:
+          type: string
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
+        currentHash:
+          type: string
+          example: 9b1deb4d3b7d4bad9bdd2b0d7b3dcb6d88a1b2c3d4e5f60718293a4b5c6d7e8f
+        createdAt:
+          type: string
+          example: 2026-08-20T08:00:00.000Z
+      required:
+        - id
+        - organizationId
+        - storeId
+        - eventNumber
+        - eventAction
+        - entityType
+        - entityId
+        - prevHash
+        - currentHash
+        - createdAt
+    AuditChainVerificationResponseDto:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+          example: true
+          description: True if 100% of cryptographic hashes and previous hashes are unbroken
+        totalRecordsVerified:
+          type: number
+          example: 250
+          description: Total sequential audit log blocks verified
+        tamperedRecordId:
+          type: string
+          example: null
+          description: UUID of record that failed verification if tampered
+        message:
+          type: string
+          example: Cryptographic ledger chain integrity verified successfully
+        verifiedAt:
+          type: string
+          example: 2026-08-20T08:30:00.000Z
+      required:
+        - isValid
+        - totalRecordsVerified
+        - message
+        - verifiedAt
+    CreateAuditLogDto:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000001
+        storeId:
+          type: string
+          example: 01915dfa-9012-7000-8000-000000000002
+        actorId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e001
+        actorName:
+          type: string
+          example: Mario Batali
+        actorRole:
+          type: string
+          example: manager
+        ipAddress:
+          type: string
+          example: 192.168.1.50
+        userAgent:
+          type: string
+          example: StockPulse Mobile iOS/1.2.0
+        eventAction:
+          type: string
+          example: INVENTORY_ADJUST
+        entityType:
+          type: string
+          example: inventory_item
+        entityId:
+          type: string
+          example: 01915dfa-b1c4-7221-9988-51b72e04e0a1
+        entityIdentifier:
+          type: string
+          example: DAI-001 (Whole Milk)
+        stateBefore:
+          type: object
+          example:
+            physicalStock: 25
+        stateAfter:
+          type: object
+          example:
+            physicalStock: 22.5
+        stateDiff:
+          type: object
+          example:
+            delta: -2.5
+        reasonCode:
+          type: string
+          example: SPOILAGE_TRIM_LOSS
+      required:
+        - organizationId
+        - storeId
+        - eventAction
+        - entityType
+        - entityId

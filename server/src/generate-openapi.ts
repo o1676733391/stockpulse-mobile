@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as YAML from 'yaml';
 import { AppModule } from './app.module';
 
 async function generateOpenApiSpec() {
@@ -12,7 +13,7 @@ async function generateOpenApiSpec() {
     .setDescription(
       `## Multi-Tenant F&B Inventory & Intelligence Platform API
 
-StockPulse provides unified backend capabilities for restaurant and cloud kitchen inventory intelligence, FEFO lot management, Document AI OCR processing, and finite-state procurement workflows.
+StockPulse provides unified backend capabilities for restaurant and cloud kitchen inventory intelligence, FEFO lot management, Document AI & Gemini Vision OCR processing, and finite-state procurement workflows.
 
 ### Universal Request Protocols
 - **Authentication**: Bearer JWT token issued by Supabase Auth (\`Authorization: Bearer <token>\`).
@@ -22,17 +23,14 @@ StockPulse provides unified backend capabilities for restaurant and cloud kitche
 `,
     )
     .setVersion('1.0.0')
-    .addTag('Auth', 'Authentication, Tenant Registration, Store Switching, and Supabase Webhooks')
-    .addTag('Users', 'User account provisioning and RBAC store assignments')
-    .addTag('Organizations', 'Tenant organization entity and subscription plan management')
-    .addTag('Stores', 'Store location branches, operational currency, and timezones')
+    .addTag('Authentication', 'Authentication, Tenant Registration, Store Switching, and Supabase Webhooks')
     .addTag('Inventory', 'Master catalog, stock balances, FEFO batch tracking, and manual adjustments')
-    .addTag('Stock Count', 'Blind & standard count sessions, shrinkage calculation, and variance ledger sync')
-    .addTag('OCR', 'Google Document AI integration, presigned uploads, review workflow, and BOM deductions')
+    .addTag('Stock Counts', 'Blind & standard count sessions, shrinkage calculation, and variance ledger sync')
+    .addTag('OCR', 'Google Gemini Multimodal Vision & Document AI OCR, review workflow, and BOM deductions')
     .addTag('Procurement', 'Purchase Orders (Draft/Submit/Approve/Receive/Cancel) and Goods Receipts')
     .addTag('Suppliers', 'Supplier master directory, payment terms, and lead time tracking')
     .addTag('Notifications', 'In-app notifications, device push tokens, and notification preferences')
-    .addTag('Audit', 'Cryptographic WORM audit logging, hash chaining, and ledger integrity verification')
+    .addTag('Audit', 'Cryptographic WORM audit logging, SHA-256 hash chaining, and ledger integrity verification')
     .addBearerAuth(
       {
         type: 'http',
@@ -62,10 +60,16 @@ StockPulse provides unified backend capabilities for restaurant and cloud kitche
     fs.mkdirSync(docsDir, { recursive: true });
   }
 
+  // 1. Export JSON format
   const jsonPath = path.join(docsDir, 'openapi.json');
   fs.writeFileSync(jsonPath, JSON.stringify(document, null, 2), 'utf-8');
+  console.log(`[OpenAPI Generator] Successfully generated JSON: ${jsonPath}`);
 
-  console.log(`[OpenAPI Generator] Successfully generated: ${jsonPath}`);
+  // 2. Export YAML format
+  const yamlPath = path.join(docsDir, 'openapi.yaml');
+  fs.writeFileSync(yamlPath, YAML.stringify(document), 'utf-8');
+  console.log(`[OpenAPI Generator] Successfully generated YAML: ${yamlPath}`);
+
   await app.close();
   process.exit(0);
 }

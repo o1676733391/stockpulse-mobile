@@ -1,5 +1,6 @@
 import { VectorIcon } from '@/components/ui/icons';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -10,18 +11,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const STEPS = [
-  'Uploading image',
-  'Reading document',
-  'Detecting items',
-  'Calculating sales',
-  'Mapping recipes',
-];
-
 export default function OCRProcessingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [currentStep, setCurrentStep] = useState(0);
+
+  const STEPS = [
+    t('scan.processingSteps.uploading'),
+    t('scan.processingSteps.reading'),
+    t('scan.processingSteps.detecting'),
+    t('scan.processingSteps.calculating'),
+    t('scan.processingSteps.mapping'),
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -38,7 +40,7 @@ export default function OCRProcessingScreen() {
     }, 700);
 
     return () => clearInterval(timer);
-  }, [router]);
+  }, [router, STEPS.length]);
 
   return (
     <View
@@ -60,9 +62,9 @@ export default function OCRProcessingScreen() {
 
       {/* ── Title & Status Text ── */}
       <View style={styles.titleBox}>
-        <Text style={styles.titleText}>Processing POS Report...</Text>
+        <Text style={styles.titleText}>{t('scan.processingTitle')}</Text>
         <Text style={styles.subText}>
-          Please wait while we analyse your document
+          {t('scan.processingSubtitle')}
         </Text>
       </View>
 

@@ -4,7 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { MOCK_USERS } from '@/services/authService';
+import { useI18n } from '@/i18n/I18nContext';
 import { UserRole } from '@/types/rbac';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -21,56 +21,49 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-interface DemoAccount {
-  role: UserRole;
-  label: string;
-  email: string;
-  desc: string;
-  badgeColor: string;
-}
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    role: 'admin',
-    label: 'Admin',
-    email: 'anna.admin@restaurant.de',
-    desc: 'Full store management & financials',
-    badgeColor: Colors.brand.primary,
-  },
-  {
-    role: 'manager',
-    label: 'Manager',
-    email: 'marco.manager@restaurant.de',
-    desc: 'PO approvals, adjustments & schedules',
-    badgeColor: Colors.info.main,
-  },
-  {
-    role: 'supervisor',
-    label: 'Supervisor',
-    email: 'david.lead@restaurant.de',
-    desc: 'Goods receipt & count validation',
-    badgeColor: Colors.purple.main,
-  },
-  {
-    role: 'staff',
-    label: 'Cook / Staff',
-    email: 'elena.cook@restaurant.de',
-    desc: 'Fast daily stocktake & POS scan',
-    badgeColor: Colors.warning.main,
-  },
-  {
-    role: 'auditor',
-    label: 'Auditor',
-    email: 'klaus.auditor@becker-consult.de',
-    desc: 'Variance & compliance review',
-    badgeColor: '#64748b',
-  },
-];
-
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const { t } = useI18n();
+
+  const DEMO_ACCOUNTS = [
+    {
+      role: 'admin' as UserRole,
+      label: t('auth.adminRole'),
+      email: 'anna.admin@restaurant.de',
+      desc: t('auth.adminRoleDesc'),
+      badgeColor: Colors.brand.primary,
+    },
+    {
+      role: 'manager' as UserRole,
+      label: t('auth.managerRole'),
+      email: 'marco.manager@restaurant.de',
+      desc: t('auth.managerRoleDesc'),
+      badgeColor: Colors.info.main,
+    },
+    {
+      role: 'supervisor' as UserRole,
+      label: t('auth.supervisorRole'),
+      email: 'david.lead@restaurant.de',
+      desc: t('auth.supervisorRoleDesc'),
+      badgeColor: Colors.purple.main,
+    },
+    {
+      role: 'staff' as UserRole,
+      label: t('auth.staffRole'),
+      email: 'elena.cook@restaurant.de',
+      desc: t('auth.staffRoleDesc'),
+      badgeColor: Colors.warning.main,
+    },
+    {
+      role: 'auditor' as UserRole,
+      label: t('auth.auditorRole'),
+      email: 'klaus.auditor@becker-consult.de',
+      desc: t('auth.auditorRoleDesc'),
+      badgeColor: '#64748b',
+    },
+  ];
 
   const [email, setEmail] = useState('anna.admin@restaurant.de');
   const [password, setPassword] = useState('StockPulse123!');
@@ -80,7 +73,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      setErrorMsg('Please enter your email and password.');
+      setErrorMsg(t('auth.fillAllFields'));
       return;
     }
 
@@ -90,13 +83,13 @@ export default function LoginScreen() {
       await login(email.trim(), password);
       router.replace('/(tabs)' as any);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Login failed. Please verify credentials.');
+      setErrorMsg(err.message || t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectDemo = (demo: DemoAccount) => {
+  const handleSelectDemo = (demo: (typeof DEMO_ACCOUNTS)[0]) => {
     setEmail(demo.email);
     setPassword('StockPulse123!');
     setErrorMsg(null);
@@ -108,8 +101,8 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <TopBar
-        title="Sign In"
-        subtitle="StockPulse F&B Intelligence"
+        title={t('auth.signInButton')}
+        subtitle={t('common.tagline')}
         showBack
         onBack={() => router.replace('/' as any)}
       />
@@ -129,8 +122,8 @@ export default function LoginScreen() {
               <VectorIcon name="TrendingDown" size={24} color="#FFFFFF" strokeWidth={2.5} />
             </View>
             <View>
-              <Text style={styles.brandName}>StockPulse</Text>
-              <Text style={styles.brandTag}>F&B Inventory & Food Cost</Text>
+              <Text style={styles.brandName}>{t('common.appName')}</Text>
+              <Text style={styles.brandTag}>{t('common.tagline')}</Text>
             </View>
           </View>
         </View>
@@ -145,11 +138,11 @@ export default function LoginScreen() {
 
         {/* Credentials Form */}
         <Card style={styles.formCard}>
-          <Text style={styles.formTitle}>Enter your credentials</Text>
+          <Text style={styles.formTitle}>{t('auth.signInSubtitle')}</Text>
 
           {/* Email Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t('auth.emailLabel')}</Text>
             <View style={styles.inputWrapper}>
               <VectorIcon name="Mail" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
@@ -159,7 +152,7 @@ export default function LoginScreen() {
                   setEmail(v);
                   setErrorMsg(null);
                 }}
-                placeholder="name@restaurant.de"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -175,7 +168,7 @@ export default function LoginScreen() {
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
+            <Text style={styles.inputLabel}>{t('auth.passwordLabel')}</Text>
             <View style={styles.inputWrapper}>
               <VectorIcon name="Lock" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
@@ -202,7 +195,7 @@ export default function LoginScreen() {
 
           {/* Sign In Button */}
           <Button
-            label={loading ? 'Signing In...' : 'Sign In to Store'}
+            label={loading ? t('auth.signingIn') : t('auth.signInButton')}
             variant="primary"
             size="lg"
             fullWidth
@@ -220,8 +213,7 @@ export default function LoginScreen() {
 
         {/* Quick Demo Role Selector */}
         <View style={styles.demoSection}>
-          <Text style={styles.sectionHeader}>Quick Demo Accounts</Text>
-          <Text style={styles.sectionSub}>Select a role to test specific permissions & live data</Text>
+          <Text style={styles.sectionHeader}>{t('auth.demoAccountsTitle')}</Text>
 
           <View style={styles.demoList}>
             {DEMO_ACCOUNTS.map((demo) => {
@@ -256,9 +248,9 @@ export default function LoginScreen() {
 
         {/* Create Store Link */}
         <View style={styles.registerPrompt}>
-          <Text style={styles.registerText}>Don't have a store account?</Text>
+          <Text style={styles.registerText}>{t('auth.dontHaveAccount')}</Text>
           <Pressable onPress={() => router.push('/register' as any)}>
-            <Text style={styles.registerLink}>Register New Store</Text>
+            <Text style={styles.registerLink}>{t('auth.registerNow')}</Text>
           </Pressable>
         </View>
       </ScrollView>

@@ -2093,12 +2093,37 @@
     "/suppliers": {
       "get": {
         "operationId": "SuppliersController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "description": "Active store tenant UUID context",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "List of active contracted suppliers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupplierResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "summary": "List contracted suppliers for store",
         "tags": [
           "Suppliers"
@@ -2106,7 +2131,17 @@
       },
       "post": {
         "operationId": "SuppliersController_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "description": "Active store tenant UUID context",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2119,10 +2154,25 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Supplier registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
           }
         },
-        "summary": "Register new supplier",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Register new vendor / supplier",
         "tags": [
           "Suppliers"
         ]
@@ -2133,9 +2183,19 @@
         "operationId": "SuppliersController_findById",
         "parameters": [
           {
+            "name": "X-Store-Id",
+            "in": "header",
+            "description": "Active store tenant UUID context",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Supplier UUID",
             "schema": {
               "type": "string"
             }
@@ -2143,10 +2203,25 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Supplier details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Supplier not found"
           }
         },
-        "summary": "Get supplier details",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get supplier details by ID",
         "tags": [
           "Suppliers"
         ]
@@ -2155,9 +2230,19 @@
         "operationId": "SuppliersController_update",
         "parameters": [
           {
+            "name": "X-Store-Id",
+            "in": "header",
+            "description": "Active store tenant UUID context",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Supplier UUID",
             "schema": {
               "type": "string"
             }
@@ -2175,9 +2260,24 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "Supplier updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Supplier not found"
           }
         },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "summary": "Update supplier details",
         "tags": [
           "Suppliers"
@@ -2187,9 +2287,19 @@
         "operationId": "SuppliersController_delete",
         "parameters": [
           {
+            "name": "X-Store-Id",
+            "in": "header",
+            "description": "Active store tenant UUID context",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Supplier UUID",
             "schema": {
               "type": "string"
             }
@@ -2197,10 +2307,18 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Supplier archived"
+          },
+          "404": {
+            "description": "Supplier not found"
           }
         },
-        "summary": "Soft-delete supplier",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Soft-delete / archive supplier",
         "tags": [
           "Suppliers"
         ]
@@ -3415,38 +3533,26 @@
   },
   "info": {
     "title": "StockPulse SaaS API",
-    "description": "## Multi-Tenant F&B Inventory & Intelligence Platform API\n\nStockPulse provides unified backend capabilities for restaurant and cloud kitchen inventory intelligence, FEFO lot management, Document AI OCR processing, and finite-state procurement workflows.\n\n### Universal Request Protocols\n- **Authentication**: Bearer JWT token issued by Supabase Auth (`Authorization: Bearer <token>`).\n- **Multi-Tenancy Context**: Store location context must be passed via the `X-Store-Id` header.\n- **Idempotency**: Critical mutations support `Idempotency-Key` header for replay protection.\n- **Concurrency**: Optimistic locking supported via version tags.\n",
+    "description": "## Multi-Tenant F&B Inventory & Intelligence Platform API\n\nStockPulse provides unified backend capabilities for restaurant and cloud kitchen inventory intelligence, FEFO lot management, Document AI & Gemini Vision OCR processing, and finite-state procurement workflows.\n\n### Universal Request Protocols\n- **Authentication**: Bearer JWT token issued by Supabase Auth (`Authorization: Bearer <token>`).\n- **Multi-Tenancy Context**: Store location context must be passed via the `X-Store-Id` header.\n- **Idempotency**: Critical mutations support `Idempotency-Key` header for replay protection.\n- **Concurrency**: Optimistic locking supported via version tags.\n",
     "version": "1.0.0",
     "contact": {}
   },
   "tags": [
     {
-      "name": "Auth",
+      "name": "Authentication",
       "description": "Authentication, Tenant Registration, Store Switching, and Supabase Webhooks"
-    },
-    {
-      "name": "Users",
-      "description": "User account provisioning and RBAC store assignments"
-    },
-    {
-      "name": "Organizations",
-      "description": "Tenant organization entity and subscription plan management"
-    },
-    {
-      "name": "Stores",
-      "description": "Store location branches, operational currency, and timezones"
     },
     {
       "name": "Inventory",
       "description": "Master catalog, stock balances, FEFO batch tracking, and manual adjustments"
     },
     {
-      "name": "Stock Count",
+      "name": "Stock Counts",
       "description": "Blind & standard count sessions, shrinkage calculation, and variance ledger sync"
     },
     {
       "name": "OCR",
-      "description": "Google Document AI integration, presigned uploads, review workflow, and BOM deductions"
+      "description": "Google Gemini Multimodal Vision & Document AI OCR, review workflow, and BOM deductions"
     },
     {
       "name": "Procurement",
@@ -3462,7 +3568,7 @@
     },
     {
       "name": "Audit",
-      "description": "Cryptographic WORM audit logging, hash chaining, and ledger integrity verification"
+      "description": "Cryptographic WORM audit logging, SHA-256 hash chaining, and ledger integrity verification"
     }
   ],
   "servers": [],
@@ -5685,6 +5791,59 @@
           "createdAt",
           "updatedAt",
           "items"
+        ]
+      },
+      "SupplierResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "01915dfa-b1c4-7221-9988-51b72e04e020"
+          },
+          "storeId": {
+            "type": "string",
+            "example": "01915dfa-9012-7000-8000-000000000002"
+          },
+          "supplierCode": {
+            "type": "string",
+            "example": "SUP-001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Fresh Farms Direct"
+          },
+          "contactName": {
+            "type": "string",
+            "example": "John Miller"
+          },
+          "email": {
+            "type": "string",
+            "example": "orders@freshfarms.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+1 555-0199"
+          },
+          "leadTimeDays": {
+            "type": "number",
+            "example": 2
+          },
+          "paymentTerms": {
+            "type": "string",
+            "example": "Net 30"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-20T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "storeId",
+          "supplierCode",
+          "name",
+          "leadTimeDays",
+          "createdAt"
         ]
       },
       "CreateSupplierDto": {

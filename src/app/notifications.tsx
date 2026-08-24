@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_NOTIFICATIONS,
   NOTIFICATION_TYPE_CONFIG,
@@ -43,6 +44,7 @@ function groupByDay(notifs: AppNotification[]) {
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [filter, setFilter] = useState<NotificationFilter>('all');
@@ -95,7 +97,7 @@ export default function NotificationsScreen() {
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       {/* ── TopBar ── */}
       <TopBar
-        title="Notifications"
+        title={t('notifications.title')}
         showBack
         right={
           unreadCount > 0 ? (
@@ -103,7 +105,7 @@ export default function NotificationsScreen() {
               onPress={handleMarkAllRead}
               style={({ pressed }) => [styles.markAllReadBtn, pressed && styles.pressed]}
             >
-              <Text style={styles.markAllReadBtnText}>Mark all read</Text>
+              <Text style={styles.markAllReadBtnText}>{t('notifications.markAllRead')}</Text>
             </Pressable>
           ) : undefined
         }
@@ -125,7 +127,7 @@ export default function NotificationsScreen() {
                 filter === 'all' && styles.filterTabTextActive,
               ]}
             >
-              All
+              {t('common.all')}
             </Text>
           </Pressable>
 
@@ -142,7 +144,7 @@ export default function NotificationsScreen() {
                 filter === 'unread' && styles.filterTabTextActive,
               ]}
             >
-              Unread
+              {t('notifications.filterUnread')}
             </Text>
             {unreadCount > 0 && (
               <View style={styles.tabBadgeGreen}>
@@ -164,7 +166,7 @@ export default function NotificationsScreen() {
                 filter === 'urgent' && styles.filterTabTextActive,
               ]}
             >
-              Urgent
+              {t('notifications.filterUrgent')}
             </Text>
             {urgentCount > 0 && (
               <View style={styles.tabBadgeRed}>
@@ -178,13 +180,13 @@ export default function NotificationsScreen() {
           <View style={styles.unreadStatusBanner}>
             <View style={styles.unreadDot} />
             <Text style={styles.unreadStatusText}>
-              {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+              {t('notifications.unreadCount', { count: unreadCount })}
             </Text>
             <Pressable
               onPress={handleMarkAllRead}
               style={({ pressed }) => [styles.dismissAllBtn, pressed && styles.pressed]}
             >
-              <Text style={styles.dismissAllBtnText}>Dismiss all</Text>
+              <Text style={styles.dismissAllBtnText}>{t('notifications.markAllRead')}</Text>
             </Pressable>
           </View>
         )}
@@ -208,10 +210,10 @@ export default function NotificationsScreen() {
             </View>
             <View style={styles.alertCenterInfo}>
               <Text style={styles.alertCenterTitle}>
-                Kitchen Alert Center · {urgentCount} Critical Item{urgentCount > 1 ? 's' : ''}
+                {t('notifications.title')} · {urgentCount} {t('notifications.filterUrgent')}
               </Text>
               <Text style={styles.alertCenterSub}>
-                Immediate operational action required on expiring proteins and produce.
+                {t('expiration.urgentAction')}
               </Text>
             </View>
             <VectorIcon name="ChevronRight" size={16} color={Colors.critical.main} />
@@ -224,14 +226,8 @@ export default function NotificationsScreen() {
             <View style={styles.emptyIconCircle}>
               <VectorIcon name="Bell" size={28} color={Colors.neutral.textTertiary} />
             </View>
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptySub}>
-              {filter === 'unread'
-                ? 'You have read all incoming alerts and notices.'
-                : filter === 'urgent'
-                ? 'No urgent issues requiring immediate attention.'
-                : 'All kitchen activities are currently in sync.'}
-            </Text>
+            <Text style={styles.emptyTitle}>{t('notifications.emptyState')}</Text>
+            <Text style={styles.emptySub}>{t('notifications.emptyStateDesc')}</Text>
           </View>
         ) : (
           dayOrder.map((day) => {

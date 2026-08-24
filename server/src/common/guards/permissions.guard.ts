@@ -29,8 +29,8 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('User context not established');
     }
 
-    // SuperAdmin or wildcard permission bypasses permission checks
-    if (user.role === 'superadmin' || user.permissions?.includes('*')) {
+    // Admin, SuperAdmin or wildcard permission bypasses permission checks
+    if (user.role === 'superadmin' || user.role === 'admin' || user.permissions?.includes('*')) {
       return true;
     }
 

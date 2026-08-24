@@ -1,5 +1,4 @@
 import { ROLES } from '@/constants/rbac';
-import { getAuthToken } from '@/services/apiClient';
 import { MOCK_USERS, authService } from '@/services/authService';
 import { AuthUser, Permission, UserRole } from '@/types/rbac';
 import React, {
@@ -14,9 +13,17 @@ import React, {
 export interface AuthContextType {
   user: AuthUser;
   role: UserRole;
+  permissions: Permission[];
   isAuthenticated: boolean;
   login: (email: string, password?: string) => Promise<AuthUser>;
-  register: (name: string, email: string, password: string, storeName?: string, phone?: string, role?: UserRole) => Promise<AuthUser>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    storeName?: string,
+    phone?: string,
+    role?: UserRole
+  ) => Promise<AuthUser>;
   logout: () => Promise<void>;
   switchRole: (role: UserRole) => Promise<void>;
   hasPermission: (permission: Permission) => boolean;
@@ -46,8 +53,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (name: string, email: string, password: string, storeName?: string, phone?: string, role?: UserRole) => {
-      const registeredUser = await authService.register(name, email, password, storeName, phone, role);
+    async (
+      name: string,
+      email: string,
+      password: string,
+      storeName?: string,
+      phone?: string,
+      role?: UserRole
+    ) => {
+      const registeredUser = await authService.register(
+        name,
+        email,
+        password,
+        storeName,
+        phone,
+        role
+      );
       setUser(registeredUser);
       setIsAuthenticated(true);
       return registeredUser;
@@ -64,6 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updated = await authService.switchUserRole(newRole);
     setUser(updated);
   }, []);
+
+  const rolePermissions = useMemo<Permission[]>(() => {
+    const roleDef = ROLES[user.role];
+    return roleDef?.permissions || [];
+  }, [user.role]);
 
   const hasPermission = useCallback(
     (permission: Permission): boolean => {
@@ -90,26 +116,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const canAccessRoute = useCallback(
     (route: string): boolean => {
-      if (route.startsWith('/settings') && route !== '/settings/profile' && route !== '/settings/appearance' && route !== '/settings/about') {
+      if (
+        route.startsWith('/settings') &&
+        route !== '/settings/profile' &&
+        route !== '/settings/appearance' &&
+        route !== '/settings/about'
+      ) {
         return hasPermission('settings:view');
       }
       if (route.startsWith('/orders') || route.startsWith('/procurement')) {
-        return hasAnyPermission(['procurement:view_poq', 'procurement:submit_po', 'procurement:goods_receipt']);
+        return hasAnyPermission([
+          'procurement:view_poq',
+          'procurement:create_po',
+          'procurement:submit_po',
+          'procurement:goods_receipt',
+        ]);
       }
-      if (route.startsWith('/stock-count/active')) {
-        return hasPermission('inventory:count');
+      if (route.startsWith('/stock-count/active') || route === '/stock-count') {
+        return hasAnyPermission(['stock_count:conduct', 'inventory:count']);
       }
-      if (route.startsWith('/stock-count/summary') || route.startsWith('/stock-count/variance')) {
-        return hasPermission('inventory:audit_approve');
+      if (
+        route.startsWith('/stock-count/summary') ||
+        route.startsWith('/stock-count/variance')
+      ) {
+        return hasAnyPermission(['stock_count:approve', 'inventory:audit_approve']);
       }
       if (route.startsWith('/scan/review') || route.startsWith('/scan/result')) {
-        return hasPermission('pos:ocr_review');
+        return hasAnyPermission(['ocr:review', 'pos:ocr_review']);
       }
       if (route.startsWith('/analytics/reports')) {
         return hasPermission('analytics:export_reports');
       }
       if (route.startsWith('/team/invite')) {
         return hasPermission('team:manage');
+      }
+      if (route.startsWith('/team')) {
+        return hasPermission('team:view');
+      }
+      if (route.startsWith('/audit')) {
+        return hasPermission('audit:view');
       }
       return true;
     },
@@ -120,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       role: user.role,
+      permissions: rolePermissions,
       isAuthenticated,
       login,
       register,
@@ -130,7 +176,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasAllPermissions,
       canAccessRoute,
     }),
-    [user, isAuthenticated, login, register, logout, switchRole, hasPermission, hasAnyPermission, hasAllPermissions, canAccessRoute]
+    [
+      user,
+      rolePermissions,
+      isAuthenticated,
+      login,
+      register,
+      logout,
+      switchRole,
+      hasPermission,
+      hasAnyPermission,
+      hasAllPermissions,
+      canAccessRoute,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -144,12 +202,17 @@ export function useAuth(): AuthContextType {
   return ctx;
 }
 
-export function usePermission(permission: Permission): boolean {
-  const { hasPermission } = useAuth();
-  return hasPermission(permission);
-}
-
 export function useRole(): UserRole {
   const { role } = useAuth();
   return role;
+}
+
+export function usePermissions(): Permission[] {
+  const { permissions } = useAuth();
+  return permissions;
+}
+
+export function useHasPermission(permission: Permission): boolean {
+  const { hasPermission } = useAuth();
+  return hasPermission(permission);
 }
