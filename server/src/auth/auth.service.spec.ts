@@ -14,6 +14,7 @@ describe('AuthService', () => {
       refreshSession: jest.fn(),
       admin: {
         signOut: jest.fn(),
+        createUser: jest.fn(),
       },
     },
     from: jest.fn(),
@@ -108,7 +109,7 @@ describe('AuthService', () => {
 
   describe('signup', () => {
     it('should throw BadRequestException if Supabase Auth signup fails', async () => {
-      mockSupabaseClient.auth.signUp.mockResolvedValueOnce({
+      mockSupabaseClient.auth.admin.createUser.mockResolvedValueOnce({
         data: { user: null },
         error: { message: 'User already registered' },
       });

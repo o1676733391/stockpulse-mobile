@@ -15,7 +15,7 @@ describe('Stock Count - Security, RBAC & Store Isolation Tests', () => {
     reflector = new Reflector();
     permissionsGuard = new PermissionsGuard(reflector);
     rolesGuard = new RolesGuard(reflector);
-    tenantStoreGuard = new TenantStoreGuard();
+    tenantStoreGuard = new TenantStoreGuard(reflector);
   });
 
   const createMockContext = (user: any, headers: Record<string, string> = {}): ExecutionContext => {

@@ -1,4 +1,5 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { TenantStoreGuard } from './tenant-store.guard';
 
 describe('TenantStoreGuard', () => {
@@ -14,8 +15,8 @@ describe('TenantStoreGuard', () => {
       storeId: undefined,
     };
     return {
-      getHandler: jest.fn(),
-      getClass: jest.fn(),
+      getHandler: () => () => {},
+      getClass: () => class {},
       switchToHttp: () => ({
         getRequest: () => request,
         getResponse: () => ({}),
@@ -25,7 +26,7 @@ describe('TenantStoreGuard', () => {
   };
 
   beforeEach(() => {
-    guard = new TenantStoreGuard();
+    guard = new TenantStoreGuard(new Reflector());
   });
 
   it('should allow request if no storeId header or parameter is present', () => {

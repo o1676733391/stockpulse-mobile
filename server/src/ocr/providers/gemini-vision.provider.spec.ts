@@ -98,24 +98,34 @@ describe('GeminiVisionProvider', () => {
   });
 
   it('should fall back to resilient parser if GEMINI_API_KEY is not configured', async () => {
-    const unconfiguredModule = await Test.createTestingModule({
-      providers: [
-        GeminiVisionProvider,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn(() => ''),
+    const originalApiKey = process.env.GEMINI_API_KEY;
+    const originalGcpCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+    try {
+      const unconfiguredModule = await Test.createTestingModule({
+        providers: [
+          GeminiVisionProvider,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn(() => ''),
+            },
           },
-        },
-      ],
-    }).compile();
+        ],
+      }).compile();
 
-    const fallbackProvider = unconfiguredModule.get<GeminiVisionProvider>(GeminiVisionProvider);
-    const mockBuffer = Buffer.from('mock-image');
-    const result = await fallbackProvider.processDocument(mockBuffer, 'image/jpeg');
+      const fallbackProvider = unconfiguredModule.get<GeminiVisionProvider>(GeminiVisionProvider);
+      const mockBuffer = Buffer.from('mock-image');
+      const result = await fallbackProvider.processDocument(mockBuffer, 'image/jpeg');
 
-    expect(result.providerId).toBe('gemini_vision');
-    expect(result.lineItems.length).toBeGreaterThan(0);
-    expect(result.metadata.supplierName).toContain('Agent Fallback');
+      expect(result.providerId).toBe('gemini_vision');
+      expect(result.lineItems.length).toBeGreaterThan(0);
+      expect(result.metadata.supplierName).toContain('Agent Fallback');
+    } finally {
+      if (originalApiKey) process.env.GEMINI_API_KEY = originalApiKey;
+      if (originalGcpCreds) process.env.GOOGLE_APPLICATION_CREDENTIALS = originalGcpCreds;
+    }
   });
 });

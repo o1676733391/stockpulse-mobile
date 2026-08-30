@@ -82,12 +82,24 @@ describe('OcrRepository', () => {
         .mockReturnValueOnce(updateChain)
         .mockResolvedValueOnce({ error: null });
 
+      const recipeSelectChain = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        is: jest.fn().mockResolvedValueOnce({
+          data: [
+            { id: 'rec-01', name: 'Burger', pos_item_name: 'BURGER' }
+          ],
+          error: null,
+        }),
+      };
+
       const lineInsertChain = {
         insert: jest.fn().mockResolvedValueOnce({ error: null }),
       };
 
       mockSupabaseClient.from
         .mockReturnValueOnce(updateChain as any)
+        .mockReturnValueOnce(recipeSelectChain as any)
         .mockReturnValueOnce(lineInsertChain as any);
 
       const extraction: RawOcrExtractionResult = {

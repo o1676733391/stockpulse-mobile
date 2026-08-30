@@ -136,7 +136,7 @@ describe('OCR API (e2e)', () => {
 
   it('POST /api/v1/ocr/documents/:id/reject - should reject OCR document', async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/v1/ocr/documents/doc-01/reject')
+      .post('/api/v1/ocr/documents/doc-02/reject')
       .set('Authorization', 'Bearer mock-jwt')
       .set('X-Store-Id', TEST_STORE_ID)
       .send({

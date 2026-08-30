@@ -1,11 +1,12 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { TenantStoreGuard } from '../../common/guards/tenant-store.guard';
 
 describe('Security - Tenant Store & Cross-Organization Isolation Tests', () => {
   let guard: TenantStoreGuard;
 
   beforeEach(() => {
-    guard = new TenantStoreGuard();
+    guard = new TenantStoreGuard(new Reflector());
   });
 
   const createMockContext = (

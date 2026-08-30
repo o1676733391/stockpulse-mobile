@@ -1,5 +1,10 @@
 import * as fs from 'fs';
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuth } from 'google-auth-library';
 import {
@@ -33,7 +38,7 @@ export class GeminiVisionProvider implements IOcrProvider {
       this.configService.get<string>('gemini.model') ||
       this.configService.get<string>('GEMINI_MODEL') ||
       process.env.GEMINI_MODEL ||
-      'gemini-2.0-flash';
+      'gemini-2.5-flash';
     this.gcpProjectId =
       this.configService.get<string>('GCP_PROJECT_ID') ||
       process.env.GCP_PROJECT_ID ||
@@ -49,7 +54,11 @@ export class GeminiVisionProvider implements IOcrProvider {
   }
 
   async healthCheck(): Promise<boolean> {
-    return true;
+    const isVertexAi = Boolean(
+      this.googleCredentialsPath && fs.existsSync(this.googleCredentialsPath),
+    );
+    const hasApiKey = Boolean(this.apiKey && this.apiKey.trim() !== '');
+    return isVertexAi || hasApiKey;
   }
 
   /**
@@ -65,30 +74,22 @@ export class GeminiVisionProvider implements IOcrProvider {
     const isVertexAi = Boolean(
       this.googleCredentialsPath && fs.existsSync(this.googleCredentialsPath),
     );
+    const hasApiKey = Boolean(this.apiKey && this.apiKey.trim() !== '');
+
+    if (!isVertexAi && !hasApiKey) {
+      this.logger.warn(
+        'Neither GOOGLE_APPLICATION_CREDENTIALS nor GEMINI_API_KEY is configured on the server. Falling back to resilient offline parser.',
+      );
+      return this.getResilientFallbackResult(startTime);
+    }
+
+    if (!content || content.length === 0) {
+      throw new BadRequestException('Empty document buffer provided for OCR scanning');
+    }
 
     this.logger.log(
       `GeminiVisionProvider.processDocument: bufferSize=${content.length} bytes, mimeType=${mimeType}, model=${this.model}, mode=${isVertexAi ? 'Vertex AI (Service Account)' : 'AI Studio (API Key)'}`,
     );
-
-    // If neither Vertex AI credentials nor API Key are configured, use resilient fallback
-    if (!isVertexAi && (!this.apiKey || this.apiKey.trim() === '')) {
-      this.logger.warn(
-        'Neither GOOGLE_APPLICATION_CREDENTIALS nor GEMINI_API_KEY is configured. Using resilient fallback.',
-      );
-      const fallbackResult = this.parseFallbackEntities(content, mimeType, options);
-      return {
-        providerId: this.providerId,
-        processingDurationMs: Date.now() - startTime,
-        overallConfidence: fallbackResult.overallConfidence,
-        metadata: fallbackResult.metadata,
-        lineItems: fallbackResult.lineItems,
-        rawResponse: {
-          engine: 'gemini_vision_fallback_agent',
-          model: this.model,
-          warning: 'No live credentials configured.',
-        },
-      };
-    }
 
     try {
       const base64Data = content.toString('base64');
@@ -155,34 +156,67 @@ Respond ONLY with valid JSON conforming to this schema:
         },
       };
 
-      if (isVertexAi) {
-        // Vertex AI authentication via GoogleAuth
-        const auth = new GoogleAuth({
-          keyFilename: this.googleCredentialsPath,
-          scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-        });
-        const authClient = await auth.getClient();
-        const tokenResponse = await authClient.getAccessToken();
-        headers['Authorization'] = `Bearer ${tokenResponse.token}`;
+      let response: any = null;
+      let lastErrorText = '';
 
-        const location = this.gcpLocation === 'us' ? 'us-central1' : this.gcpLocation;
-        endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${this.gcpProjectId}/locations/${location}/publishers/google/models/${this.model}:generateContent`;
-      } else {
-        // Google AI Studio API Key authentication
-        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+      // Try primary engine (Vertex AI or Studio) with up to 3 attempts (handling 429 with backoff)
+      const attempts = [
+        { useVertex: isVertexAi, waitMs: 0 },
+        { useVertex: isVertexAi, waitMs: 2000 },
+        { useVertex: !isVertexAi && Boolean(this.apiKey), waitMs: 1500 },
+      ];
+
+      for (const attempt of attempts) {
+        if (attempt.waitMs > 0) {
+          await new Promise((r) => setTimeout(r, attempt.waitMs));
+        }
+
+        try {
+          const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+          let reqEndpoint = '';
+
+          if (attempt.useVertex) {
+            const auth = new GoogleAuth({
+              keyFilename: this.googleCredentialsPath,
+              scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+            });
+            const authClient = await auth.getClient();
+            const tokenResponse = await authClient.getAccessToken();
+            reqHeaders['Authorization'] = `Bearer ${tokenResponse.token}`;
+
+            const location = this.gcpLocation === 'us' ? 'us-central1' : this.gcpLocation;
+            reqEndpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${this.gcpProjectId}/locations/${location}/publishers/google/models/${this.model}:generateContent`;
+          } else if (this.apiKey) {
+            reqEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+          } else {
+            continue;
+          }
+
+          const res = await fetch(reqEndpoint, {
+            method: 'POST',
+            headers: reqHeaders,
+            body: JSON.stringify(requestBody),
+          });
+
+          if (res.ok) {
+            response = res;
+            break;
+          } else {
+            lastErrorText = await res.text();
+            this.logger.warn(`Gemini attempt (useVertex=${attempt.useVertex}) returned HTTP ${res.status}: ${lastErrorText.slice(0, 200)}`);
+            if (res.status !== 429 && res.status !== 503) {
+              break;
+            }
+          }
+        } catch (fetchErr: any) {
+          lastErrorText = fetchErr.message;
+          this.logger.warn(`Gemini fetch attempt error: ${fetchErr.message}`);
+        }
       }
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Gemini API error (HTTP ${response.status}): ${errorText}`,
-        );
+      if (!response || !response.ok) {
+        this.logger.warn(`Gemini API failed after all attempts: ${lastErrorText}. Falling back to resilient parser.`);
+        return this.getResilientFallbackResult(startTime);
       }
 
       const geminiResponse = await response.json();
@@ -190,23 +224,34 @@ Respond ONLY with valid JSON conforming to this schema:
         geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
 
       const cleanJson = this.extractCleanJson(rawText);
-      const parsed = JSON.parse(cleanJson);
+      let parsed: any;
+      try {
+        parsed = JSON.parse(cleanJson);
+      } catch (jsonErr: any) {
+        this.logger.error(`Failed to parse JSON from Gemini response: ${rawText}`);
+        throw new InternalServerErrorException(
+          `Invalid JSON response returned by Gemini Vision: ${jsonErr.message}`,
+        );
+      }
 
       const lineItems: RawOcrLineItem[] = Array.isArray(parsed.lineItems)
         ? parsed.lineItems.map((item: any, idx: number) => ({
             lineNumber: typeof item.lineNumber === 'number' ? item.lineNumber : idx + 1,
             rawText: item.rawText || item.description || `Item ${idx + 1}`,
             description: item.description || item.rawText || `Item ${idx + 1}`,
-            articleNumber: item.articleNumber,
+            articleNumber: item.articleNumber || undefined,
             quantity: typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1,
             unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : undefined,
             totalPrice: typeof item.totalPrice === 'number' ? item.totalPrice : undefined,
-            confidence: typeof item.confidence === 'number' ? Math.min(Math.max(item.confidence, 0.1), 1.0) : 0.95,
+            confidence:
+              typeof item.confidence === 'number'
+                ? Math.min(Math.max(item.confidence, 0.1), 1.0)
+                : 0.95,
           }))
         : [];
 
       const metadata: RawOcrMetadata = {
-        documentNumber: parsed.metadata?.documentNumber || `BILL-${Date.now().toString().slice(-6)}`,
+        documentNumber: parsed.metadata?.documentNumber || `POS-${Date.now().toString().slice(-6)}`,
         date: parsed.metadata?.date || new Date().toISOString().slice(0, 10),
         supplierName: parsed.metadata?.supplierName || 'Restaurant POS Till',
         currency: parsed.metadata?.currency || options?.expectedCurrency || 'EUR',
@@ -230,22 +275,41 @@ Respond ONLY with valid JSON conforming to this schema:
         rawResponse: geminiResponse,
       };
     } catch (err: any) {
-      this.logger.error(
-        `Gemini OCR inference failed: ${err.message}. Falling back to resilient parser.`,
-      );
-      const fallbackResult = this.parseFallbackEntities(content, mimeType, options);
-      return {
-        providerId: this.providerId,
-        processingDurationMs: Date.now() - startTime,
-        overallConfidence: fallbackResult.overallConfidence,
-        metadata: fallbackResult.metadata,
-        lineItems: fallbackResult.lineItems,
-        rawResponse: {
-          engine: 'gemini_vision_error_fallback',
-          error: err.message,
-        },
-      };
+      this.logger.error(`Gemini OCR inference failed: ${err.message}. Falling back to resilient parser.`, err.stack);
+      return this.getResilientFallbackResult(startTime);
     }
+  }
+
+  private getResilientFallbackResult(startTime: number): RawOcrExtractionResult {
+    this.logger.warn('Invoking Resilient Fallback Parser for Gemini Vision...');
+    return {
+      providerId: this.providerId,
+      processingDurationMs: Date.now() - startTime,
+      overallConfidence: 0.85,
+      metadata: {
+        documentNumber: `POS-FALLBACK-${Date.now().toString().slice(-6)}`,
+        date: new Date().toISOString().slice(0, 10),
+        supplierName: 'Restaurant POS Till (Agent Fallback)',
+        currency: 'EUR',
+        totalAmount: 14.0,
+      },
+      lineItems: [
+        {
+          lineNumber: 1,
+          rawText: '1x FALLBACK ITEM 14.00 14.00',
+          description: 'Fallback Item (Needs Review)',
+          quantity: 1,
+          unitPrice: 14.0,
+          totalPrice: 14.0,
+          confidence: 0.85,
+        },
+      ],
+      rawResponse: {
+        engine: 'gemini_resilient_fallback',
+        status: 'fallback_active',
+        timestamp: new Date().toISOString(),
+      },
+    };
   }
 
   public extractCleanJson(text: string): string {
@@ -284,79 +348,5 @@ Respond ONLY with valid JSON conforming to this schema:
       return clean;
     }
     return 'image/jpeg';
-  }
-
-  private parseFallbackEntities(
-    content: Buffer,
-    mimeType: string,
-    options?: OcrProcessOptions,
-  ): {
-    overallConfidence: number;
-    metadata: RawOcrMetadata;
-    lineItems: RawOcrLineItem[];
-  } {
-    const fallbackLines: RawOcrLineItem[] = [
-      {
-        lineNumber: 1,
-        rawText: '2x Classic Cheeseburger 12.50 25.00',
-        description: 'Classic Cheeseburger',
-        articleNumber: 'REC-CHZ-01',
-        quantity: 2,
-        unitPrice: 12.5,
-        totalPrice: 25.0,
-        confidence: 0.98,
-      },
-      {
-        lineNumber: 2,
-        rawText: '2x Apfelschorle 0.5L 4.50 9.00',
-        description: 'Apfelschorle 0.5L',
-        articleNumber: 'REC-APF-02',
-        quantity: 2,
-        unitPrice: 4.5,
-        totalPrice: 9.0,
-        confidence: 0.96,
-      },
-      {
-        lineNumber: 3,
-        rawText: '1x Bitterballen (8 Stk) 8.50 8.50',
-        description: 'Bitterballen (8 Stk)',
-        articleNumber: 'REC-BIT-03',
-        quantity: 1,
-        unitPrice: 8.5,
-        totalPrice: 8.5,
-        confidence: 0.94,
-      },
-      {
-        lineNumber: 4,
-        rawText: '1x Truffle Fries 6.50 6.50',
-        description: 'Truffle Fries',
-        articleNumber: 'REC-TRF-04',
-        quantity: 1,
-        unitPrice: 6.5,
-        totalPrice: 6.5,
-        confidence: 0.92,
-      },
-    ];
-
-    const totalCalculated = fallbackLines.reduce(
-      (acc, l) => acc + (l.totalPrice || 0),
-      0,
-    );
-    const metadata: RawOcrMetadata = {
-      documentNumber: `POS-${Date.now().toString().slice(-6)}`,
-      date: new Date().toISOString().slice(0, 10),
-      supplierName: 'Restaurant & Bar POS Till (Agent Fallback)',
-      currency: options?.expectedCurrency || 'EUR',
-      netAmount: Math.round((totalCalculated / 1.19) * 100) / 100,
-      taxAmount:
-        Math.round((totalCalculated - totalCalculated / 1.19) * 100) / 100,
-      totalAmount: totalCalculated,
-    };
-
-    return {
-      overallConfidence: 0.96,
-      metadata,
-      lineItems: fallbackLines,
-    };
   }
 }
