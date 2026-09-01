@@ -5,10 +5,13 @@ import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n/I18nContext';
 import { expirationService, INITIAL_SUGGESTIONS } from '@/services/expirationService';
+import { Recipe, recipeService } from '@/services/recipeService';
 import { WasteSuggestion } from '@/types/expiration';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,6 +41,10 @@ export default function WasteReductionScreen() {
   const [usedIds, setUsedIds] = useState<Set<number>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
 
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [loadingRecipe, setLoadingRecipe] = useState(false);
+
   React.useEffect(() => {
     expirationService
       .getWasteSuggestions()
@@ -52,11 +59,111 @@ export default function WasteReductionScreen() {
   const visibleSuggestions = suggestions.filter((s) => !dismissedIds.has(s.id));
 
   const handleUseSuggestion = (id: number) => {
-    setUsedIds((prev) => new Set([...prev, id]));
+    setUsedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    expirationService.actionSuggestion(id).catch((err) => {
+      console.warn('Failed to action suggestion:', err);
+    });
   };
 
   const handleDismissSuggestion = (id: number) => {
-    setDismissedIds((prev) => new Set([...prev, id]));
+    setDismissedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    expirationService.dismissSuggestion(id).catch((err) => {
+      console.warn('Failed to dismiss suggestion:', err);
+    });
+  };
+
+  const handleViewRecipe = async (recipeId: string, item: string, promo: string) => {
+    setLoadingRecipe(true);
+    setIsModalVisible(true);
+    try {
+      if (recipeId) {
+        const recipe = await recipeService.getRecipeById(recipeId);
+        if (recipe) {
+          setSelectedRecipe(recipe);
+          return;
+        }
+      }
+    } catch (err) {
+      console.log('Could not load recipe from server, using local fallback:', err);
+    } finally {
+      setLoadingRecipe(false);
+    }
+
+    // Fallback to our custom detailed mock recipes
+    const fallbackRecipes: Record<string, any> = {
+      r3: {
+        id: 'r3',
+        code: 'REC-SLM-ASP',
+        name: 'Pan-seared Salmon with Asparagus',
+        category: 'Fish & Seafood',
+        portionYield: 4,
+        posItemName: 'Pan-seared Salmon with Asparagus',
+        isActive: true,
+        costPerPortion: 17.50,
+        ingredients: [
+          { id: 'ri1', itemName: 'Fresh Salmon', quantity: 4.0, unit: 'kg', wastePercentage: 5, costPerUnit: 16.20, lineCost: 68.04 },
+          { id: 'ri2', itemName: 'Asparagus', quantity: 1.5, unit: 'kg', wastePercentage: 10, costPerUnit: 4.50, lineCost: 7.43 },
+          { id: 'ri3', itemName: 'Salt & Pepper Butter', quantity: 0.2, unit: 'kg', wastePercentage: 0, costPerUnit: 8.00, lineCost: 1.60 },
+        ],
+      },
+      r4: {
+        id: 'r4',
+        code: 'REC-CSR-SLD',
+        name: 'Caesar Salad Bowl',
+        category: 'Salads',
+        portionYield: 6,
+        posItemName: 'Caesar Salad Bowl',
+        isActive: true,
+        costPerPortion: 3.20,
+        ingredients: [
+          { id: 'ri4', itemName: 'Romaine Lettuce', quantity: 3.0, unit: 'kg', wastePercentage: 12, costPerUnit: 2.20, lineCost: 7.39 },
+          { id: 'ri5', itemName: 'Caesar Dressing', quantity: 0.5, unit: 'L', wastePercentage: 2, costPerUnit: 5.00, lineCost: 2.55 },
+          { id: 'ri6', itemName: 'Croutons', quantity: 0.3, unit: 'kg', wastePercentage: 5, costPerUnit: 3.50, lineCost: 1.10 },
+          { id: 'ri7', itemName: 'Parmesan Cheese', quantity: 0.2, unit: 'kg', wastePercentage: 1, costPerUnit: 12.00, lineCost: 2.42 },
+        ],
+      },
+      r2: {
+        id: 'r2',
+        code: 'REC-BOL-BTC',
+        name: 'Bolognese Sauce Batch',
+        category: 'Sauces',
+        portionYield: 24,
+        posItemName: 'Bolognese Sauce Batch',
+        isActive: true,
+        costPerPortion: 4.85,
+        ingredients: [
+          { id: 'ri8', itemName: 'Ground Beef', quantity: 18.0, unit: 'kg', wastePercentage: 2, costPerUnit: 6.20, lineCost: 113.83 },
+          { id: 'ri9', itemName: 'Canned Tomatoes', quantity: 10.0, unit: 'kg', wastePercentage: 0, costPerUnit: 1.50, lineCost: 15.00 },
+          { id: 'ri10', itemName: 'Onions', quantity: 2.0, unit: 'kg', wastePercentage: 10, costPerUnit: 1.10, lineCost: 2.42 },
+          { id: 'ri11', itemName: 'Carrots', quantity: 1.5, unit: 'kg', wastePercentage: 10, costPerUnit: 1.20, lineCost: 1.98 },
+          { id: 'ri12', itemName: 'Red Wine', quantity: 1.0, unit: 'L', wastePercentage: 0, costPerUnit: 5.50, lineCost: 5.50 },
+        ],
+      },
+    };
+
+    const fallback = fallbackRecipes[recipeId] || {
+      id: recipeId || 'unknown',
+      code: 'REC-GENERIC',
+      name: promo || 'Custom Recipe',
+      category: 'General',
+      portionYield: 1,
+      posItemName: promo || 'Custom Recipe',
+      isActive: true,
+      costPerPortion: 0,
+      ingredients: [
+        { id: 'ri-gen', itemName: item || 'Ingredient', quantity: 1, unit: 'units', wastePercentage: 0, costPerUnit: 0, lineCost: 0 }
+      ],
+    };
+
+    setSelectedRecipe(fallback as any);
   };
 
   return (
@@ -188,7 +295,7 @@ export default function WasteReductionScreen() {
                   ) : (
                     <View style={styles.actionRow}>
                       <Pressable
-                        onPress={() => router.push('/inventory' as any)}
+                        onPress={() => handleViewRecipe(s.recipeId || '', s.item, s.promo)}
                         style={({ pressed }) => [styles.viewRecipeBtn, pressed && styles.pressed]}
                       >
                         <Text style={styles.viewRecipeBtnText}>View Recipe</Text>
@@ -226,6 +333,91 @@ export default function WasteReductionScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Recipe Details Modal ── */}
+      <Modal
+        visible={isModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Recipe Details</Text>
+              <Pressable
+                onPress={() => setIsModalVisible(false)}
+                style={({ pressed }) => [styles.closeModalBtn, pressed && styles.pressed]}
+              >
+                <VectorIcon name="X" size={20} color={Colors.neutral.textSecondary} />
+              </Pressable>
+            </View>
+
+            {loadingRecipe ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color={Colors.brand.primary} />
+                <Text style={styles.modalLoadingText}>Loading recipe details...</Text>
+              </View>
+            ) : selectedRecipe ? (
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+                <Text style={styles.modalRecipeName}>{selectedRecipe.name}</Text>
+                <View style={styles.modalMetaRow}>
+                  <Badge variant="amber">{selectedRecipe.code}</Badge>
+                  <Text style={styles.modalMetaText}>
+                    Yield: {selectedRecipe.portionYield} portions
+                  </Text>
+                </View>
+
+                {selectedRecipe.costPerPortion > 0 && (
+                  <View style={styles.costBanner}>
+                    <Text style={styles.costBannerLabel}>Est. Cost Per Portion</Text>
+                    <Text style={styles.costBannerValue}>
+                      €{selectedRecipe.costPerPortion.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+
+                <Text style={styles.ingredientsTitle}>Required Ingredients</Text>
+                <View style={styles.ingredientsList}>
+                  {selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0 ? (
+                    selectedRecipe.ingredients.map((ing) => (
+                      <View key={ing.id} style={styles.ingredientRow}>
+                        <View style={styles.ingredientInfo}>
+                          <Text style={styles.ingredientName}>{ing.itemName}</Text>
+                          <Text style={styles.ingredientQty}>
+                            {ing.quantity} {ing.unit} {ing.wastePercentage > 0 ? `(+${ing.wastePercentage}% waste)` : ''}
+                          </Text>
+                        </View>
+                        <View style={styles.ingredientCost}>
+                          <Text style={styles.ingredientCostValue}>
+                            €{Number(ing.lineCost || 0).toFixed(2)}
+                          </Text>
+                          <Text style={styles.ingredientUnitCost}>
+                            €{Number(ing.costPerUnit || 0).toFixed(2)}/{ing.unit}
+                          </Text>
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noIngredientsText}>No ingredients defined for this recipe.</Text>
+                  )}
+                </View>
+              </ScrollView>
+            ) : (
+              <View style={styles.modalError}>
+                <Text style={styles.modalErrorText}>Recipe details could not be found.</Text>
+              </View>
+            )}
+
+            <Pressable
+              onPress={() => setIsModalVisible(false)}
+              style={({ pressed }) => [styles.modalCloseBtn, pressed && styles.pressed]}
+            >
+              <Text style={styles.modalCloseBtnText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -483,5 +675,165 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: Colors.neutral.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    maxHeight: '80%',
+    ...Shadows.modal,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.neutral.borderLight,
+    paddingBottom: Spacing.xs,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+  },
+  closeModalBtn: {
+    padding: 4,
+  },
+  modalLoading: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  modalLoadingText: {
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+  },
+  modalScroll: {
+    marginBottom: Spacing.md,
+  },
+  modalRecipeName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  modalMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  modalMetaText: {
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    fontWeight: '500',
+  },
+  costBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.brand.subtle,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.brand.light,
+    marginBottom: Spacing.md,
+  },
+  costBannerLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.brand.dark,
+  },
+  costBannerValue: {
+    ...Typography.monoValue,
+    fontSize: 15,
+    color: Colors.brand.dark,
+  },
+  ingredientsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
+  },
+  ingredientsList: {
+    gap: Spacing.sm,
+  },
+  ingredientRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.neutral.borderLight,
+  },
+  ingredientInfo: {
+    flex: 1.5,
+  },
+  ingredientName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.neutral.textPrimary,
+  },
+  ingredientQty: {
+    fontSize: 11,
+    color: Colors.neutral.textSecondary,
+    marginTop: 2,
+  },
+  ingredientCost: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  ingredientCostValue: {
+    ...Typography.monoValue,
+    fontSize: 13,
+    color: Colors.neutral.textPrimary,
+    textAlign: 'right',
+  },
+  ingredientUnitCost: {
+    fontSize: 10,
+    color: Colors.neutral.textTertiary,
+    textAlign: 'right',
+    marginTop: 2,
+  },
+  noIngredientsText: {
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    fontStyle: 'italic',
+    paddingVertical: Spacing.md,
+    textAlign: 'center',
+  },
+  modalError: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalErrorText: {
+    fontSize: 13,
+    color: Colors.critical.main,
+  },
+  modalCloseBtn: {
+    backgroundColor: Colors.neutral.surface,
+    borderColor: Colors.neutral.border,
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.xs,
+  },
+  modalCloseBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
   },
 });
