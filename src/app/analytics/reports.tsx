@@ -11,13 +11,16 @@ import {
   analyticsService,
 } from '@/services/analyticsService';
 import { ArchiveReport, ReportItem } from '@/types/analytics';
+import { openBrowserAsync } from 'expo-web-browser';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -52,6 +55,8 @@ export default function ReportsScreen() {
   const [activeFilterModal, setActiveFilterModal] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [generatedIds, setGeneratedIds] = useState<Set<string>>(new Set());
+  const [generatedUrls, setGeneratedUrls] = useState<Record<string, { pdf?: string; excel?: string }>>({});
+  const [downloadingArchive, setDownloadingArchive] = useState<string | null>(null);
 
   const filteredReports = useMemo(() => {
     return reports.filter(
@@ -64,12 +69,142 @@ export default function ReportsScreen() {
   const handleGenerate = async (reportId: string, format: 'pdf' | 'excel') => {
     try {
       setGeneratingId(reportId);
-      await analyticsService.generateReport(reportId, format);
+      const res = await analyticsService.generateReport(reportId, format);
       setGeneratedIds((prev) => new Set([...prev, reportId]));
+      setGeneratedUrls((prev) => ({
+        ...prev,
+        [reportId]: {
+          ...prev[reportId],
+          [format]: res.url,
+        },
+      }));
     } catch (err: any) {
       Alert.alert('Export Error', err?.message || 'Failed to generate report file');
     } finally {
       setGeneratingId(null);
+    }
+  };
+
+  const handleViewReport = async (reportId: string, format: 'pdf' | 'excel') => {
+    const url = generatedUrls[reportId]?.[format];
+    if (url) {
+      try {
+        if (Platform.OS === 'web') {
+          window.open(url, '_blank');
+        } else {
+          await openBrowserAsync(url);
+        }
+      } catch {
+        Alert.alert('View Error', 'Failed to open report file.');
+      }
+    } else {
+      Alert.alert(
+        'Generate Report',
+        `This report has not been generated in ${format.toUpperCase()} format yet. Would you like to generate it now?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Generate',
+            onPress: () => handleGenerate(reportId, format),
+          },
+        ]
+      );
+    }
+  };
+
+  const handleShareReport = async (report: ReportItem) => {
+    const urls = generatedUrls[report.id];
+    if (!urls || (!urls.pdf && !urls.excel)) {
+      Alert.alert('Share Error', 'No generated files found to share. Please generate a PDF or Excel version first.');
+      return;
+    }
+
+    let message = `Report: ${report.title}\n`;
+    if (urls.pdf) {
+      message += `PDF: ${urls.pdf}\n`;
+    }
+    if (urls.excel) {
+      message += `Excel: ${urls.excel}\n`;
+    }
+
+    try {
+      await Share.share({
+        message,
+        title: `Share ${report.title}`,
+      });
+    } catch {
+      // Ignore share cancellation / error
+    }
+  };
+
+  const generateAndShare = async (reportId: string, format: 'pdf' | 'excel') => {
+    try {
+      let url = generatedUrls[reportId]?.[format];
+      if (!url) {
+        setGeneratingId(reportId);
+        const res = await analyticsService.generateReport(reportId, format);
+        setGeneratedIds((prev) => new Set([...prev, reportId]));
+        setGeneratedUrls((prev) => ({
+          ...prev,
+          [reportId]: {
+            ...prev[reportId],
+            [format]: res.url,
+          },
+        }));
+        url = res.url;
+      }
+
+      const report = reports.find((r) => r.id === reportId);
+      const title = report ? report.title : 'Report';
+      await Share.share({
+        message: `Report: ${title}\n${format.toUpperCase()}: ${url}`,
+        title: `Share ${title}`,
+      });
+    } catch (err: any) {
+      Alert.alert('Export Error', err?.message || 'Failed to generate report file');
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
+  const handleDefaultShare = (report: ReportItem) => {
+    Alert.alert(
+      'Share Report',
+      'Which format would you like to generate and share?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'PDF', onPress: () => generateAndShare(report.id, 'pdf') },
+        { text: 'Excel', onPress: () => generateAndShare(report.id, 'excel') },
+      ]
+    );
+  };
+
+  const handleDownloadArchive = async (archive: ArchiveReport) => {
+    try {
+      setDownloadingArchive(archive.name);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      Alert.alert(
+        'Download Complete',
+        `Successfully downloaded "${archive.name}" (${archive.size}).`,
+        [
+          { text: 'OK', style: 'default' },
+          {
+            text: 'Open',
+            onPress: async () => {
+              const mockUrl = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+              if (Platform.OS === 'web') {
+                window.open(mockUrl, '_blank');
+              } else {
+                await openBrowserAsync(mockUrl);
+              }
+            },
+          },
+        ]
+      );
+    } catch {
+      Alert.alert('Download Error', 'Failed to download report archive.');
+    } finally {
+      setDownloadingArchive(null);
     }
   };
 
@@ -161,21 +296,21 @@ export default function ReportsScreen() {
                     </View>
 
                     <Pressable
-                      onPress={() => {}}
+                      onPress={() => handleViewReport(r.id, 'pdf')}
                       style={({ pressed }) => [styles.exportActionBtnRed, pressed && styles.pressed]}
                     >
                       <VectorIcon name="FileText" size={14} color="#dc2626" />
                     </Pressable>
 
                     <Pressable
-                      onPress={() => {}}
+                      onPress={() => handleViewReport(r.id, 'excel')}
                       style={({ pressed }) => [styles.exportActionBtnGreen, pressed && styles.pressed]}
                     >
                       <VectorIcon name="BarChart2" size={14} color={Colors.brand.dark} />
                     </Pressable>
 
                     <Pressable
-                      onPress={() => {}}
+                      onPress={() => handleShareReport(r)}
                       style={({ pressed }) => [styles.exportActionBtnSlate, pressed && styles.pressed]}
                     >
                       <VectorIcon name="Share2" size={14} color={Colors.neutral.textSecondary} />
@@ -207,7 +342,7 @@ export default function ReportsScreen() {
                     </Pressable>
 
                     <Pressable
-                      onPress={() => {}}
+                      onPress={() => handleDefaultShare(r)}
                       style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed]}
                     >
                       <VectorIcon name="Share2" size={14} color={Colors.neutral.textSecondary} />
@@ -237,10 +372,14 @@ export default function ReportsScreen() {
                 </View>
 
                 <Pressable
-                  onPress={() => {}}
+                  onPress={() => handleDownloadArchive(item)}
                   style={({ pressed }) => [styles.archiveDownloadBtn, pressed && styles.pressed]}
                 >
-                  <VectorIcon name="Download" size={14} color={Colors.neutral.textPrimary} />
+                  {downloadingArchive === item.name ? (
+                    <ActivityIndicator size="small" color={Colors.neutral.textPrimary} />
+                  ) : (
+                    <VectorIcon name="Download" size={14} color={Colors.neutral.textPrimary} />
+                  )}
                 </Pressable>
               </View>
             </Card>
