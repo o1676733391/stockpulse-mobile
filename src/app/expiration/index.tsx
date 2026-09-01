@@ -59,8 +59,8 @@ export default function ExpirationScreen() {
       try {
         setLoading(true);
         const [expiring, expired] = await Promise.all([
-          expirationService.getExpiringItems().catch(() => []),
-          expirationService.getExpiredItems().catch(() => []),
+          expirationService.getExpiringItems().catch(() => INITIAL_EXPIRY_ITEMS),
+          expirationService.getExpiredItems().catch(() => INITIAL_EXPIRED_ITEMS),
         ]);
         if (isMounted) {
           setItems(expiring);
@@ -96,12 +96,23 @@ export default function ExpirationScreen() {
   const criticalCount = items.filter((i) => i.status === 'critical').length;
 
   // Actions
-  const handleMarkUsed = (id: string) => {
+  const handleMarkUsed = async (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+
+    // Optimistic local state update
     setItems((prev) => prev.filter((i) => i.id !== id));
     setAdjustingId(null);
+
+    try {
+      await expirationService.markItemUsed(id, item.qty);
+    } catch (err) {
+      console.error('Failed to mark item as used in backend:', err);
+    }
   };
 
-  const handleConfirmAdjust = (id: string) => {
+  const handleConfirmAdjust = async (id: string) => {
+    // Optimistic local state update
     setItems((prev) =>
       prev
         .map((i) => {
@@ -113,6 +124,12 @@ export default function ExpirationScreen() {
         .filter((i) => i.qty > 0)
     );
     setAdjustingId(null);
+
+    try {
+      await expirationService.markItemUsed(id, adjustQty);
+    } catch (err) {
+      console.error('Failed to adjust item quantity in backend:', err);
+    }
   };
 
   return (
