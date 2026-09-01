@@ -37,6 +37,7 @@ export default function ExpirationItemDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [adjustQty, setAdjustQty] = useState(0);
   const [markedUsed, setMarkedUsed] = useState(false);
+  const [marking, setMarking] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -80,6 +81,19 @@ export default function ExpirationItemDetailScreen() {
     if (!item || item.suggestionId === undefined || item.suggestionId < 0) return null;
     return INITIAL_SUGGESTIONS.find((s) => s.id === item.suggestionId) ?? null;
   }, [item]);
+
+  const handleMarkUsed = async () => {
+    if (!item) return;
+    try {
+      setMarking(true);
+      await expirationService.markItemUsed(item.id, adjustQty);
+    } catch (err) {
+      console.warn('Error marking item as used:', err);
+    } finally {
+      setMarking(false);
+      setMarkedUsed(true);
+    }
+  };
 
   if (loading || !item) {
     return (
@@ -293,12 +307,17 @@ export default function ExpirationItemDetailScreen() {
         ]}
       >
         <Pressable
-          onPress={() => setMarkedUsed(true)}
-          style={({ pressed }) => [styles.primaryMarkBtn, pressed && styles.pressed]}
+          onPress={handleMarkUsed}
+          disabled={marking}
+          style={({ pressed }) => [styles.primaryMarkBtn, (pressed || marking) && styles.pressed]}
         >
-          <Text style={styles.primaryMarkBtnText}>
-            Mark {adjustQty.toFixed(1)} {item.unit} as Used
-          </Text>
+          {marking ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Text style={styles.primaryMarkBtnText}>
+              Mark {adjustQty.toFixed(1)} {item.unit} as Used
+            </Text>
+          )}
         </Pressable>
 
         {suggestion && (
