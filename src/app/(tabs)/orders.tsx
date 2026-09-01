@@ -34,13 +34,13 @@ export default function OrdersScreen() {
     OrderStatus,
     { label: string; variant: BadgeVariant; stepIdx: number }
   > = {
-    draft:     { label: t('orders.status.draft'),     variant: 'gray',  stepIdx: 0 },
-    submitted: { label: 'Submitted',                  variant: 'blue',  stepIdx: 1 },
-    approved:  { label: 'Approved',                   variant: 'blue',  stepIdx: 1 },
-    sent:      { label: t('orders.status.sent'),      variant: 'blue',  stepIdx: 1 },
-    confirmed: { label: t('orders.status.confirmed'), variant: 'amber', stepIdx: 2 },
-    received: { label: t('orders.status.received'),  variant: 'green', stepIdx: 3 },
-    cancelled: { label: 'Cancelled',                  variant: 'red',   stepIdx: 0 },
+    draft:     { label: t('orders.status.draft') || t('orders.statuses.draft') || 'Draft', variant: 'gray',  stepIdx: 0 },
+    submitted: { label: t('orders.statuses.submitted') || 'Submitted',                  variant: 'blue',  stepIdx: 1 },
+    approved:  { label: t('orders.statuses.approved') || 'Approved',                   variant: 'blue',  stepIdx: 1 },
+    sent:      { label: t('orders.status.sent') || 'Sent',                              variant: 'blue',  stepIdx: 1 },
+    confirmed: { label: t('orders.status.confirmed') || 'Confirmed',                    variant: 'amber', stepIdx: 2 },
+    received:  { label: t('orders.status.received') || t('orders.statuses.received') || 'Received', variant: 'green', stepIdx: 3 },
+    cancelled: { label: t('orders.statuses.cancelled') || 'Cancelled',                  variant: 'red',   stepIdx: 0 },
   };
 
   const [tab, setTab] = useState<'active' | 'history'>('active');
@@ -94,10 +94,13 @@ export default function OrdersScreen() {
     [orders]
   );
 
-  const awaitingDeliveryCount = useMemo(
-    () => orders.filter((p) => p.status === 'sent' || p.status === 'confirmed').length,
-    [orders]
-  );
+  const thirdStatValue = useMemo(() => {
+    if (tab === 'active') {
+      return orders.filter((p) => p.status === 'sent' || p.status === 'confirmed').length;
+    } else {
+      return orders.filter((p) => p.status === 'cancelled').length;
+    }
+  }, [orders, tab]);
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
@@ -147,7 +150,7 @@ export default function OrdersScreen() {
               tab === 'history' && styles.tabButtonTextActive,
             ]}
           >
-            {t('analytics.title')}
+            {t('common.history') || 'History'}
           </Text>
         </Pressable>
       </View>
@@ -175,20 +178,28 @@ export default function OrdersScreen() {
         {/* 3-Stat Metric Grid */}
         <View style={styles.metricsGrid}>
           <Card style={styles.metricCard}>
-            <Text style={styles.metricNum}>{loading ? '--' : activeOrders.length}</Text>
-            <Text style={styles.metricLabel}>Active Orders</Text>
+            <Text style={styles.metricNum}>
+              {loading ? '--' : tab === 'active' ? activeOrders.length : historyOrders.length}
+            </Text>
+            <Text style={styles.metricLabel}>
+              {tab === 'active' ? 'Active Orders' : 'Past Orders'}
+            </Text>
           </Card>
           <Card style={styles.metricCard}>
             <Text style={[styles.metricNum, { color: Colors.brand.dark }]}>
               {loading ? '--' : formatCurrency(totalActiveValue)}
             </Text>
-            <Text style={styles.metricLabel}>Total Value</Text>
+            <Text style={styles.metricLabel}>
+              {tab === 'active' ? 'Total Value' : 'Total Spent'}
+            </Text>
           </Card>
           <Card style={styles.metricCard}>
-            <Text style={[styles.metricNum, { color: Colors.warning.dark }]}>
-              {loading ? '--' : awaitingDeliveryCount}
+            <Text style={[styles.metricNum, { color: tab === 'active' ? Colors.warning.dark : Colors.critical.main }]}>
+              {loading ? '--' : thirdStatValue}
             </Text>
-            <Text style={styles.metricLabel}>Awaiting</Text>
+            <Text style={styles.metricLabel}>
+              {tab === 'active' ? 'Awaiting' : 'Cancelled'}
+            </Text>
           </Card>
         </View>
 
@@ -289,24 +300,28 @@ export default function OrdersScreen() {
                 </View>
 
                 <View style={styles.timelineLabelsRow}>
-                  {TIMELINE_STEPS.map((step, i) => (
-                    <Text
-                      key={step}
-                      style={[
-                        styles.timelineStepLabel,
-                        stepIdx === i && styles.timelineStepLabelActive,
-                      ]}
-                    >
-                      {step}
-                    </Text>
-                  ))}
+                  {TIMELINE_STEPS.map((step, i) => {
+                    const stepKey = step.toLowerCase();
+                    const translatedLabel = t(`orders.status.${stepKey}`) || step;
+                    return (
+                      <Text
+                        key={step}
+                        style={[
+                          styles.timelineStepLabel,
+                          stepIdx === i && styles.timelineStepLabelActive,
+                        ]}
+                      >
+                        {translatedLabel}
+                      </Text>
+                    );
+                  })}
                 </View>
               </View>
 
               {/* Bottom Items & Total Row */}
               <View style={styles.orderBottomRow}>
                 <Text style={styles.itemCountText}>{po.items.length} items</Text>
-                <Text style={styles.orderTotalText}>€{po.total.toFixed(2)}</Text>
+                <Text style={styles.orderTotalText}>{formatCurrency(po.total)}</Text>
               </View>
             </Card>
           );
