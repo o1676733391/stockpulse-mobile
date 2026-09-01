@@ -18,11 +18,19 @@ export class StoresService {
     return this.storesRepository.findByOrganization(organizationId);
   }
 
+  async findAll(): Promise<StoreResponseDto[]> {
+    return this.storesRepository.findAll();
+  }
+
   async create(dto: CreateStoreDto): Promise<StoreResponseDto> {
     return this.storesRepository.create(dto);
   }
 
   async update(id: string, dto: UpdateStoreDto): Promise<StoreResponseDto> {
     return this.storesRepository.update(id, dto);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.storesRepository.delete(id);
   }
 }

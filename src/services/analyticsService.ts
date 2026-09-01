@@ -167,7 +167,7 @@ export class RealAnalyticsService implements IAnalyticsService {
       return await apiClient.get<InventoryHealthAnalytics>('/analytics/health');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/health', err);
-      return { ...INITIAL_HEALTH_DATA };
+      throw err;
     }
   }
 
@@ -176,7 +176,7 @@ export class RealAnalyticsService implements IAnalyticsService {
       return await apiClient.get<StockValuationAnalytics>('/analytics/valuation');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/valuation', err);
-      return { ...INITIAL_VALUATION_DATA };
+      throw err;
     }
   }
 
@@ -185,32 +185,65 @@ export class RealAnalyticsService implements IAnalyticsService {
       return await apiClient.get<VarianceAnalytics>('/analytics/variance');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/variance', err);
-      return { ...INITIAL_VARIANCE_DATA };
+      throw err;
     }
   }
 
   async getWasteAnalytics(): Promise<WasteAnalytics> {
-    return { ...INITIAL_WASTE_DATA };
+    try {
+      return await apiClient.get<WasteAnalytics>('/analytics/waste');
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/analytics/waste', err);
+      throw err;
+    }
   }
 
   async getPurchaseAnalytics(): Promise<PurchaseAnalytics> {
-    return { ...INITIAL_PURCHASE_ANALYTICS };
+    try {
+      return await apiClient.get<PurchaseAnalytics>('/analytics/purchases');
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/analytics/purchases', err);
+      throw err;
+    }
   }
 
   async getSupplierPerformance(): Promise<SupplierPerformance[]> {
-    return [...INITIAL_SUPPLIER_PERF];
+    try {
+      const res = await apiClient.get<any>('/suppliers/performance');
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/suppliers/performance', err);
+      throw err;
+    }
   }
 
   async getReports(): Promise<ReportItem[]> {
-    return [...INITIAL_REPORTS];
+    try {
+      const res = await apiClient.get<any>('/reports');
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/reports', err);
+      throw err;
+    }
   }
 
   async getArchiveReports(): Promise<ArchiveReport[]> {
-    return [...INITIAL_ARCHIVES];
+    try {
+      const res = await apiClient.get<any>('/reports/archive');
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+      logDebugFallback('AnalyticsService', '/reports/archive', err);
+      throw err;
+    }
   }
 
   async generateReport(reportId: string, format: 'pdf' | 'excel'): Promise<{ success: boolean; url: string }> {
-    return { success: true, url: `https://example.com/reports/${reportId}.${format}` };
+    try {
+      return await apiClient.post<{ success: boolean; url: string }>(`/reports/${reportId}/generate`, { format });
+    } catch (err) {
+      logDebugFallback('AnalyticsService', `/reports/${reportId}/generate`, err);
+      throw err;
+    }
   }
 }
 

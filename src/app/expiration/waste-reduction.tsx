@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { INITIAL_SUGGESTIONS } from '@/services/expirationService';
 import { WasteSuggestion } from '@/types/expiration';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -25,6 +26,7 @@ function daysLabel(days: number) {
 export default function WasteReductionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const { suggestionId } = useLocalSearchParams<{ suggestionId?: string }>();
 
   const highlightId = suggestionId !== undefined ? parseInt(suggestionId, 10) : undefined;
@@ -47,7 +49,7 @@ export default function WasteReductionScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Waste Reduction" showBack />
+      <TopBar title={t('expiration.wasteReductionTitle')} showBack />
 
       {/* ── Header Explainer Banner ── */}
       <View style={styles.headerBanner}>

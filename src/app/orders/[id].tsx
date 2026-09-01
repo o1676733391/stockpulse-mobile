@@ -4,6 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { BadgeVariant, Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_PURCHASE_ORDERS,
   INITIAL_SUPPLIERS,
@@ -13,6 +14,7 @@ import { OrderStatus, PurchaseOrder } from '@/types/procurement';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -28,9 +30,12 @@ const STATUS_CONFIG: Record<
   { label: string; variant: BadgeVariant; stepIdx: number }
 > = {
   draft:     { label: 'Draft',     variant: 'gray',  stepIdx: 0 },
+  submitted: { label: 'Submitted', variant: 'blue',  stepIdx: 1 },
+  approved:  { label: 'Approved',  variant: 'blue',  stepIdx: 1 },
   sent:      { label: 'Sent',      variant: 'blue',  stepIdx: 1 },
   confirmed: { label: 'Confirmed', variant: 'amber', stepIdx: 2 },
   received:  { label: 'Received',  variant: 'green', stepIdx: 3 },
+  cancelled: { label: 'Cancelled', variant: 'red',   stepIdx: 0 },
 };
 
 const STATUS_STEPS: OrderStatus[] = ['draft', 'sent', 'confirmed', 'received'];
@@ -39,6 +44,7 @@ const TIMELINE_STEPS = ['Draft', 'Sent', 'Confirmed', 'Received'] as const;
 export default function PurchaseOrderDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [po, setPo] = useState<PurchaseOrder>(() => {
@@ -64,29 +70,44 @@ export default function PurchaseOrderDetailScreen() {
     'Fresh Salmon': '16 Mar 2026',
   });
   const [stockUpdated, setStockUpdated] = useState(false);
+  const [isMutating, setIsMutating] = useState(false);
 
   const { label, variant, stepIdx } = STATUS_CONFIG[po.status];
   const subtotal = po.total / 1.19;
   const vat = po.total - subtotal;
 
   const advanceStatus = async () => {
-    if (po.status === 'draft') {
-      const updated = await procurementService.advanceOrderStatus(po.id, 'sent');
-      setPo(updated);
-    } else if (po.status === 'sent') {
-      const updated = await procurementService.advanceOrderStatus(po.id, 'confirmed');
-      setPo(updated);
-    } else if (po.status === 'confirmed') {
-      setReceiveStep(0);
-      setShowReceiveModal(true);
+    try {
+      setIsMutating(true);
+      if (po.status === 'draft') {
+        const updated = await procurementService.advanceOrderStatus(po.id, 'sent');
+        setPo(updated);
+      } else if (po.status === 'sent') {
+        const updated = await procurementService.advanceOrderStatus(po.id, 'confirmed');
+        setPo(updated);
+      } else if (po.status === 'confirmed') {
+        setReceiveStep(0);
+        setShowReceiveModal(true);
+      }
+    } catch (err: any) {
+      Alert.alert('Status Error', err?.message || 'Failed to update order status');
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleConfirmGoodsReceipt = async () => {
-    await procurementService.receiveGoods(po.id, bbdEntries);
-    setPo((prev) => ({ ...prev, status: 'received' }));
-    setShowReceiveModal(false);
-    setStockUpdated(true);
+    try {
+      setIsMutating(true);
+      await procurementService.receiveGoods(po.id, bbdEntries);
+      setPo((prev) => ({ ...prev, status: 'received' }));
+      setShowReceiveModal(false);
+      setStockUpdated(true);
+    } catch (err: any) {
+      Alert.alert('Intake Error', err?.message || 'Failed to process goods intake');
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   // Stock Updated Success View
@@ -114,7 +135,7 @@ export default function PurchaseOrderDetailScreen() {
 
         {/* Received Items Summary Box */}
         <View style={styles.receivedSummaryCard}>
-          {po.items.map((item, i) => (
+          {(po.items || []).map((item, i) => (
             <View key={i} style={styles.receivedItemRow}>
               <View>
                 <Text style={styles.receivedItemName}>{item.itemName}</Text>
@@ -135,14 +156,14 @@ export default function PurchaseOrderDetailScreen() {
           onPress={() => router.push('/(tabs)/inventory' as any)}
           style={({ pressed }) => [styles.viewInventoryBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.viewInventoryBtnText}>View Inventory</Text>
+          <Text style={styles.viewInventoryBtnText}>{t('navigation.inventory')}</Text>
         </Pressable>
 
         <Pressable
           onPress={() => router.replace('/(tabs)/orders' as any)}
           style={({ pressed }) => [styles.backOrdersBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.backOrdersBtnText}>Back to Purchase Orders</Text>
+          <Text style={styles.backOrdersBtnText}>{t('orders.title')}</Text>
         </Pressable>
       </View>
     );
@@ -261,7 +282,7 @@ export default function PurchaseOrderDetailScreen() {
         <Card style={styles.itemsCard}>
           <SectionHeader title="Order Items" />
           <View style={styles.linesList}>
-            {po.items.map((item, i) => (
+            {(po.items || []).map((item, i) => (
               <View key={i} style={styles.lineRow}>
                 <View style={styles.lineInfo}>
                   <Text style={styles.lineItemName}>{item.itemName}</Text>
@@ -398,7 +419,7 @@ export default function PurchaseOrderDetailScreen() {
             {/* Step 0: Confirm Quantities */}
             {receiveStep === 0 && (
               <ScrollView style={styles.modalScroll}>
-                {po.items.map((item, i) => (
+                {(po.items || []).map((item, i) => (
                   <View key={i} style={styles.modalItemRow}>
                     <View>
                       <Text style={styles.modalItemName}>{item.itemName}</Text>
@@ -420,7 +441,7 @@ export default function PurchaseOrderDetailScreen() {
             {/* Step 1: Enter BBD Dates */}
             {receiveStep === 1 && (
               <ScrollView style={styles.modalScroll}>
-                {po.items.map((item, i) => (
+                {(po.items || []).map((item, i) => (
                   <View key={i} style={styles.bbdInputGroup}>
                     <Text style={styles.bbdInputLabel}>
                       {item.itemName} — Best Before Date
@@ -451,7 +472,7 @@ export default function PurchaseOrderDetailScreen() {
                   </Text>
                 </View>
 
-                {po.items.map((item, i) => (
+                {(po.items || []).map((item, i) => (
                   <View key={i} style={styles.modalItemRow}>
                     <View>
                       <Text style={styles.modalItemName}>{item.itemName}</Text>

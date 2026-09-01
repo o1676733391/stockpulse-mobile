@@ -76,6 +76,21 @@ export class NotificationsController {
     return this.notificationsService.getUnreadCount(storeId, userId);
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get an in-app notification by ID' })
+  @ApiParam({ name: 'id', description: 'Notification UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification details',
+    type: NotificationResponseDto,
+  })
+  async findById(
+    @Param('id') id: string,
+    @CurrentStore() storeId: string,
+  ): Promise<NotificationResponseDto> {
+    return this.notificationsService.findById(id, storeId);
+  }
+
   @Patch(':id/read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark an in-app notification as read' })
@@ -91,6 +106,18 @@ export class NotificationsController {
     @CurrentUser('id') userId: string,
   ): Promise<NotificationResponseDto> {
     return this.notificationsService.markAsRead(id, storeId, userId);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete or dismiss an in-app notification' })
+  @ApiParam({ name: 'id', description: 'Notification UUID' })
+  async deleteNotification(
+    @Param('id') id: string,
+    @CurrentStore() storeId: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<{ success: boolean }> {
+    return this.notificationsService.deleteNotification(id, storeId, userId);
   }
 
   @Post('read-all')

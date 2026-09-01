@@ -5,8 +5,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n/I18nContext';
-import { INITIAL_ABOUT } from '@/services/settingsService';
-import React, { useState } from 'react';
+import { settingsService, INITIAL_ABOUT } from '@/services/settingsService';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -30,8 +30,12 @@ const THIRD_PARTY_LICENSES = [
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
-  const [about] = useState(INITIAL_ABOUT);
+  const [about, setAbout] = useState(INITIAL_ABOUT);
   const [showLicenseModal, setShowLicenseModal] = useState(false);
+
+  useEffect(() => {
+    settingsService.getAboutInfo().then((res) => setAbout(res)).catch(() => {});
+  }, []);
 
   const handleContactSupport = () => {
     Alert.alert(

@@ -36,6 +36,10 @@
 | **expo-web-browser** | `~57.0.2` | In-app browser modal wrapper | npm / github.com/expo/expo | **MIT** | Verified | Verified | Preserve Expo copyright notice |
 | **react-native-web** | `~0.21.0` | React Native web bridge | npm / github.com/necolas/react-native-web | **MIT** | Verified | Verified | Preserve Nicolas Gallagher notice |
 | **react-native-worklets** | `0.10.1` | Thread worklet execution | npm / github.com/software-mansion/react-native-reanimated | **MIT** | Verified | Verified | Preserve Software Mansion notice |
+| **@supabase/supabase-js** | `^2.112.4` | Supabase Auth & DB client | npm / github.com/supabase/supabase-js | **MIT** | Verified | Verified | Preserve Supabase copyright notice |
+| **expo-secure-store** | `~57.0.1` | Native hardware keychain/keystore encryption | npm / github.com/expo/expo | **MIT** | Verified | Verified | Preserve Expo copyright notice |
+| **expo-camera** | `~57.0.0` | Native camera viewfinder & capture | npm / github.com/expo/expo | **MIT** | Verified | Verified | Preserve Expo copyright notice |
+| **expo-image-picker** | `~57.0.0` | Native photo library picker | npm / github.com/expo/expo | **MIT** | Verified | Verified | Preserve Expo copyright notice |
 | **typescript** (dev) | `~6.0.3` | Type system compiler | npm / github.com/microsoft/TypeScript | **Apache-2.0** | Verified | Verified | Dev dependency (not bundled) |
 | **@types/react** (dev) | `~19.2.2` | React type declarations | npm / github.com/DefinitelyTyped/DefinitelyTyped | **MIT** | Verified | Verified | Dev dependency (not bundled) |
 

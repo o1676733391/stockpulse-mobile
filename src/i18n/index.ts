@@ -142,9 +142,19 @@ class I18nManager {
       template = this.getNestedValue(CATALOGS[DEFAULT_LANGUAGE], key);
     }
 
-    // 4. Ultimate fallback: key itself
+    // 4. Ultimate fail-safe: Humanized text (never raw dotted code paths in production UI)
     if (!template) {
-      return key;
+      if (__DEV__) {
+        console.warn(`[i18n] Missing translation key in catalog: "${key}" (lang: ${this.currentLanguage})`);
+      }
+      const leaf = key.split('.').pop() || key;
+      // Convert camelCase or snake_case to Title Case (e.g. nameLabel -> Name Label -> Name)
+      const humanized = leaf
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/_/g, ' ')
+        .replace(/\b(Label|Text|Title|Desc|Placeholder|Button|Header)\b/gi, '')
+        .trim();
+      return humanized.charAt(0).toUpperCase() + humanized.slice(1);
     }
 
     // 5. Interpolation

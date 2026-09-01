@@ -1,9 +1,15 @@
+import { Button } from '@/components/ui/button';
 import { VectorIcon } from '@/components/ui/icons';
+import { NoStoreState } from '@/components/ui/no-store-state';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
+  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,49 +22,136 @@ export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
+  const { user } = useAuth();
+  const hasNoStore = !user?.storeId || user.storeId === 'unassigned' || user.storeId === '' || user.storeId === 'pending';
+  const [permission, requestPermission] = useCameraPermissions();
   const [flash, setFlash] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const cameraRef = useRef<any>(null);
   const isIOS = Platform.OS === 'ios';
 
-  const handleCapture = () => {
-    router.push('/scan/processing' as any);
+  const handleCapture = async () => {
+    if (isCapturing) return;
+
+    if (cameraRef.current) {
+      try {
+        setIsCapturing(true);
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.85,
+          skipProcessing: false,
+        });
+
+        if (photo?.uri) {
+          router.push({
+            pathname: '/scan/processing',
+            params: { imageUri: photo.uri },
+          } as any);
+          return;
+        }
+      } catch (err: any) {
+        Alert.alert('Camera Error', 'Failed to capture photo. Please try again.');
+        return;
+      } finally {
+        setIsCapturing(false);
+      }
+    }
   };
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.85,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedUri = result.assets[0].uri;
+        router.push({
+          pathname: '/scan/processing',
+          params: { imageUri: selectedUri },
+        } as any);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to select image from photo library.');
+    }
+  };
+
+  if (hasNoStore) {
+    return (
+      <View
+        style={[
+          styles.screen,
+          {
+            backgroundColor: Colors.neutral.background,
+            paddingHorizontal: Spacing.lg,
+            paddingTop: insets.top + Spacing.xl,
+          },
+        ]}
+      >
+        <NoStoreState />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
-      {/* ── Simulated Camera Viewfinder Area ── */}
-      <View style={styles.viewfinderContainer}>
-        {/* Document Target Frame */}
-        <View style={styles.frameWrapper}>
-          {/* 4 Corner Target Marks */}
-          <View style={[styles.corner, styles.cornerTL]} />
-          <View style={[styles.corner, styles.cornerTR]} />
-          <View style={[styles.corner, styles.cornerBL]} />
-          <View style={[styles.corner, styles.cornerBR]} />
+      {/* ── Camera Viewfinder or Simulated Overlay ── */}
+      {permission?.granted ? (
+        <>
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            enableTorch={flash}
+          />
+          <View style={styles.viewfinderContainer} pointerEvents="box-none">
+            {/* Document Target Frame */}
+            <View style={styles.frameWrapper}>
+              <View style={[styles.corner, styles.cornerTL]} />
+              <View style={[styles.corner, styles.cornerTR]} />
+              <View style={[styles.corner, styles.cornerBL]} />
+              <View style={[styles.corner, styles.cornerBR]} />
 
-          {/* Target Grid Lines */}
-          <View style={styles.gridContainer} pointerEvents="none">
-            <View style={[styles.gridH, { top: '33%' }]} />
-            <View style={[styles.gridH, { top: '66%' }]} />
-            <View style={[styles.gridV, { left: '33%' }]} />
-            <View style={[styles.gridV, { left: '66%' }]} />
+              <View style={styles.gridContainer} pointerEvents="none">
+                <View style={[styles.gridH, { top: '33%' }]} />
+                <View style={[styles.gridH, { top: '66%' }]} />
+                <View style={[styles.gridV, { left: '33%' }]} />
+                <View style={[styles.gridV, { left: '66%' }]} />
+              </View>
+            </View>
+
+            <Text style={styles.guidanceText}>{t('scan.instructions')}</Text>
           </View>
-
-          {/* Receipt Silhouette Lines */}
-          <View style={styles.receiptSilhouette} pointerEvents="none">
-            <View style={[styles.receiptLine, { width: '75%' }]} />
-            <View style={[styles.receiptLine, { width: '95%' }]} />
-            <View style={[styles.receiptLine, { width: '80%' }]} />
-            <View style={[styles.receiptLine, { width: '90%' }]} />
-            <View style={[styles.receiptLine, { width: '70%' }]} />
-            <View style={[styles.receiptLine, { width: '60%' }]} />
+        </>
+      ) : (
+        <View style={[styles.viewfinderContainer, styles.permissionFallback]}>
+          <View style={styles.permissionCard}>
+            <View style={styles.permissionIconCircle}>
+              <VectorIcon name="Camera" size={36} color={Colors.brand.primary} />
+            </View>
+            <Text style={styles.permissionHeading}>Camera Access Needed</Text>
+            <Text style={styles.permissionSub}>
+              StockPulse uses the camera to scan POS daily register receipts and parse line items using Gemini Vision.
+            </Text>
+            <Button
+              label="Enable Camera"
+              variant="primary"
+              size="md"
+              fullWidth
+              onPress={requestPermission}
+              style={{ marginBottom: Spacing.sm }}
+            />
+            <Button
+              label="Choose from Gallery"
+              variant="outline"
+              size="md"
+              fullWidth
+              onPress={handlePickImage}
+            />
           </View>
         </View>
-
-        {/* Viewfinder Guidance Text */}
-        <Text style={styles.guidanceText}>
-          {t('scan.instructions')}
-        </Text>
-      </View>
+      )}
 
       {/* ── Top Floating Header Bar ── */}
       <View
@@ -109,9 +202,9 @@ export default function ScanScreen() {
         ]}
       >
         <View style={styles.controlRow}>
-          {/* Gallery Button */}
+          {/* Gallery Picker Button */}
           <Pressable
-            onPress={handleCapture}
+            onPress={handlePickImage}
             style={({ pressed }) => [styles.sideControl, pressed && styles.pressed]}
           >
             <View style={styles.sideIconBox}>
@@ -123,9 +216,10 @@ export default function ScanScreen() {
           {/* Shutter Button */}
           <Pressable
             onPress={handleCapture}
+            disabled={isCapturing}
             style={({ pressed }) => [styles.shutterRing, pressed && styles.shutterPressed]}
           >
-            <View style={styles.shutterCore} />
+            <View style={[styles.shutterCore, isCapturing && { backgroundColor: Colors.brand.primary }]} />
           </Pressable>
 
           {/* AI OCR Badge */}
@@ -133,14 +227,12 @@ export default function ScanScreen() {
             <View style={styles.aiBadgeBox}>
               <Text style={styles.aiBadgeText}>AI</Text>
             </View>
-            <Text style={styles.sideControlLabel}>OCR</Text>
+            <Text style={styles.sideControlLabel}>Gemini</Text>
           </View>
         </View>
 
         {/* Tip Text */}
-        <Text style={styles.tipText}>
-          {t('scan.ocrSubtitle')}
-        </Text>
+        <Text style={styles.bottomTip}>{t('scan.tip')}</Text>
       </View>
     </View>
   );
@@ -149,93 +241,86 @@ export default function ScanScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#090d16',
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-    backgroundColor: 'rgba(9, 13, 22, 0.75)',
-    zIndex: 10,
-  },
-  cancelBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    minWidth: 60,
-  },
-  cancelText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  topTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  flashBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flashBtnActive: {
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#000000',
   },
   viewfinderContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: Spacing.xl,
   },
-  frameWrapper: {
-    width: 270,
-    height: 200,
-    position: 'relative',
+  permissionFallback: {
+    backgroundColor: '#0f172a',
+  },
+  permissionCard: {
+    backgroundColor: Colors.neutral.card,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
     alignItems: 'center',
+    width: '100%',
+    ...Shadows.elevated,
+  },
+  permissionIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.brand.light,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  permissionHeading: {
+    ...Typography.pageTitle,
+    fontSize: 20,
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+  },
+  permissionSub: {
+    ...Typography.body,
+    color: Colors.neutral.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: Spacing.lg,
+  },
+  frameWrapper: {
+    width: 280,
+    height: 380,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   corner: {
     position: 'absolute',
-    width: 28,
-    height: 28,
-    borderColor: Colors.brand.primary,
+    width: 32,
+    height: 32,
+    borderColor: '#10b981',
   },
   cornerTL: {
     top: 0,
     left: 0,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
+    borderTopWidth: 3.5,
+    borderLeftWidth: 3.5,
     borderTopLeftRadius: 6,
   },
   cornerTR: {
     top: 0,
     right: 0,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
+    borderTopWidth: 3.5,
+    borderRightWidth: 3.5,
     borderTopRightRadius: 6,
   },
   cornerBL: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
+    borderBottomWidth: 3.5,
+    borderLeftWidth: 3.5,
     borderBottomLeftRadius: 6,
   },
   cornerBR: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
+    borderBottomWidth: 3.5,
+    borderRightWidth: 3.5,
     borderBottomRightRadius: 6,
   },
   gridContainer: {
@@ -251,43 +336,70 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: Colors.brand.primary,
+    backgroundColor: '#ffffff',
   },
   gridV: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     width: 1,
-    backgroundColor: Colors.brand.primary,
-  },
-  receiptSilhouette: {
-    width: 200,
-    height: 140,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    justifyContent: 'space-around',
-    opacity: 0.35,
-  },
-  receiptLine: {
-    height: 6,
     backgroundColor: '#ffffff',
-    borderRadius: 3,
   },
   guidanceText: {
+    ...Typography.caption,
+    color: '#e2e8f0',
     marginTop: Spacing.xl,
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
-    paddingHorizontal: Spacing.xl,
-    lineHeight: 18,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
+  },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  cancelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 44,
+  },
+  cancelText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  topTitle: {
+    ...Typography.cardTitle,
+    color: '#ffffff',
+    fontSize: 17,
+  },
+  flashBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flashBtnActive: {
+    backgroundColor: '#fbbf24',
   },
   bottomControls: {
-    backgroundColor: '#090d16',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
     gap: Spacing.md,
@@ -300,60 +412,62 @@ const styles = StyleSheet.create({
   sideControl: {
     alignItems: 'center',
     gap: 4,
-    width: 60,
+    minWidth: 60,
   },
   sideIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: Radius.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sideControlLabel: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#94a3b8',
   },
   shutterRing: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 4,
     borderColor: '#ffffff',
+    padding: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   shutterPressed: {
-    transform: [{ scale: 0.93 }],
+    transform: [{ scale: 0.94 }],
   },
   shutterCore: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: '100%',
+    height: '100%',
+    borderRadius: 34,
     backgroundColor: '#ffffff',
   },
   aiBadgeBox: {
-    width: 46,
-    height: 46,
-    borderRadius: Radius.lg,
-    backgroundColor: 'rgba(5, 150, 105, 0.25)',
-    borderColor: 'rgba(5, 150, 105, 0.5)',
-    borderWidth: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#064e3b',
+    borderWidth: 1.5,
+    borderColor: '#059669',
     alignItems: 'center',
     justifyContent: 'center',
   },
   aiBadgeText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: '#34d399',
   },
-  tipText: {
+  bottomTip: {
+    ...Typography.caption,
+    color: '#64748b',
     textAlign: 'center',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.4)',
   },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.75,
   },
 });

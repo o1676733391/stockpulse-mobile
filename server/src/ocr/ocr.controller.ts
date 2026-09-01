@@ -46,7 +46,7 @@ export class OcrController {
   constructor(private readonly ocrService: OcrService) {}
 
   @Post('presigned-upload')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('ocr:scan')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Generate pre-signed upload URL for direct receipt upload' })
@@ -63,7 +63,7 @@ export class OcrController {
   }
 
   @Post('scan')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('ocr:scan')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Trigger OCR scan for uploaded receipt document' })
@@ -80,7 +80,7 @@ export class OcrController {
   }
 
   @Get('documents')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff', 'auditor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff', 'auditor')
   @RequirePermissions('ocr:view')
   @ApiOperation({ summary: 'List historical OCR documents with pagination and status filters' })
   @ApiResponse({
@@ -96,7 +96,7 @@ export class OcrController {
   }
 
   @Get('documents/:id')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff', 'auditor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff', 'auditor')
   @RequirePermissions('ocr:view')
   @ApiOperation({
     summary: 'Get full OCR document details, extracted lines, confidence scores, and BOM previews',
@@ -115,7 +115,7 @@ export class OcrController {
   }
 
   @Patch('documents/:id/items/:itemId')
-  @Roles('superadmin', 'manager', 'supervisor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
   @RequirePermissions('ocr:review')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Manually correct an extracted line item during review workflow' })
@@ -135,7 +135,7 @@ export class OcrController {
   }
 
   @Post('documents/:id/confirm')
-  @Roles('superadmin', 'manager', 'supervisor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
   @RequirePermissions('ocr:review')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -155,8 +155,28 @@ export class OcrController {
     return this.ocrService.confirmReview(id, dto, storeId, actorId);
   }
 
+  @Post('confirm')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
+  @RequirePermissions('ocr:review')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Flat endpoint to confirm document review and execute automated BOM ingredient deductions',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Document confirmed and inventory ledger synchronized',
+  })
+  async confirmReviewFlat(
+    @Body() dto: ConfirmOcrDeductionDto,
+    @CurrentStore() storeId: string,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const docId = dto.reportId || 'default-doc';
+    return this.ocrService.confirmReview(docId, dto, storeId, actorId);
+  }
+
   @Post('documents/:id/reject')
-  @Roles('superadmin', 'manager', 'supervisor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
   @RequirePermissions('ocr:review')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reject OCR extraction results' })

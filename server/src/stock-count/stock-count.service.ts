@@ -52,6 +52,40 @@ export class StockCountService {
   }
 
   /**
+   * Get active inventory items ready for stock count in store.
+   */
+  async getActiveCountItems(storeId: string) {
+    const items = await this.stockCountRepository.findStoreItemsForCount(storeId);
+    return items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      sku: i.sku,
+      unit: i.unit,
+      expected: Number(i.physicalStock || 0),
+      currentStock: Number(i.physicalStock || 0),
+      physicalStock: Number(i.physicalStock || 0),
+      costPerUnit: Number(i.costPerUnit || 0),
+    }));
+  }
+
+  /**
+   * Cancel an active or draft stock count session.
+   */
+  async cancelSession(
+    sessionId: string,
+    storeId: string,
+    reason?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const session = await this.stockCountRepository.findSessionById(sessionId, storeId);
+    if (!session) {
+      throw new NotFoundException(`Stock count session '${sessionId}' not found`);
+    }
+
+    await this.stockCountRepository.cancelSession(sessionId, storeId, reason);
+    return { success: true, message: 'Stock count session cancelled' };
+  }
+
+  /**
    * Record counted quantity for a specific SKU in active session.
    */
   async recordItemCount(

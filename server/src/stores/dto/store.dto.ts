@@ -24,6 +24,31 @@ export class CreateStoreDto {
   @IsString()
   address?: string;
 
+  @ApiPropertyOptional({ example: 'Berlin' })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'DE' })
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional({ example: '10117' })
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @ApiPropertyOptional({ example: '+49 30 1234567' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'store@restaurant.de' })
+  @IsOptional()
+  @IsString()
+  email?: string;
+
   @ApiPropertyOptional({ example: 'EUR', default: 'EUR' })
   @IsOptional()
   @IsString()
@@ -45,6 +70,31 @@ export class UpdateStoreDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @ApiPropertyOptional({ example: 'Berlin' })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'DE' })
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional({ example: '10117' })
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @ApiPropertyOptional({ example: '+49 30 1234567' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'store@restaurant.de' })
+  @IsOptional()
+  @IsString()
+  email?: string;
 
   @ApiPropertyOptional({ example: 'EUR' })
   @IsOptional()
@@ -72,6 +122,21 @@ export class StoreResponseDto {
 
   @ApiPropertyOptional({ example: '123 Main Street, Suite 100' })
   address?: string;
+
+  @ApiPropertyOptional({ example: 'Berlin' })
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'DE' })
+  country?: string;
+
+  @ApiPropertyOptional({ example: '10117' })
+  postalCode?: string;
+
+  @ApiPropertyOptional({ example: '+49 30 1234567' })
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'store@restaurant.de' })
+  email?: string;
 
   @ApiProperty({ example: 'EUR' })
   currency!: string;

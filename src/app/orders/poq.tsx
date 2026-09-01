@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_POQ_GROUPS,
   procurementService,
@@ -11,6 +12,7 @@ import { POQSupplierGroup, PurchaseOrderLine } from '@/types/procurement';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function POQScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, formatCurrency } = useI18n();
 
   const [poqGroups] = useState<POQSupplierGroup[]>(() =>
     JSON.parse(JSON.stringify(INITIAL_POQ_GROUPS))
@@ -78,29 +81,39 @@ export default function POQScreen() {
     return poqGroups.filter((g) => g.items.some((i) => selectedIds.has(i.id))).length;
   }, [poqGroups, selectedIds]);
 
+  const [isCreating, setIsCreating] = useState(false);
+
   const handleCreateOrders = async () => {
-    let firstCreatedPoId = '';
+    if (isCreating || selectedIds.size === 0) return;
+    try {
+      setIsCreating(true);
+      let firstCreatedPoId = '';
 
-    for (const group of poqGroups) {
-      const selectedInGroup = group.items.filter((i) => selectedIds.has(i.id));
-      if (selectedInGroup.length === 0) continue;
+      for (const group of poqGroups) {
+        const selectedInGroup = group.items.filter((i) => selectedIds.has(i.id));
+        if (selectedInGroup.length === 0) continue;
 
-      const lines: PurchaseOrderLine[] = selectedInGroup.map((item) => ({
-        itemId: item.id,
-        itemName: item.name,
-        quantity: quantities[item.id] ?? item.recommended,
-        unit: item.unit,
-        pricePerUnit: item.pricePerUnit,
-      }));
+        const lines: PurchaseOrderLine[] = selectedInGroup.map((item) => ({
+          itemId: item.id,
+          itemName: item.name,
+          quantity: quantities[item.id] ?? item.recommended,
+          unit: item.unit,
+          pricePerUnit: item.pricePerUnit,
+        }));
 
-      const newPo = await procurementService.createDraftOrder(group.supplierId, lines);
-      if (!firstCreatedPoId) firstCreatedPoId = newPo.id;
-    }
+        const newPo = await procurementService.createDraftOrder(group.supplierId, lines);
+        if (!firstCreatedPoId) firstCreatedPoId = newPo.id;
+      }
 
-    if (firstCreatedPoId) {
-      router.push(`/orders/${firstCreatedPoId}` as any);
-    } else {
-      router.replace('/(tabs)/orders' as any);
+      if (firstCreatedPoId) {
+        router.push(`/orders/${firstCreatedPoId}` as any);
+      } else {
+        router.replace('/(tabs)/orders' as any);
+      }
+    } catch (err: any) {
+      Alert.alert('Order Creation Failed', err?.message || 'Unable to generate purchase orders');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -108,7 +121,7 @@ export default function POQScreen() {
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       {/* ── TopBar ── */}
       <TopBar
-        title="Reorder Recommendations"
+        title={t('orders.poqTitle')}
         subtitle={`${selectedIds.size} of ${totalNeedReorder} selected`}
         showBack
       />
@@ -126,9 +139,9 @@ export default function POQScreen() {
             <Text style={styles.heroNum}>{totalNeedReorder}</Text>
           </View>
           <View style={styles.heroInfo}>
-            <Text style={styles.heroTitle}>Items need reordering</Text>
+            <Text style={styles.heroTitle}>{t('orders.suggestedQty')}</Text>
             <Text style={styles.heroSub}>
-              Based on target stock and safety stock levels
+              {t('orders.poqSub')}
             </Text>
           </View>
         </View>
@@ -301,15 +314,17 @@ export default function POQScreen() {
 
         <Pressable
           onPress={handleCreateOrders}
-          disabled={selectedIds.size === 0}
+          disabled={selectedIds.size === 0 || isCreating}
           style={({ pressed }) => [
             styles.createOrderBtn,
-            selectedIds.size === 0 && styles.btnDisabled,
+            (selectedIds.size === 0 || isCreating) && styles.btnDisabled,
             pressed && styles.pressed,
           ]}
         >
           <Text style={styles.createOrderBtnText}>
-            Create Purchase Order{supplierCount > 1 ? 's' : ''}
+            {isCreating
+              ? 'Generating Orders...'
+              : `Create Purchase Order${supplierCount > 1 ? 's' : ''}`}
           </Text>
         </Pressable>
       </View>

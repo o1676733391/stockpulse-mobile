@@ -38,6 +38,11 @@ export default function RootLayout() {
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="login" options={{ headerShown: false }} />
               <Stack.Screen name="register" options={{ headerShown: false }} />
+              <Stack.Screen name="verify-email" options={{ headerShown: false }} />
+              <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+              <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+              <Stack.Screen name="reset-password" options={{ headerShown: false }} />
+              <Stack.Screen name="account-disabled" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen
                 name="inventory/[id]"
@@ -97,6 +102,13 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="expiration/index"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="expiration/[id]"
                 options={{
                   headerShown: false,
                   presentation: 'card',

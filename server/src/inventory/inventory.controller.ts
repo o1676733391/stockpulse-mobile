@@ -64,6 +64,20 @@ export class InventoryController {
     return this.inventoryService.findPaginated(query, storeId, organizationId);
   }
 
+  @Get('expiring-batches')
+  @RequirePermissions('inventory:view')
+  @ApiOperation({ summary: 'List active batches nearing expiration threshold' })
+  async getExpiringBatches(@CurrentStore() storeId: string) {
+    return this.inventoryService.getExpiringBatches(storeId);
+  }
+
+  @Get('expired-batches')
+  @RequirePermissions('inventory:view')
+  @ApiOperation({ summary: 'List expired inventory batches' })
+  async getExpiredBatches(@CurrentStore() storeId: string) {
+    return this.inventoryService.getExpiredBatches(storeId);
+  }
+
   @Get(':id')
   @RequirePermissions('inventory:view')
   @ApiOperation({

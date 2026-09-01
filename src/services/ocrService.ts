@@ -3,81 +3,149 @@ import { apiClient, logDebugFallback } from './apiClient';
 
 export interface IPOSOcrService {
   processImage(imageUri?: string): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }>;
-  confirmDeductions(reportId: string, items: OcrItem[]): Promise<{ success: boolean; deductions: BomIngredientDeduction[] }>;
-  getMockReport(): OcrReport;
+  getDocument(documentId: string): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }>;
+  confirmDeductions(reportId: string, items?: OcrItem[]): Promise<{ success: boolean; deductions: BomIngredientDeduction[] }>;
+  rejectDocument(reportId: string, reason?: string): Promise<{ success: boolean }>;
+  updateItem(documentId: string, itemId: string, item: Partial<OcrItem>): Promise<OcrItem>;
 }
 
-export const INITIAL_MOCK_OCR_ITEMS: OcrItem[] = [
-  { id: 'ocr-1', artNr: '101', item: 'Menu 1 — Chicken Plate', recipeId: 'r1', qty: 24, confidence: 98 },
-  { id: 'ocr-2', artNr: '102', item: 'Burger XL',               recipeId: 'r2', qty: 17, confidence: 96 },
-  { id: 'ocr-3', artNr: '103', item: 'Menu 3 — Mixed Salad',    recipeId: 'r4', qty: 8,  confidence: 82 },
-  { id: 'ocr-4', artNr: '104', item: 'Salmon Lunch Special',    recipeId: 'r3', qty: 6,  confidence: 95 },
-  { id: 'ocr-5', artNr: '105', item: 'Classic Pancakes',        recipeId: 'r5', qty: 4,  confidence: 91 },
-];
-
 export class RealPOSOcrService implements IPOSOcrService {
-  getMockReport(): OcrReport {
-    return {
-      id: 'rep-2048',
-      reportNumber: '2048',
-      date: '10 Mar 2026',
-      shift: 'Lunch shift',
-      storeName: 'Bella Cucina Restaurant',
-      items: JSON.parse(JSON.stringify(INITIAL_MOCK_OCR_ITEMS)),
-    };
-  }
-
   async processImage(imageUri?: string): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }> {
     try {
+      let imageBase64: string | undefined = undefined;
+
       if (imageUri) {
-        const formData = new FormData();
-        const filename = imageUri.split('/').pop() || 'receipt.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-        formData.append('receipt', {
-          uri: imageUri,
-          name: filename,
-          type,
-        } as any);
-
-        const result = await apiClient.upload<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }>(
-          '/ocr/scan',
-          formData
-        );
-        return result;
+        if (imageUri.startsWith('data:image')) {
+          imageBase64 = imageUri;
+        } else {
+          try {
+            const res = await fetch(imageUri);
+            const blob = await res.blob();
+            imageBase64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } catch {
+            // If blob conversion fails, proceed with uri
+          }
+        }
       }
 
-      // Empty scan triggers backend default analysis
-      const result = await apiClient.post<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }>('/ocr/scan', {});
-      return result;
+      const scanTrigger = await apiClient.post<{
+        documentId: string;
+        status: string;
+        extractedItemCount?: number;
+      }>('/ocr/scan', {
+        documentType: 'pos_z_report',
+        imageBase64,
+      });
+
+      const documentId = scanTrigger.documentId;
+      return await this.getDocument(documentId);
     } catch (err) {
       logDebugFallback('POSOcrService', '/ocr/scan', err);
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      return { report: this.getMockReport() };
+      throw err;
+    }
+  }
+
+  async getDocument(documentId: string): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }> {
+    try {
+      const doc = await apiClient.get<any>(`/ocr/documents/${documentId}`);
+
+      const items: OcrItem[] = (doc.extractedLines || []).map((l: any) => ({
+        id: l.id,
+        artNr: l.articleNumber || String(l.lineNumber || ''),
+        item: l.description,
+        recipeId: l.matchedRecipeId || undefined,
+        qty: Number(l.quantity || 1),
+        confidence: Math.round(Number(l.confidence || 0.95) * 100),
+        unitPrice: l.unitPrice ? Number(l.unitPrice) : undefined,
+      }));
+
+      const bomDeductions: BomIngredientDeduction[] = (doc.bomPreview || []).map((b: any) => ({
+        itemId: b.ingredientId,
+        itemName: b.ingredientName,
+        delta: -Number(b.quantityDeducted),
+        unit: b.unit,
+        costEur: Number(b.totalCost),
+        theoreticalBefore: 0,
+        theoreticalAfter: 0,
+      }));
+
+      const report: OcrReport = {
+        id: doc.id,
+        reportNumber: doc.metadata?.documentNumber || doc.fileName || doc.id.slice(-6),
+        date: doc.metadata?.date || doc.createdAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+        shift: 'POS Register Closure',
+        storeName: doc.metadata?.supplierName || 'Restaurant Location',
+        items,
+        rawImageUrl: doc.storagePath,
+      };
+
+      return { report, bomDeductions };
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${documentId}`, err);
+      throw err;
     }
   }
 
   async confirmDeductions(
     reportId: string,
-    items: OcrItem[]
+    items?: OcrItem[],
   ): Promise<{ success: boolean; deductions: BomIngredientDeduction[] }> {
     try {
-      const res = await apiClient.post<{ success: boolean; deductions: BomIngredientDeduction[] }>('/ocr/confirm', {
-        reportId,
+      const res = await apiClient.post<{
+        success: boolean;
+        documentId: string;
+        message: string;
+        deductions: BomIngredientDeduction[];
+      }>(`/ocr/documents/${reportId}/confirm`, {
+        applyDeductions: true,
         items,
       });
-      return res;
-    } catch (err) {
-      logDebugFallback('POSOcrService', '/ocr/confirm', err);
+
       return {
-        success: true,
-        deductions: [
-          { itemId: 'i1', itemName: 'Chicken Breast', delta: -4.8, unit: 'kg', costEur: 23.04, theoreticalBefore: 31.8, theoreticalAfter: 27.0 },
-          { itemId: 'i9', itemName: 'Ground Beef', delta: -4.25, unit: 'kg', costEur: 26.35, theoreticalBefore: 22.25, theoreticalAfter: 18.0 },
-          { itemId: 'i2', itemName: 'Fresh Salmon', delta: -1.32, unit: 'kg', costEur: 21.38, theoreticalBefore: 7.32, theoreticalAfter: 6.0 },
-        ],
+        success: res.success,
+        deductions: res.deductions || [],
       };
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${reportId}/confirm`, err);
+      throw err;
+    }
+  }
+
+  async rejectDocument(reportId: string, reason?: string): Promise<{ success: boolean }> {
+    try {
+      return await apiClient.post(`/ocr/documents/${reportId}/reject`, { reason });
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${reportId}/reject`, err);
+      throw err;
+    }
+  }
+
+  async updateItem(documentId: string, itemId: string, item: Partial<OcrItem>): Promise<OcrItem> {
+    try {
+      const updated = await apiClient.patch<any>(`/ocr/documents/${documentId}/items/${itemId}`, {
+        description: item.item,
+        quantity: item.qty,
+        matchedRecipeId: item.recipeId,
+        unitPrice: item.unitPrice,
+      });
+
+      return {
+        id: itemId,
+        artNr: item.artNr || '',
+        item: item.item || '',
+        recipeId: item.recipeId,
+        qty: item.qty || 1,
+        confidence: 100,
+        unitPrice: item.unitPrice,
+      };
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${documentId}/items/${itemId}`, err);
+      throw err;
     }
   }
 }

@@ -11,6 +11,11 @@ export class CreateUserDto {
   @MinLength(2)
   name!: string;
 
+  @ApiPropertyOptional({ example: '+49 30 1234 5678' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
   @ApiProperty({ example: 'staff', enum: ['superadmin', 'manager', 'supervisor', 'staff', 'auditor'] })
   @IsEnum(['superadmin', 'manager', 'supervisor', 'staff', 'auditor'])
   role!: string;
@@ -30,6 +35,11 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({ example: '+49 30 1234 5678' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @ApiPropertyOptional({ example: 'supervisor', enum: ['superadmin', 'manager', 'supervisor', 'staff', 'auditor'] })
   @IsOptional()
@@ -55,6 +65,11 @@ export class UserResponseDto {
 
   @ApiProperty({ example: 'staff' })
   role!: string;
+
+  @ApiPropertyOptional({ example: '+49 30 1234 5678' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @ApiProperty({ example: '01915dfa-9012-7000-8000-000000000001' })
   organizationId!: string;

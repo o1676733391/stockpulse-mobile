@@ -7,19 +7,9 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       - PORT=5000
-      - NODE_ENV=development
-      - JWT_SECRET=stockpulse_super_secret_jwt_key_2026_dev
-      - DATABASE_PATH=/app/data/stockpulse.db
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
-      - GCP_LOCATION=${GCP_LOCATION:-us-central1}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
-    volumes:
-      - stockpulse_data:/app/data
+      - NODE_ENV=production
 
-volumes:
-  stockpulse_data:
-    driver: local

@@ -12,6 +12,14 @@ export class UsersService {
     return this.usersRepository.findById(id);
   }
 
+  async findByEmail(email: string): Promise<UserResponseDto | null> {
+    return this.usersRepository.findByEmail(email);
+  }
+
+  async findAll(): Promise<UserResponseDto[]> {
+    return this.usersRepository.findAll();
+  }
+
   async findByOrganization(organizationId: string): Promise<UserResponseDto[]> {
     return this.usersRepository.findByOrganization(organizationId);
   }

@@ -4,6 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   INITIAL_ARCHIVE_REPORTS,
   INITIAL_REPORT_ITEMS,
@@ -13,6 +14,7 @@ import { ArchiveReport, ReportItem } from '@/types/analytics';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -31,6 +33,7 @@ const FILTER_OPTIONS: Record<string, string[]> = {
 
 export default function ReportsScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const [reports] = useState<ReportItem[]>(() =>
     JSON.parse(JSON.stringify(INITIAL_REPORT_ITEMS))
@@ -59,15 +62,20 @@ export default function ReportsScreen() {
   }, [reports, filterValues]);
 
   const handleGenerate = async (reportId: string, format: 'pdf' | 'excel') => {
-    setGeneratingId(reportId);
-    await analyticsService.generateReport(reportId, format);
-    setGeneratingId(null);
-    setGeneratedIds((prev) => new Set([...prev, reportId]));
+    try {
+      setGeneratingId(reportId);
+      await analyticsService.generateReport(reportId, format);
+      setGeneratedIds((prev) => new Set([...prev, reportId]));
+    } catch (err: any) {
+      Alert.alert('Export Error', err?.message || 'Failed to generate report file');
+    } finally {
+      setGeneratingId(null);
+    }
   };
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Reports & Export" large showBack />
+      <TopBar title={t('analytics.reports')} large showBack />
 
       {/* ── Filter Bar ── */}
       <View style={styles.filterBar}>

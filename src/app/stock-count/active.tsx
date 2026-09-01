@@ -2,12 +2,13 @@ import { VectorIcon } from '@/components/ui/icons';
 import { NumericKeypad } from '@/components/ui/numeric-keypad';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { mockStockCountItems } from '@/mocks/inventoryMockData';
 import { stockCountService } from '@/services/stockCountService';
 import { StockCountItem } from '@/types/inventory';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -23,20 +24,33 @@ export default function ActiveStockCountScreen() {
   const insets = useSafeAreaInsets();
   const isIOS = Platform.OS === 'ios';
 
-  const [items, setItems] = useState<StockCountItem[]>(mockStockCountItems);
+  const [items, setItems] = useState<StockCountItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [showNote, setShowNote] = useState(false);
   const [notes, setNotes] = useState<Record<number, string>>({});
 
-  useEffect(() => {
-    stockCountService.getActiveItems().then((res) => {
-      if (res && res.length > 0) setItems(res);
-    });
+  const loadItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+      const res = await stockCountService.getActiveItems();
+      setItems(res);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to load stock count items');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
   const total = items.length;
-  const currentItem = items[idx] || items[0] || mockStockCountItems[0];
+  const currentItem = items[idx] || items[0] || { id: '', name: 'Loading...', sku: '', category: '', expected: 0, unit: '', location: '' };
   const currentValue = counts[idx] ?? '';
   const parsedValue = parseFloat(currentValue);
   const hasValue = !isNaN(parsedValue) && currentValue !== '';
@@ -75,11 +89,43 @@ export default function ActiveStockCountScreen() {
   };
 
   // Step navigation
-  const handleNext = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleExit = () => {
+    Alert.alert(
+      'Exit Count Session?',
+      'Your recorded counts are saved in the local draft session.',
+      [
+        { text: 'Continue Counting', style: 'cancel' },
+        { text: 'Exit Session', style: 'destructive', onPress: () => router.back() },
+      ]
+    );
+  };
+
+  const handleNext = async () => {
+    if (isSubmitting) return;
     if (idx < total - 1) {
       setIdx((i) => i + 1);
     } else {
-      router.push('/stock-count/summary' as any);
+      try {
+        setIsSubmitting(true);
+        const formattedCounts: Record<string, number> = {};
+        items.forEach((it, i) => {
+          const val = counts[i];
+          if (val !== undefined && val !== '') {
+            formattedCounts[it.id] = parseFloat(val);
+          }
+        });
+        const result = await stockCountService.submitCount(formattedCounts);
+        router.replace({
+          pathname: '/stock-count/summary',
+          params: { sessionId: result.sessionId || 'sess-demo-01' },
+        } as any);
+      } catch (err: any) {
+        Alert.alert('Count Submission Error', err?.message || 'Failed to submit inventory counts');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -106,7 +152,7 @@ export default function ActiveStockCountScreen() {
           {/* Exit Button */}
           {isIOS ? (
             <Pressable
-              onPress={() => router.back()}
+              onPress={handleExit}
               style={({ pressed }) => [styles.exitBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="ChevronLeft" size={20} color={Colors.brand.primary} strokeWidth={2.5} />
@@ -114,7 +160,7 @@ export default function ActiveStockCountScreen() {
             </Pressable>
           ) : (
             <Pressable
-              onPress={() => router.back()}
+              onPress={handleExit}
               style={({ pressed }) => [styles.iconCircleBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="X" size={20} color={Colors.neutral.textPrimary} />
@@ -147,7 +193,8 @@ export default function ActiveStockCountScreen() {
             </Pressable>
 
             <Pressable
-              onPress={() => {}}
+              onPress={() => router.push('/scan' as any)}
+              accessibilityLabel="Scan Barcode"
               style={({ pressed }) => [styles.iconCircleBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="Barcode" size={18} color={Colors.neutral.textSecondary} />
@@ -347,15 +394,17 @@ export default function ActiveStockCountScreen() {
 
         <Pressable
           onPress={handleNext}
+          disabled={isSubmitting}
           style={({ pressed }) => [
             styles.primarySaveBtn,
             hasValue ? styles.primaryActiveBtn : styles.primaryInactiveBtn,
+            isSubmitting && styles.btnDisabled,
             pressed && styles.pressed,
           ]}
         >
           <VectorIcon name="Check" size={18} color="#ffffff" strokeWidth={2.5} />
           <Text style={styles.primarySaveText}>
-            {idx === total - 1 ? 'Finish Count' : 'Save & Next'}
+            {isSubmitting ? 'Submitting...' : idx === total - 1 ? 'Finish Count' : 'Save & Next'}
           </Text>
         </Pressable>
       </View>

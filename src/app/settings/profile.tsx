@@ -3,16 +3,18 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
+import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
-import {
-  INITIAL_USER_PROFILE,
-  settingsService,
-} from '@/services/settingsService';
+import { settingsService } from '@/services/settingsService';
+import { supabase } from '@/services/supabaseClient';
 import { UserProfile } from '@/types/settings';
+import { UserRole } from '@/types/rbac';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Platform,
@@ -29,53 +31,149 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user, refreshUser } = useAuth();
   const { t } = useI18n();
 
-  const [profile, setProfile] = useState<UserProfile>(() =>
-    JSON.parse(JSON.stringify(INITIAL_USER_PROFILE))
-  );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [name, setName] = useState(profile.name);
-  const [email, setEmail] = useState(profile.email);
-  const [phone, setPhone] = useState(profile.phone);
-  const [biometrics, setBiometrics] = useState(profile.biometricsEnabled);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [biometrics, setBiometrics] = useState(true);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Password Modal State
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [changingPass, setChangingPass] = useState(false);
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
 
-  const handleSave = async () => {
-    const updated = await settingsService.updateUserProfile({
-      name,
-      email,
-      phone,
-      biometricsEnabled: biometrics,
-    });
-    setProfile(updated);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await settingsService.getUserProfile();
+      setProfile(data);
+      setName(data.name);
+      setEmail(data.email);
+      setPhone(data.phone || '');
+      setBiometrics(data.biometricsEnabled !== false);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load user profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleChangePassword = () => {
-    if (!currentPass || !newPass || !confirmPass) {
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
       Alert.alert(t('errors.invalidInput'), t('auth.fillAllFields'));
       return;
     }
-    if (newPass !== confirmPass) {
+    try {
+      setSaving(true);
+      const updated = await settingsService.updateUserProfile({
+        name,
+        phone,
+        biometricsEnabled: biometrics,
+      });
+      setProfile(updated);
+      await refreshUser();
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 2500);
+    } catch (err: any) {
+      Alert.alert('Save Failed', err?.message || 'Unable to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPass || !confirmPass) {
+      Alert.alert(t('errors.invalidInput'), t('auth.fillAllFields'));
+      return;
+    }
+    if (newPass.length < 8) {
       Alert.alert(t('errors.invalidInput'), t('auth.passwordMinLength'));
       return;
     }
-    setShowPasswordModal(false);
-    setCurrentPass('');
-    setNewPass('');
-    setConfirmPass('');
-    Alert.alert(t('common.done'), t('common.changesSaved'));
+    if (newPass !== confirmPass) {
+      Alert.alert(t('errors.invalidInput'), 'Passwords do not match');
+      return;
+    }
+
+    try {
+      setChangingPass(true);
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPass,
+      });
+
+      if (updateError) {
+        Alert.alert('Password Update Failed', updateError.message);
+        return;
+      }
+
+      setShowPasswordModal(false);
+      setCurrentPass('');
+      setNewPass('');
+      setConfirmPass('');
+      Alert.alert(t('common.done'), t('common.changesSaved'));
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to change password');
+    } finally {
+      setChangingPass(false);
+    }
   };
 
   const biometricLabel = Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Fingerprint';
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.brand.primary} />
+        <Text style={[{ marginTop: 12 }, Typography.body]}>
+          {t('common.loading')}
+        </Text>
+      </View>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
+        <TopBar title={t('settings.profile.title')} showBack />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <VectorIcon name="AlertCircle" size={48} color={Colors.critical.main} />
+          <Text style={[Typography.cardTitle, { fontSize: 18, marginTop: 16 }]}>
+            Failed to Load Profile
+          </Text>
+          <Text style={[Typography.bodySecondary, { textAlign: 'center', marginTop: 8 }]}>
+            {error || 'Unable to connect to profile service'}
+          </Text>
+          <Pressable
+            onPress={fetchProfile}
+            style={{
+              marginTop: 20,
+              backgroundColor: Colors.brand.primary,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: Radius.md,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Retry</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
@@ -176,11 +274,25 @@ export default function ProfileScreen() {
           <SectionHeader title={t('team.title')} />
           <View style={styles.infoFieldRow}>
             <Text style={styles.infoFieldLabel}>{t('settings.profile.role')}</Text>
-            <Badge variant="purple">{t('auth.adminRole')}</Badge>
+            <Badge
+              variant={
+                (profile.role as string) === 'admin'
+                  ? 'purple'
+                  : (profile.role as string) === 'manager'
+                  ? 'blue'
+                  : (profile.role as string) === 'supervisor'
+                  ? 'amber'
+                  : (profile.role as string) === 'auditor'
+                  ? 'orange'
+                  : 'green'
+              }
+            >
+              {ROLES[profile.role]?.label || profile.role.toUpperCase()}
+            </Badge>
           </View>
           <View style={styles.infoFieldRow}>
             <Text style={styles.infoFieldLabel}>{t('settings.profile.store')}</Text>
-            <Text style={styles.infoFieldValue}>{profile.storeName}</Text>
+            <Text style={styles.infoFieldValue}>{profile.storeName || user?.storeName || 'Assigned Store'}</Text>
           </View>
         </Card>
       </ScrollView>

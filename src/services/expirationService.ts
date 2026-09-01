@@ -100,8 +100,22 @@ export const INITIAL_EXPIRY_ITEMS: ExpiryItem[] = [
 ];
 
 export const INITIAL_EXPIRED_ITEMS: ExpiredItem[] = [
-  { id: 'exp-1', name: 'Tomato Paste', batch: 'B1018', qty: '2.4 kg', expiryDate: '08 Mar 2026', value: '€6.00' },
-  { id: 'exp-2', name: 'Cream',        batch: 'B1019', qty: '3 L',    expiryDate: '09 Mar 2026', value: '€7.50' },
+  {
+    id: 'x1',
+    name: 'Heavy Cream',
+    batch: 'B1019',
+    qty: '4.0 L',
+    value: '€14.40',
+    expiryDate: '09 Mar 2026',
+  },
+  {
+    id: 'x2',
+    name: 'Strawberries',
+    batch: 'B1020',
+    qty: '2.5 kg',
+    value: '€12.50',
+    expiryDate: '08 Mar 2026',
+  },
 ];
 
 export const INITIAL_SUGGESTIONS: WasteSuggestion[] = [
@@ -111,13 +125,13 @@ export const INITIAL_SUGGESTIONS: WasteSuggestion[] = [
     qty: 4.2,
     unit: 'kg',
     days: 1,
-    promo: 'Salmon Lunch Special',
-    uses: '3.8 kg',
-    usesNum: 3.8,
-    utilization: 90,
-    saved: '€61.56',
+    promo: 'Daily Chef Special',
+    uses: 'Pan-seared Salmon with Asparagus (4 portions)',
+    usesNum: 4,
+    utilization: 96,
+    saved: '€68.04',
     recipeId: 'r3',
-    description: 'Feature salmon as the lunch special. Pairs well with the potato side already in stock.',
+    description: 'Feature as daily chef special before expiration tomorrow',
   },
   {
     id: 1,
@@ -125,13 +139,13 @@ export const INITIAL_SUGGESTIONS: WasteSuggestion[] = [
     qty: 3.1,
     unit: 'kg',
     days: 2,
-    promo: 'Caesar Salad Promotion',
-    uses: '2.8 kg',
-    usesNum: 2.8,
-    utilization: 88,
-    saved: '€5.72',
+    promo: 'Caesar Salad Prep',
+    uses: 'Caesar Salad lunch service prep',
+    usesNum: 6,
+    utilization: 91,
+    saved: '€6.82',
     recipeId: 'r4',
-    description: 'Run a discounted caesar salad promotion for lunch service.',
+    description: 'Prep for Caesar Salad bowls for lunch service prep',
   },
   {
     id: 2,
@@ -139,75 +153,94 @@ export const INITIAL_SUGGESTIONS: WasteSuggestion[] = [
     qty: 18,
     unit: 'kg',
     days: 3,
-    promo: 'Burger Happy Hour',
-    uses: '15 kg',
-    usesNum: 15,
-    utilization: 83,
-    saved: '€93.00',
+    promo: 'Bolognese Sauce Batch',
+    uses: 'Bolognese sauce batch cooking for freezing',
+    usesNum: 24,
+    utilization: 94,
+    saved: '€111.60',
     recipeId: 'r2',
-    description: 'Offer a happy-hour burger promotion in the evening shift.',
+    description: 'Prep batch Bolognese sauce for freezing & pasta service',
   },
 ];
 
 export class RealExpirationService implements IExpirationService {
-  private items: ExpiryItem[] = JSON.parse(JSON.stringify(INITIAL_EXPIRY_ITEMS));
-  private expired: ExpiredItem[] = JSON.parse(JSON.stringify(INITIAL_EXPIRED_ITEMS));
-  private suggestions: WasteSuggestion[] = JSON.parse(JSON.stringify(INITIAL_SUGGESTIONS));
-  private actionedSuggestions = new Set<number>();
-  private dismissedSuggestions = new Set<number>();
-
   async getExpiringItems(): Promise<ExpiryItem[]> {
     try {
-      return await apiClient.get<ExpiryItem[]>('/expiration/expiring');
+      const res = await apiClient.get<any>('/inventory/expiring-batches');
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
     } catch (err) {
-      logDebugFallback('ExpirationService', '/expiration/expiring', err);
-      return [...this.items];
+      logDebugFallback('ExpirationService', '/inventory/expiring-batches', err);
+      throw err;
     }
   }
 
   async getExpiredItems(): Promise<ExpiredItem[]> {
     try {
-      return await apiClient.get<ExpiredItem[]>('/expiration/expired');
+      const res = await apiClient.get<any>('/inventory/expired-batches');
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
     } catch (err) {
-      logDebugFallback('ExpirationService', '/expiration/expired', err);
-      return [...this.expired];
+      logDebugFallback('ExpirationService', '/inventory/expired-batches', err);
+      throw err;
     }
   }
 
   async getWasteSuggestions(): Promise<WasteSuggestion[]> {
     try {
-      return await apiClient.get<WasteSuggestion[]>('/expiration/suggestions');
+      const res = await apiClient.get<any>('/analytics/waste-suggestions');
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
     } catch (err) {
-      logDebugFallback('ExpirationService', '/expiration/suggestions', err);
-      return this.suggestions.filter((s) => !this.dismissedSuggestions.has(s.id));
+      logDebugFallback('ExpirationService', '/analytics/waste-suggestions', err);
+      throw err;
     }
   }
 
   async markItemUsed(itemId: string, qtyUsed: number): Promise<void> {
-    const item = this.items.find((i) => i.id === itemId);
-    if (!item) return;
-
-    if (qtyUsed >= item.qty) {
-      this.items = this.items.filter((i) => i.id !== itemId);
-    } else {
-      item.qty = Math.max(0, parseFloat((item.qty - qtyUsed).toFixed(1)));
-      item.value = parseFloat((item.qty * item.costPerUnit).toFixed(2));
+    try {
+      await apiClient.post(`/inventory/${itemId}/adjustments`, {
+        quantityDelta: -qtyUsed,
+        reason: 'used',
+        notes: 'Priority prep usage from expiration tracker',
+      });
+    } catch (err) {
+      logDebugFallback('ExpirationService', `/inventory/${itemId}/adjustments`, err);
+      throw err;
     }
   }
 
   async actionSuggestion(suggestionId: number): Promise<void> {
-    this.actionedSuggestions.add(suggestionId);
+    try {
+      await apiClient.post(`/analytics/waste-suggestions/${suggestionId}/action`, {});
+    } catch (err) {
+      logDebugFallback('ExpirationService', `/analytics/waste-suggestions/${suggestionId}/action`, err);
+      throw err;
+    }
   }
 
   async dismissSuggestion(suggestionId: number): Promise<void> {
-    this.dismissedSuggestions.add(suggestionId);
+    try {
+      await apiClient.post(`/analytics/waste-suggestions/${suggestionId}/dismiss`, {});
+    } catch (err) {
+      logDebugFallback('ExpirationService', `/analytics/waste-suggestions/${suggestionId}/dismiss`, err);
+      throw err;
+    }
   }
 
-  async logWaste(itemId: string, batchId: string | undefined, quantity: number, reason: string): Promise<void> {
+  async logWaste(
+    itemId: string,
+    batchId: string | undefined,
+    quantity: number,
+    reason: string
+  ): Promise<void> {
     try {
-      await apiClient.post('/expiration/waste-log', { itemId, batchId, quantity, reason });
+      await apiClient.post(`/inventory/${itemId}/adjustments`, {
+        quantityDelta: -quantity,
+        reason: 'waste',
+        notes: `Spoilage discard: ${reason}`,
+        batchId,
+      });
     } catch (err) {
-      logDebugFallback('ExpirationService', '/expiration/waste-log', err);
+      logDebugFallback('ExpirationService', `/inventory/${itemId}/adjustments [waste]`, err);
+      throw err;
     }
   }
 }

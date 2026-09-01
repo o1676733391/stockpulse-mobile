@@ -5,14 +5,14 @@ import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n/I18nContext';
 import {
-  INITIAL_NOTIFICATIONS,
   NOTIFICATION_TYPE_CONFIG,
+  notificationService,
 } from '@/services/notificationService';
-import { notificationService } from '@/services/notificationService';
 import { AppNotification, NotificationFilter } from '@/types/notification';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,10 +28,19 @@ function groupByDay(notifs: AppNotification[]) {
     Earlier: [],
   };
 
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toDateString();
+
   notifs.forEach((n) => {
-    if (n.time.includes('min') || n.time.includes('hr') || n.time.includes('hour') || n.time.includes('ago') || n.time === 'Today') {
+    const notifDate = n.timestamp ? new Date(n.timestamp) : new Date();
+    const notifDateStr = notifDate.toDateString();
+
+    if (notifDateStr === todayStr) {
       groups.Today.push(n);
-    } else if (n.time.includes('Yesterday')) {
+    } else if (notifDateStr === yesterdayStr) {
       groups.Yesterday.push(n);
     } else {
       groups.Earlier.push(n);
@@ -47,14 +56,27 @@ export default function NotificationsScreen() {
   const { t } = useI18n();
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [filter, setFilter] = useState<NotificationFilter>('all');
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    notificationService.getNotifications().then((data) => {
+  const fetchNotifs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+      const data = await notificationService.getNotifications();
       setNotifications(data);
-    });
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Unable to load notifications');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchNotifs();
+  }, [fetchNotifs]);
 
   const visible = useMemo(() => {
     let list = notifications.filter((n) => !dismissedIds.has(n.id));
@@ -77,20 +99,35 @@ export default function NotificationsScreen() {
   const grouped = useMemo(() => groupByDay(visible), [visible]);
   const dayOrder = ['Today', 'Yesterday', 'Earlier'] as const;
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, read: true }))
-    );
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: true }))
+      );
+    } catch (err: any) {
+      console.warn('Failed to mark all as read:', err);
+    }
   };
 
-  const handleMarkSingleRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const handleMarkSingleRead = async (id: string) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (err: any) {
+      console.warn('Failed to mark notification read:', err);
+    }
   };
 
-  const handleDismiss = (id: string) => {
-    setDismissedIds((prev) => new Set([...prev, id]));
+  const handleDismiss = async (id: string) => {
+    try {
+      await notificationService.dismissNotification(id);
+      setDismissedIds((prev) => new Set([...prev, id]));
+    } catch (err: any) {
+      console.warn('Failed to dismiss notification:', err);
+    }
   };
 
   return (
@@ -199,8 +236,27 @@ export default function NotificationsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Error Banner ── */}
+        {errorMsg && (
+          <View style={styles.errorBanner}>
+            <VectorIcon name="AlertCircle" size={18} color={Colors.critical.main} />
+            <Text style={styles.errorBannerText}>{errorMsg}</Text>
+            <Pressable onPress={fetchNotifs} style={styles.retryBannerBtn}>
+              <Text style={styles.retryBannerText}>Retry</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* ── Loading State ── */}
+        {loading && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={Colors.brand.primary} />
+            <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          </View>
+        )}
+
         {/* ── Kitchen Alert Center Banner (if urgent alerts present) ── */}
-        {urgentCount > 0 && filter !== 'unread' && (
+        {!loading && urgentCount > 0 && filter !== 'unread' && (
           <Pressable
             onPress={() => setFilter('urgent')}
             style={styles.alertCenterBanner}
@@ -221,7 +277,7 @@ export default function NotificationsScreen() {
         )}
 
         {/* ── Empty State ── */}
-        {visible.length === 0 ? (
+        {!loading && !errorMsg && visible.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
               <VectorIcon name="Bell" size={28} color={Colors.neutral.textTertiary} />
@@ -230,7 +286,7 @@ export default function NotificationsScreen() {
             <Text style={styles.emptySub}>{t('notifications.emptyStateDesc')}</Text>
           </View>
         ) : (
-          dayOrder.map((day) => {
+          !loading && dayOrder.map((day) => {
             const items = grouped[day];
             if (!items || items.length === 0) return null;
 
@@ -240,7 +296,7 @@ export default function NotificationsScreen() {
 
                 <View style={styles.itemsStack}>
                   {items.map((n) => {
-                    const cfg = NOTIFICATION_TYPE_CONFIG[n.type];
+                    const cfg = NOTIFICATION_TYPE_CONFIG[n.type] ?? NOTIFICATION_TYPE_CONFIG.system_alert;
 
                     return (
                       <Card
@@ -621,5 +677,41 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.critical.light,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.critical.light,
+  },
+  errorBannerText: {
+    flex: 1,
+    ...Typography.body,
+    color: Colors.critical.dark,
+  },
+  retryBannerBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: Colors.critical.main,
+    borderRadius: Radius.md,
+  },
+  retryBannerText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  loadingBox: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    ...Typography.bodySecondary,
   },
 });

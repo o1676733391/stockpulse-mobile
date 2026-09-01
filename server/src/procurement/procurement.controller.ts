@@ -65,6 +65,14 @@ export class ProcurementController {
     return this.procurementService.createPurchaseOrder(dto, storeId, actorId);
   }
 
+  @Get('poq-recommendations')
+  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @RequirePermissions('procurement:view')
+  @ApiOperation({ summary: 'Get POQ order recommendations grouped by supplier' })
+  async getPOQRecommendations(@CurrentStore() storeId: string) {
+    return this.procurementService.getPOQRecommendations(storeId);
+  }
+
   @Get('purchase-orders')
   @Roles('superadmin', 'manager', 'supervisor', 'staff', 'auditor')
   @RequirePermissions('procurement:view')

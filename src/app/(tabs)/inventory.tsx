@@ -4,13 +4,16 @@ import { ChipRow } from '@/components/ui/chip-row';
 import { VectorIcon } from '@/components/ui/icons';
 import { StockMetricBox } from '@/components/ui/stock-metric-box';
 import { TopBar } from '@/components/ui/top-bar';
+import { NoStoreState } from '@/components/ui/no-store-state';
 import { BadgeVariant, Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { inventoryService } from '@/services/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Platform,
   Pressable,
@@ -51,7 +54,12 @@ export default function InventoryListScreen() {
     overstock: { label: t('inventory.statusLabels.overstock'), variant: 'blue'  },
   };
 
+  const { user } = useAuth();
+  const hasNoStore = !user?.storeId || user.storeId === 'unassigned' || user.storeId === '' || user.storeId === 'pending';
+
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(!hasNoStore);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -60,13 +68,22 @@ export default function InventoryListScreen() {
   const [showSortModal, setShowSortModal] = useState(false);
 
   const fetchItems = useCallback(async () => {
+    if (hasNoStore) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
     try {
+      setErrorMsg(null);
       const data = await inventoryService.getItems();
       setItems(data);
-    } catch {
-      // Fallback logged in service
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Unable to load inventory items');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [hasNoStore]);
 
   useEffect(() => {
     fetchItems();
@@ -177,9 +194,9 @@ export default function InventoryListScreen() {
       <View style={styles.summaryBar}>
         <View style={styles.summaryLeft}>
           <Text style={styles.summaryText}>
-            {t('inventory.itemCount', { count: filtered.length })}
+            {loading ? '--' : t('inventory.itemCount', { count: filtered.length })}
           </Text>
-          {alertCount > 0 && (
+          {!loading && alertCount > 0 && (
             <View style={styles.attentionTag}>
               <VectorIcon name="AlertTriangle" size={11} color={Colors.warning.dark} />
               <Text style={styles.attentionText}>{alertCount} {t('inventory.statusLabels.low')}</Text>
@@ -187,7 +204,7 @@ export default function InventoryListScreen() {
           )}
         </View>
         <Text style={styles.summaryText}>
-          {t('common.value')} <Text style={styles.summaryBold}>{formatCurrency(totalValue)}</Text>
+          {t('common.value')} <Text style={styles.summaryBold}>{loading ? '--' : formatCurrency(totalValue)}</Text>
         </Text>
       </View>
 
@@ -207,16 +224,31 @@ export default function InventoryListScreen() {
           />
         }
       >
+        {hasNoStore && (
+          <NoStoreState style={{ marginHorizontal: 0, marginBottom: Spacing.lg }} />
+        )}
+
+        {errorMsg && (
+          <View style={styles.errorCard}>
+            <VectorIcon name="AlertCircle" size={20} color={Colors.critical.main} />
+            <Text style={styles.errorText}>{errorMsg}</Text>
+            <Pressable onPress={fetchItems} style={styles.retryBtn}>
+              <Text style={styles.retryText}>{t('common.retry') || 'Retry'}</Text>
+            </Pressable>
+          </View>
+        )}
+
         {filtered.map((item) => {
           const variance = item.physicalStock - item.theoreticalStock;
           const variancePct = item.theoreticalStock > 0 ? (variance / item.theoreticalStock) * 100 : 0;
           const needsReview = Math.abs(variancePct) > 5;
-          const nearExpiry = item.batches.some((b) => b.daysRemaining <= 7);
-          const minDays = nearExpiry
-            ? Math.min(...item.batches.map((b) => b.daysRemaining))
+          const batches = item.batches || [];
+          const nearExpiry = batches.some((b) => (b.daysRemaining ?? 99) <= 7);
+          const minDays = nearExpiry && batches.length > 0
+            ? Math.min(...batches.map((b) => b.daysRemaining ?? 99))
             : 99;
 
-          const { label, variant } = STATUS_BADGE[item.status];
+          const { label, variant } = STATUS_BADGE[item.status] || STATUS_BADGE.healthy;
 
           const urgencyColor =
             item.status === 'critical'
@@ -268,7 +300,14 @@ export default function InventoryListScreen() {
           );
         })}
 
-        {filtered.length === 0 && (
+        {loading && !refreshing && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={Colors.brand.primary} />
+            <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          </View>
+        )}
+
+        {!loading && !errorMsg && filtered.length === 0 && (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
               <VectorIcon name="Package" size={28} color={Colors.neutral.textTertiary} />
@@ -540,5 +579,41 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.critical.light,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.critical.light,
+  },
+  errorText: {
+    flex: 1,
+    ...Typography.body,
+    color: Colors.critical.dark,
+  },
+  retryBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: Colors.critical.main,
+    borderRadius: Radius.md,
+  },
+  retryText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  loadingBox: {
+    paddingVertical: Spacing['3xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    ...Typography.bodySecondary,
   },
 });

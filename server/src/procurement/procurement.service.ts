@@ -36,6 +36,10 @@ export class ProcurementService {
     return this.procurementRepository.findPurchaseOrders(query, storeId);
   }
 
+  async getPOQRecommendations(storeId: string) {
+    return this.procurementRepository.getPOQRecommendations(storeId);
+  }
+
   /**
    * Get single Purchase Order details with line items.
    */

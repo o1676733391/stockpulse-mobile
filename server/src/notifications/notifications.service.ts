@@ -76,6 +76,17 @@ export class NotificationsService {
   }
 
   /**
+   * Get notification by ID in store context.
+   */
+  async findById(id: string, storeId: string): Promise<NotificationResponseDto> {
+    const notif = await this.notificationsRepository.findById(id, storeId);
+    if (!notif) {
+      throw new NotFoundException(`Notification '${id}' not found`);
+    }
+    return notif;
+  }
+
+  /**
    * Mark notification as read.
    */
   async markAsRead(
@@ -124,6 +135,18 @@ export class NotificationsService {
   ): Promise<{ success: boolean }> {
     await this.notificationsRepository.registerDeviceToken(dto, storeId, userId);
     return { success: true };
+  }
+
+  /**
+   * Delete or dismiss notification.
+   */
+  async deleteNotification(
+    id: string,
+    storeId: string,
+    userId?: string,
+  ): Promise<{ success: boolean }> {
+    const deleted = await this.notificationsRepository.deleteNotification(id, storeId, userId);
+    return { success: deleted };
   }
 
   /**

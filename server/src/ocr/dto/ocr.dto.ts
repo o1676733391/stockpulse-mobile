@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsNotEmpty,
@@ -42,20 +43,26 @@ export class PresignedUploadRequestDto {
 }
 
 export class TriggerScanRequestDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'stores/store-01/ocr/raw/pos_z_report_20260820.jpg',
     description: 'Storage path returned from presigned upload step',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  storagePath!: string;
+  storagePath?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'pos_z_report',
     enum: ['pos_z_report', 'supplier_invoice', 'generic_receipt'],
   })
+  @IsOptional()
   @IsEnum(['pos_z_report', 'supplier_invoice', 'generic_receipt'])
-  documentType!: string;
+  documentType?: string;
+
+  @ApiPropertyOptional({ description: 'Optional base64 image representation' })
+  @IsOptional()
+  @IsString()
+  imageBase64?: string;
 }
 
 export class UpdateOcrItemDto {
@@ -85,7 +92,7 @@ export class UpdateOcrItemDto {
 
   @ApiPropertyOptional({ example: '01915dfa-b1c4-7221-9988-51b72e04e077', description: 'Matched BOM recipe UUID' })
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   matchedRecipeId?: string | null;
 }
 
@@ -100,6 +107,16 @@ export class ConfirmOcrDeductionDto {
   @IsOptional()
   @IsBoolean()
   applyDeductions?: boolean = true;
+
+  @ApiPropertyOptional({ description: 'Optional line items passed during review confirmation' })
+  @IsOptional()
+  @IsArray()
+  items?: any[];
+
+  @ApiPropertyOptional({ description: 'Optional report ID when using flat confirm payload' })
+  @IsOptional()
+  @IsString()
+  reportId?: string;
 }
 
 export class RejectOcrDocumentDto {

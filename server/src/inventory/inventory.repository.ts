@@ -65,7 +65,6 @@ export class InventoryRepository implements IInventoryRepository {
         target_stock,
         safety_stock,
         cost_per_unit,
-        reorder_point,
         status,
         barcode,
         storage_area,
@@ -112,7 +111,7 @@ export class InventoryRepository implements IInventoryRepository {
       .order(sortField, { ascending: isAscending })
       .range(from, to);
 
-    const { data, count, error } = await supabaseQuery;
+    const { data: rows, count, error } = await supabaseQuery;
 
     if (error) {
       this.logger.error(`Failed to list inventory: ${error.message}`);
@@ -120,14 +119,10 @@ export class InventoryRepository implements IInventoryRepository {
     }
 
     const total = count || 0;
-    const totalPages = Math.ceil(total / limit);
-
-    const items: InventoryItemResponseDto[] = (data || []).map((row: any) =>
-      this.mapRowToResponseDto(row),
-    );
+    const totalPages = Math.ceil(total / limit) || 1;
 
     return {
-      data: items,
+      data: (rows || []).map((row: any) => this.mapRowToResponseDto(row)),
       meta: {
         page,
         limit,
@@ -168,7 +163,6 @@ export class InventoryRepository implements IInventoryRepository {
         target_stock,
         safety_stock,
         cost_per_unit,
-        reorder_point,
         status,
         barcode,
         storage_area,
@@ -776,5 +770,93 @@ export class InventoryRepository implements IInventoryRepository {
         },
       ],
     };
+  }
+
+  async getExpiringBatches(storeId: string) {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) return [];
+
+    const { data } = await client
+      .from('inventory_batches')
+      .select(`
+        id,
+        batch_number,
+        quantity,
+        cost_per_unit,
+        expiry_date,
+        status,
+        inventory_items!inner (
+          id,
+          name,
+          unit,
+          store_id,
+          categories (
+            name
+          )
+        )
+      `)
+      .eq('inventory_items.store_id', storeId)
+      .eq('status', 'active')
+      .order('expiry_date', { ascending: true })
+      .limit(10);
+
+    return (data || []).map((b: any) => {
+      const days = Math.max(0, Math.ceil((new Date(b.expiry_date).getTime() - Date.now()) / 86400000));
+      return {
+        id: b.id,
+        name: b.inventory_items?.name,
+        batch: b.batch_number,
+        qty: Number(b.quantity),
+        unit: b.inventory_items?.unit,
+        days,
+        value: parseFloat((Number(b.quantity) * Number(b.cost_per_unit)).toFixed(2)),
+        costPerUnit: Number(b.cost_per_unit),
+        status: days <= 2 ? 'critical' : 'soon',
+        category: (b.inventory_items?.categories as any)?.name || 'General',
+        expiryDate: b.expiry_date,
+      };
+    });
+  }
+
+  async getExpiredBatches(storeId: string) {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) return [];
+
+    const { data } = await client
+      .from('inventory_batches')
+      .select(`
+        id,
+        batch_number,
+        quantity,
+        cost_per_unit,
+        expiry_date,
+        status,
+        inventory_items!inner (
+          id,
+          name,
+          unit,
+          store_id,
+          categories (
+            name
+          )
+        )
+      `)
+      .eq('inventory_items.store_id', storeId)
+      .eq('status', 'expired')
+      .order('expiry_date', { ascending: false })
+      .limit(10);
+
+    return (data || []).map((b: any) => ({
+      id: b.id,
+      name: b.inventory_items?.name,
+      batch: b.batch_number,
+      qty: Number(b.quantity),
+      unit: b.inventory_items?.unit,
+      costPerUnit: Number(b.cost_per_unit),
+      lossValue: parseFloat((Number(b.quantity) * Number(b.cost_per_unit)).toFixed(2)),
+      expiredDate: b.expiry_date,
+      category: (b.inventory_items?.categories as any)?.name || 'General',
+      status: 'expired',
+    }));
   }
 }

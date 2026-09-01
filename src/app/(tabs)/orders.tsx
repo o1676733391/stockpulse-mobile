@@ -2,13 +2,16 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
+import { NoStoreState } from '@/components/ui/no-store-state';
 import { BadgeVariant, Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { procurementService } from '@/services/procurementService';
 import { OrderStatus, PurchaseOrder } from '@/types/procurement';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,29 +27,46 @@ export default function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, formatCurrency } = useI18n();
+  const { user } = useAuth();
+  const hasNoStore = !user?.storeId || user.storeId === 'unassigned' || user.storeId === '' || user.storeId === 'pending';
 
   const STATUS_CONFIG: Record<
     OrderStatus,
     { label: string; variant: BadgeVariant; stepIdx: number }
   > = {
     draft:     { label: t('orders.status.draft'),     variant: 'gray',  stepIdx: 0 },
+    submitted: { label: 'Submitted',                  variant: 'blue',  stepIdx: 1 },
+    approved:  { label: 'Approved',                   variant: 'blue',  stepIdx: 1 },
     sent:      { label: t('orders.status.sent'),      variant: 'blue',  stepIdx: 1 },
     confirmed: { label: t('orders.status.confirmed'), variant: 'amber', stepIdx: 2 },
-    received:  { label: t('orders.status.received'),  variant: 'green', stepIdx: 3 },
+    received: { label: t('orders.status.received'),  variant: 'green', stepIdx: 3 },
+    cancelled: { label: 'Cancelled',                  variant: 'red',   stepIdx: 0 },
   };
 
   const [tab, setTab] = useState<'active' | 'history'>('active');
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [loading, setLoading] = useState(!hasNoStore);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchOrders = useCallback(async () => {
+    if (hasNoStore) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoading(true);
+      setErrorMsg(null);
       const data = await procurementService.getOrders(tab);
       setOrders(data);
-    } catch {
-      // Fallback logged in service
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Unable to load purchase orders');
+    } finally {
+      setLoading(false);
     }
-  }, [tab]);
+  }, [tab, hasNoStore]);
 
   useEffect(() => {
     fetchOrders();
@@ -148,28 +168,49 @@ export default function OrdersScreen() {
           />
         }
       >
+        {hasNoStore && (
+          <NoStoreState style={{ marginHorizontal: 0, marginBottom: Spacing.lg }} />
+        )}
+
         {/* 3-Stat Metric Grid */}
         <View style={styles.metricsGrid}>
           <Card style={styles.metricCard}>
-            <Text style={styles.metricNum}>{activeOrders.length}</Text>
+            <Text style={styles.metricNum}>{loading ? '--' : activeOrders.length}</Text>
             <Text style={styles.metricLabel}>Active Orders</Text>
           </Card>
           <Card style={styles.metricCard}>
             <Text style={[styles.metricNum, { color: Colors.brand.dark }]}>
-              €{Math.round(totalActiveValue)}
+              {loading ? '--' : formatCurrency(totalActiveValue)}
             </Text>
             <Text style={styles.metricLabel}>Total Value</Text>
           </Card>
           <Card style={styles.metricCard}>
             <Text style={[styles.metricNum, { color: Colors.warning.dark }]}>
-              {awaitingDeliveryCount}
+              {loading ? '--' : awaitingDeliveryCount}
             </Text>
             <Text style={styles.metricLabel}>Awaiting</Text>
           </Card>
         </View>
 
+        {errorMsg && (
+          <View style={styles.errorCard}>
+            <VectorIcon name="AlertCircle" size={20} color={Colors.critical.main} />
+            <Text style={styles.errorText}>{errorMsg}</Text>
+            <Pressable onPress={fetchOrders} style={styles.retryBtn}>
+              <Text style={styles.retryText}>{t('common.retry') || 'Retry'}</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {loading && !refreshing && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={Colors.brand.primary} />
+            <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          </View>
+        )}
+
         {/* Empty State */}
-        {displayedOrders.length === 0 && (
+        {!loading && !errorMsg && displayedOrders.length === 0 && (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
               <VectorIcon name="Package" size={24} color={Colors.neutral.textTertiary} />
@@ -512,5 +553,41 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.critical.light,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.critical.light,
+  },
+  errorText: {
+    flex: 1,
+    ...Typography.body,
+    color: Colors.critical.dark,
+  },
+  retryBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: Colors.critical.main,
+    borderRadius: Radius.md,
+  },
+  retryText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  loadingBox: {
+    paddingVertical: Spacing['3xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    ...Typography.bodySecondary,
   },
 });

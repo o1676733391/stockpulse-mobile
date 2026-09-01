@@ -1,4 +1,4 @@
-export type OrderStatus = 'draft' | 'sent' | 'confirmed' | 'received';
+export type OrderStatus = 'draft' | 'submitted' | 'approved' | 'sent' | 'confirmed' | 'received' | 'cancelled';
 
 export interface Supplier {
   id: string;

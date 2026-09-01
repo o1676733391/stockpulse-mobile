@@ -76,5 +76,15 @@ export interface IOcrRepository {
       unitCost: number;
       totalCost: number;
     }[],
-  ): Promise<void>;
+  ): Promise<
+    Array<{
+      itemId: string;
+      itemName: string;
+      delta: number;
+      unit: string;
+      costEur: number;
+      theoreticalBefore: number;
+      theoreticalAfter: number;
+    }>
+  >;
 }

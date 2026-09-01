@@ -10,8 +10,14 @@ export class SupabaseService implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
-    const supabaseUrl = this.configService.get<string>('supabase.url') || '';
-    const serviceRoleKey = this.configService.get<string>('supabase.serviceRoleKey') || '';
+    const supabaseUrl =
+      this.configService.get<string>('supabase.url') ||
+      process.env.SUPABASE_URL ||
+      '';
+    const serviceRoleKey =
+      this.configService.get<string>('supabase.serviceRoleKey') ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      '';
 
     if (!supabaseUrl || !serviceRoleKey) {
       this.logger.warn('Supabase credentials missing. Client running in uninitialized/mock mode.');

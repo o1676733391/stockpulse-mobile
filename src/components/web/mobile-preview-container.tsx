@@ -179,8 +179,9 @@ export function MobilePreviewContainer({ children }: MobilePreviewContainerProps
 
       {/* Subtle Footer info */}
       <View style={styles.footerBar}>
+        <VectorIcon name="Smartphone" size={14} color="#64748B" />
         <Text style={styles.footerText}>
-          📱 On a phone? Opening this link directly gives a 100% full native app experience.
+          On a phone? Opening this link directly gives a 100% full native app experience.
         </Text>
       </View>
     </View>
@@ -424,7 +425,10 @@ const styles = StyleSheet.create({
   },
   footerBar: {
     paddingVertical: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   footerText: {
     fontSize: 12,

@@ -48,7 +48,13 @@
     "savedSuccess": "Erfolgreich gespeichert",
     "changesSaved": "Änderungen erfolgreich gespeichert",
     "offlineMode": "Offline-Modus — Änderungen werden bei Verbindung synchronisiert",
-    "onlineMode": "Wieder online — Synchronisiert"
+    "onlineMode": "Wieder online — Synchronisiert",
+    "add": "Hinzufügen",
+    "inProgress": "In Bearbeitung",
+    "accessDenied": "Zugriff verweigert",
+    "accessDeniedMessage": "Sie verfügen nicht über die erforderliche Berechtigung für dieses Modul.",
+    "requiredPermission": "Erforderliche Berechtigung: {{permission}}",
+    "returnToDashboard": "Zurück zur Übersicht"
   },
   "navigation": {
     "home": "Übersicht",
@@ -99,7 +105,23 @@
     "loginFailed": "Anmeldung fehlgeschlagen. Bitte Anmeldedaten prüfen.",
     "registerFailed": "Registrierung fehlgeschlagen. Bitte erneut versuchen.",
     "fillAllFields": "Bitte füllen Sie alle erforderlichen Felder aus.",
-    "passwordMinLength": "Das Passwort muss mindestens 6 Zeichen lang sein."
+    "passwordMinLength": "Das Passwort muss mindestens 6 Zeichen lang sein.",
+    "nameLabel": "Vollständiger Name",
+    "creatingStore": "Betriebskonto wird erstellt...",
+    "createStoreButton": "Betriebskonto anlegen",
+    "signInLink": "Hier anmelden",
+    "staffLogin": "Mitarbeiter-Login",
+    "staffLoginSub": "Mit Mitarbeiterkonto anmelden oder Code einlösen",
+    "joinWithCode": "Mit Mitarbeitercode beitreten",
+    "joinWithCodeSub": "Haben Sie einen Einladungscode von Ihrem Betriebsleiter? Hier eingeben.",
+    "loginTabs": {
+      "account": "E-Mail-Login",
+      "invitationCode": "Mitarbeiter-Code"
+    },
+    "staffPrompt": "Mitarbeiter mit Einladungscode?",
+    "claimInvite": "Mit Mitarbeitercode beitreten",
+    "quickRoleSelect": "Schnell-Login nach Rolle",
+    "quickRoleSelectSub": "Tippen Sie auf eine Rolle, um Zugangsdaten einzufügen"
   },
   "dashboard": {
     "welcome": "Willkommen, {{name}}",
@@ -133,7 +155,8 @@
       "scan": "Kassenbon / Z-Bon scannen",
       "order": "Bestellung anlegen",
       "expiry": "MHD-Triage"
-    }
+    },
+    "noTasks": "Alle Zählaufgaben für heute sind abgeschlossen."
   },
   "inventory": {
     "title": "Inventarverwaltung",
@@ -178,8 +201,14 @@
     "supplierCorrection": "Lieferantenabweichung",
     "manualCorrection": "Manuelle Zählkorrektur",
     "deltaQuantity": "Mengenänderung (+/-)",
-    "emptyState": "Keine Inventarartikel gefunden",
-    "emptyStateDesc": "Passen Sie Ihren Suchbegriff oder die Filter an."
+    "emptyState": "Keine Artikel gefunden",
+    "emptyStateDesc": "Passen Sie Ihren Suchbegriff oder die Filter an.",
+    "noBatches": "Keine aktiven Chargen erfasst.",
+    "daysRemaining": "{{days}} Tage verbleibend",
+    "itemCount": "{{count}} Artikel",
+    "variance": "Abweichung",
+    "parLevel": "Soll-Bestand",
+    "reorderPoint": "Meldebestand"
   },
   "stockCount": {
     "title": "Lagerprüfung & Inventur",
@@ -203,7 +232,12 @@
     "netVariance": "Netto-Abweichung (€ / %)",
     "approveVariance": "Genehmigen & Hauptbuch abgleichen",
     "approving": "Hauptbuch wird abgeglichen...",
-    "discrepanciesFound": "{{count}} Abweichungen erfordern die Freigabe des Schichtleiters."
+    "discrepanciesFound": "{{count}} Abweichungen erfordern die Freigabe des Schichtleiters.",
+    "itemsToCount": "Zu zählende Artikel",
+    "countSummaryTitle": "Inventurabschluss & Prüfung",
+    "status": {
+      "completed": "Abgeschlossen"
+    }
   },
   "ocr": {
     "title": "Dokumenten-KI & Beleg-Scanner",
@@ -248,7 +282,13 @@
     "goodsReceiptTitle": "Wareneingang & Prüfung",
     "goodsReceiptSub": "Lieferungen abgleichen, Chargennummern prüfen und FEFO-Chargen einbuchen.",
     "receiveGoods": "Lieferung einbuchen",
-    "receiving": "Wareneingang wird verarbeitet..."
+    "receiving": "Wareneingang wird verarbeitet...",
+    "status": {
+      "draft": "Entwurf",
+      "sent": "Gesendet",
+      "confirmed": "Bestätigt",
+      "received": "Eingegangen"
+    }
   },
   "expiration": {
     "title": "MHD- & Frischekontrolle",
@@ -261,7 +301,12 @@
       "cook": "Verarbeiten & einfrieren",
       "discard": "Verderb erfassen"
     },
-    "potentialLoss": "Möglicher Verlust durch Verderb: {{value}}"
+    "potentialLoss": "Möglicher Verlust durch Verderb: {{value}}",
+    "urgentAction": "Dringende Maßnahme erforderlich",
+    "actions": {
+      "reduceWaste": "Maßnahmen zur Abfallvermeidung",
+      "triageBbd": "Ablaufende Chargen bearbeiten"
+    }
   },
   "analytics": {
     "title": "Lageranalysen & Berichte",
@@ -271,22 +316,106 @@
     "wasteLoss": "Kosten durch Verderb & Bruch",
     "supplierLeadTimes": "Lieferzeiten & Zuverlässigkeit der Lieferanten",
     "exportPdf": "Finanzbericht exportieren (PDF)",
-    "exportCsv": "Bewertungsübersicht exportieren (CSV)"
+    "exportCsv": "Bewertungsübersicht exportieren (CSV)",
+    "trends": "Historische Trends",
+    "reports": "Bewertungs- & Prüfberichte",
+    "suppliers": "Lieferanten-Performance"
   },
   "team": {
     "title": "Team & Berechtigungen",
     "subtitle": "Mitarbeiterrollen und Betriebszuweisungen verwalten",
     "inviteMember": "Mitarbeiter einladen",
     "membersList": "Aktive Teammitglieder ({{count}})",
+    "tabs": {
+      "members": "Mitglieder",
+      "invitations": "Einladungen",
+      "roles": "Rollen & Rechte"
+    },
+    "activeMembers": "Aktive Teammitglieder",
+    "pendingInvitations": "Offene Einladungen",
+    "noMembersFound": "Keine Teammitglieder gefunden",
+    "noPendingInvitations": "Keine offenen Einladungen",
+    "noPendingDesc": "Generieren Sie einen Einladungscode, um neue Küchen- oder Barmitarbeiter einzubinden.",
+    "copyCode": "Code kopieren",
+    "codeCopied": "Code in die Zwischenablage kopiert",
+    "share": "Teilen",
+    "resend": "Code erneuern",
+    "resending": "Wird erneuert...",
+    "revoke": "Widerrufen",
+    "revoking": "Wird widerrufen...",
+    "revokeConfirmTitle": "Einladung widerrufen",
+    "revokeConfirmMsg": "Möchten Sie die Einladung für {{email}} wirklich widerrufen? Der Code wird sofort ungültig.",
+    "changeRole": "Rolle ändern",
+    "removeFromStore": "Aus Betrieb entfernen",
+    "removeMemberTitle": "Teammitglied entfernen",
+    "removeMemberConfirm": "Möchten Sie {{name}} wirklich aus diesem Betrieb entfernen? Der Zugriff erlischt sofort.",
+    "roleUpdatedSuccess": "Rolle von {{name}} wurde auf {{role}} aktualisiert.",
+    "memberRemovedSuccess": "{{name}} wurde aus dem Betrieb entfernt.",
+    "invitationSentSuccess": "Einladung erstellt! Code: {{code}}",
+    "inviteDetails": "Mitglieder-Details",
+    "expiresIn": "Gültig für {{days}} Tage",
+    "sendInvitation": "Einladung senden",
+    "sendingInvitation": "Einladung wird erstellt...",
+    "invitedBy": "Eingeladen von {{name}}",
     "roles": {
       "superadmin": "Unternehmensinhaber",
+      "admin": "Betriebs-Admin",
       "manager": "Betriebsleiter",
       "supervisor": "Schichtleiter",
       "staff": "Küchenmitarbeiter",
       "auditor": "Externer Prüfer"
     },
     "permissionsMatrix": "Rollen- und Rechtematrix",
-    "roleAssigned": "Rolle: {{role}}"
+    "roleAssigned": "Rolle: {{role}}",
+    "rolesDesc": "Mitarbeiterrollen und Filialzuweisungen verwalten"
+  },
+  "onboarding": {
+    "getStarted": "Wie möchten Sie starten?",
+    "getStartedSub": "Treten Sie einer bestehenden Restaurantküche bei oder erstellen Sie Ihren eigenen Betrieb.",
+    "joinStore": "Bestehendem Betrieb beitreten",
+    "joinStoreDesc": "Geben Sie den Einladungscode Ihres Betriebsleiters ein, um dem Küchenteam beizutreten.",
+    "createStore": "Neuen Betrieb erstellen",
+    "createStoreDesc": "Richten Sie als Administrator einen neuen Restaurant- oder Küchenstandort ein.",
+    "skipForNow": "Vorerst überspringen",
+    "skipForNowDesc": "App erkunden. Sie können jederzeit in den Einstellungen einen Betrieb beitreten oder anlegen.",
+    "joinTitle": "Ihrem Betrieb beitreten",
+    "joinDesc": "Geben Sie den 6-stelligen Einladungscode Ihres Betriebsadministrators ein.",
+    "codeLabel": "Einladungscode",
+    "codePlaceholder": "z.B. A9B8C7 oder INV-A9B8C7",
+    "joinBtn": "Betrieb beitreten",
+    "validateBtn": "Prüfen & Vorschau",
+    "validating": "Einladungscode wird geprüft...",
+    "accepting": "Beitritt wird verarbeitet...",
+    "previewTitle": "Sie sind eingeladen",
+    "storeLabel": "Betrieb",
+    "roleLabel": "Zugewiesene Rolle",
+    "emailLabel": "Eingeladene E-Mail",
+    "expiresLabel": "Gültig bis",
+    "acceptBtn": "Einladung annehmen",
+    "cancelBtn": "Abbrechen",
+    "changeCode": "Anderen Code eingeben",
+    "createTitle": "Betrieb erstellen",
+    "createSub": "Geben Sie die Details Ihres Restaurantstandorts ein.",
+    "storeName": "Name des Betriebs",
+    "storeCode": "Betriebscode (Optional)",
+    "storeCity": "Stadt",
+    "createBtn": "Betrieb anlegen",
+    "creatingStore": "Betrieb wird erstellt...",
+    "noStoreSelected": "Kein Betrieb ausgewählt",
+    "noStoreDesc": "Treten Sie einem Betrieb bei oder erstellen Sie einen neuen, um auf Inventar, Rezepte und Kassenabgleich zuzugreifen.",
+    "noStoreBannerTitle": "Kein Betrieb verbunden",
+    "noStoreBannerSub": "Sie befinden sich derzeit im unzugewiesenen Modus."
+  },
+  "invitationErrors": {
+    "invalidCode": "Dieser Einladungscode ist ungültig.",
+    "expired": "Diese Einladung ist abgelaufen. Bitten Sie Ihren Betriebsleiter um eine neue Einladung.",
+    "revoked": "Diese Einladung ist nicht mehr verfügbar.",
+    "alreadyClaimed": "Diese Einladung wurde bereits eingelöst.",
+    "emailMismatch": "Diese Einladung ist mit einer anderen E-Mail-Adresse verknüpft. Bitte melden Sie sich mit der eingeladenen E-Mail an.",
+    "rateLimited": "Zu viele Versuche. Bitte warten Sie einen Moment.",
+    "networkError": "Verbindung zum Server fehlgeschlagen. Bitte prüfen Sie Ihre Verbindung.",
+    "generic": "Fehler beim Annehmen der Einladung. Bitte versuchen Sie es erneut.",
+    "tryAgain": "Erneut versuchen"
   },
   "notifications": {
     "title": "Benachrichtigungen & Warnungen",
@@ -302,7 +431,10 @@
       "system": "Systemwarnung"
     },
     "emptyState": "Keine Benachrichtigungen vorhanden",
-    "emptyStateDesc": "Alles erledigt! Warnungen und Bestandsmeldungen erscheinen hier."
+    "emptyStateDesc": "Alles erledigt! Warnungen und Bestandsmeldungen erscheinen hier.",
+    "filterUnread": "Ungelesen",
+    "filterUrgent": "Dringend",
+    "unreadCount": "{{count}} ungelesene Benachrichtigungen"
   },
   "settings": {
     "title": "Einstellungen",
@@ -311,7 +443,8 @@
       "notificationsAlerts": "Benachrichtigungen & Warnungen",
       "preferencesDisplay": "Darstellung & Sprache",
       "accountSecurity": "Konto & Sicherheit",
-      "supportLegal": "Hilfe & Rechtliches"
+      "supportLegal": "Hilfe & Rechtliches",
+      "generalSettings": "Allgemeine Einstellungen"
     },
     "items": {
       "storeConfig": "Betriebskonfiguration",
@@ -321,7 +454,8 @@
       "language": "Sprache & Lokalisierung",
       "profile": "Profil & Anmeldedaten",
       "about": "Über die App & Lizenzen",
-      "signOut": "Abmelden"
+      "signOut": "Abmelden",
+      "userProfile": "Benutzerprofil & Konto"
     },
     "language": {
       "title": "Sprache & Lokalisierung",
@@ -369,7 +503,13 @@
     "signOutConfirm": {
       "title": "Abmelden",
       "message": "Möchten Sie sich wirklich von StockPulse abmelden?"
-    }
+    },
+    "permissionDeniedTitle": "Berechtigung eingeschränkt",
+    "permissionDeniedMessage": "Die Benutzerrolle '{{role}}' verfügt nicht über die erforderliche Rolle: [admin, superadmin, manager], um die Filialeinstellungen zu ändern.",
+    "readOnlyBannerTitle": "Schreibgeschützter Zugriff ({{role}})",
+    "readOnlyBannerSub": "Ihre Rolle erlaubt die Einsicht der Filialparameter. Änderungen erfordern Manager- oder Administratorrechte.",
+    "restrictedSave": "Eingeschränkt (Schreibgeschützt)",
+    "understood": "Verstanden"
   },
   "errors": {
     "networkError": "Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung.",
@@ -381,5 +521,39 @@
     "invalidInput": "Bitte überprüfen Sie Ihre Eingaben auf Fehler.",
     "itemNotFound": "Inventarartikel nicht gefunden.",
     "insufficientStock": "Nicht genügend Lagerbestand für diesen Vorgang vorhanden."
+  },
+  "scan": {
+    "title": "Kassenbon & Z-Bericht Scanner",
+    "instructions": "Kassenbon oder Tagesabschluss im Rahmen ausrichten",
+    "galleryButton": "Aus Galerie wählen",
+    "tip": "Achten Sie auf gute Ausleuchtung und scharfe Schrift",
+    "processingTitle": "Kassenbon wird verarbeitet",
+    "processingSubtitle": "Positionen werden mit Google Gemini Vision analysiert",
+    "processingSteps": {
+      "uploading": "Bild wird hochgeladen...",
+      "reading": "Texterkennung läuft...",
+      "detecting": "Gerichte, Mengen und Preise werden erfasst...",
+      "calculating": "Rezeptur-Zutaten werden berechnet...",
+      "mapping": "Abgleich mit dem Artikelstamm..."
+    },
+    "reviewTitle": "Kassenpositionen prüfen",
+    "reviewStats": {
+      "detected": "Erkannte Positionen",
+      "confidence": "Gesamt-Konfidenz",
+      "reviewNeeded": "Prüfung nötig"
+    },
+    "lowConfidenceBanner": "Einige Positionen haben geringe Erkennungsgenauigkeit. Bitte Mengen prüfen.",
+    "tableHeaders": {
+      "item": "Gericht / Artikel",
+      "qty": "Menge",
+      "confidence": "Sicherheit"
+    },
+    "confirmAndDeduct": "Bestätigen & Lager abbuchen",
+    "resultTitle": "Abbuchung abgeschlossen",
+    "totalPortionsSold": "Verkaufte Portionen gesamt",
+    "ingredientsDeductedTitle": "Vom Lager abgebuchte Zutaten",
+    "theoreticalUpdatedTitle": "Soll-Bestände aktualisiert",
+    "theoreticalDeductionNotice": "Die rechnerischen Soll-Bestände wurden anhand der Rezepturen automatisch angepasst.",
+    "retakeButton": "Weiteren Beleg scannen"
   }
 }

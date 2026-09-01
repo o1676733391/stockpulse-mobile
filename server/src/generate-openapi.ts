@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as YAML from 'yaml';
 import { AppModule } from './app.module';
 
 async function generateOpenApiSpec() {
@@ -64,11 +63,6 @@ StockPulse provides unified backend capabilities for restaurant and cloud kitche
   const jsonPath = path.join(docsDir, 'openapi.json');
   fs.writeFileSync(jsonPath, JSON.stringify(document, null, 2), 'utf-8');
   console.log(`[OpenAPI Generator] Successfully generated JSON: ${jsonPath}`);
-
-  // 2. Export YAML format
-  const yamlPath = path.join(docsDir, 'openapi.yaml');
-  fs.writeFileSync(yamlPath, YAML.stringify(document), 'utf-8');
-  console.log(`[OpenAPI Generator] Successfully generated YAML: ${yamlPath}`);
 
   await app.close();
   process.exit(0);

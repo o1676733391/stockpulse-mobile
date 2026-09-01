@@ -9,8 +9,9 @@ import {
   settingsService,
 } from '@/services/settingsService';
 import { NotificationPreferences } from '@/types/settings';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,27 +28,57 @@ export default function NotificationPreferencesScreen() {
   const [prefs, setPrefs] = useState<NotificationPreferences>(() =>
     JSON.parse(JSON.stringify(INITIAL_NOTIF_PREFERENCES))
   );
+  const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const handleToggleChannel = (key: string, channel: 'push' | 'email') => {
+  useEffect(() => {
+    settingsService
+      .getNotificationPreferences()
+      .then((data) => {
+        if (data && data.channels) setPrefs(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleChannel = async (key: string, channel: 'push' | 'email') => {
+    const channelItem = prefs.channels.find((c) => c.key === key);
+    const newVal = channelItem ? !channelItem[channel] : true;
     setPrefs((prev) => ({
       ...prev,
       channels: prev.channels.map((c) =>
         c.key === key ? { ...c, [channel]: !c[channel] } : c
       ),
     }));
+    try {
+      await settingsService.updateNotificationToggle(key, channel, newVal);
+    } catch {}
   };
 
-  const handleToggleGlobal = (channel: 'push' | 'email', val: boolean) => {
+  const handleToggleGlobal = async (channel: 'push' | 'email', val: boolean) => {
     setPrefs((prev) => ({
       ...prev,
       [channel === 'push' ? 'pushGlobal' : 'emailGlobal']: val,
     }));
+    try {
+      await settingsService.updateGlobalNotification(channel, val);
+    } catch {}
   };
 
   const handleSave = async () => {
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    if (saving) return;
+    try {
+      setSaving(true);
+      await Promise.all([
+        settingsService.updateGlobalNotification('push', prefs.pushGlobal),
+        settingsService.updateGlobalNotification('email', prefs.emailGlobal),
+      ]);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 2500);
+    } catch (err: any) {
+      Alert.alert('Save Failed', err?.message || 'Unable to save notification preferences');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -168,9 +199,16 @@ export default function NotificationPreferencesScreen() {
 
         <Pressable
           onPress={handleSave}
-          style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+          disabled={saving}
+          style={({ pressed }) => [
+            styles.saveBtn,
+            saving && styles.btnDisabled,
+            pressed && styles.pressed,
+          ]}
         >
-          <Text style={styles.saveBtnText}>Save Preferences</Text>
+          <Text style={styles.saveBtnText}>
+            {saving ? 'Saving Preferences...' : 'Save Preferences'}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -308,6 +346,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  btnDisabled: {
+    opacity: 0.6,
   },
   pressed: {
     opacity: 0.8,

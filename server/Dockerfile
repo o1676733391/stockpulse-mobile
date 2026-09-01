@@ -1,39 +1,54 @@
-# Multi-stage Dockerfile for StockPulse SQLite Backend
+# ==========================================
+# StockPulse Multi-Tenant Backend Container
+# Google Cloud Run Optimized Production Image
+# ==========================================
+
+# ------------------------------------------
+# Stage 1: Build NestJS Application
+# ------------------------------------------
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies for better-sqlite3
-RUN apk add --no-cache python3 make g++
+# Copy dependency specifications for cached layer installation
+COPY package.json package-lock.json ./
+RUN npm ci
 
-COPY package.json tsconfig.json ./
-RUN npm install
-
+# Copy TypeScript configuration and source code
+COPY tsconfig.json nest-cli.json ./
 COPY src ./src
+
+# Build production distribution artifacts
 RUN npm run build
 
+# Prune devDependencies to keep final production image lean and minimal
+RUN npm prune --production
+
+# ------------------------------------------
+# Stage 2: Minimal Production Runner
+# ------------------------------------------
 FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# Install runtime dependencies for SQLite
-RUN apk add --no-cache python3 make g++
-
+# Configure production environment variables
 ENV NODE_ENV=production
-ENV PORT=5000
-ENV DATABASE_PATH=/app/data/stockpulse.db
+ENV PORT=8080
 
-COPY package.json ./
-RUN npm install --only=production
+# Security & Compliance: Run as non-root user (GDPR / ISO 27001 / SOC 2 least privilege)
+USER node
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/db/schema.sql ./dist/db/schema.sql
-COPY --from=builder /app/src/db/schema.sql ./schema.sql
-RUN mkdir -p ./src/db && cp ./schema.sql ./src/db/schema.sql
+# Copy only compiled JS bundle and pruned production node_modules
+COPY --chown=node:node --from=builder /app/node_modules ./node_modules
+COPY --chown=node:node --from=builder /app/package.json ./package.json
+COPY --chown=node:node --from=builder /app/dist ./dist
 
-# Create volume mount point for persistent SQLite DB
-RUN mkdir -p /app/data
+# Cloud Run default container listening port
+EXPOSE 8080
 
-EXPOSE 5000
+# Health check configuration for container runtimes
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:${PORT:-8080}/health || exit 1
 
-CMD ["node", "dist/index.js"]
+# Production entrypoint
+CMD ["node", "dist/main.js"]

@@ -5,12 +5,13 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import {
+  expirationService,
   INITIAL_EXPIRED_ITEMS,
   INITIAL_EXPIRY_ITEMS,
 } from '@/services/expirationService';
 import { ExpiredItem, ExpiryItem } from '@/types/expiration';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -33,15 +34,35 @@ export default function ExpirationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<ExpiryItem[]>(() =>
-    JSON.parse(JSON.stringify(INITIAL_EXPIRY_ITEMS))
-  );
-  const [expiredItems] = useState<ExpiredItem[]>(() =>
-    JSON.parse(JSON.stringify(INITIAL_EXPIRED_ITEMS))
-  );
+  const [items, setItems] = useState<ExpiryItem[]>([]);
+  const [expiredItems, setExpiredItems] = useState<ExpiredItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabType>('Critical');
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [adjustQty, setAdjustQty] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [expiring, expired] = await Promise.all([
+          expirationService.getExpiringItems().catch(() => []),
+          expirationService.getExpiredItems().catch(() => []),
+        ]);
+        if (isMounted) {
+          setItems(expiring);
+          setExpiredItems(expired);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Metrics
   const expiredCount = expiredItems.length;
@@ -91,15 +112,15 @@ export default function ExpirationScreen() {
         {/* 3-Stat Metric Grid */}
         <View style={styles.metricsGrid}>
           <View style={styles.metricBoxRed}>
-            <Text style={styles.metricNumRed}>{expiredCount}</Text>
+            <Text style={styles.metricNumRed}>{loading ? '--' : expiredCount}</Text>
             <Text style={styles.metricLabelRed}>Expired</Text>
           </View>
           <View style={styles.metricBoxAmber}>
-            <Text style={styles.metricNumAmber}>{next3Days}</Text>
+            <Text style={styles.metricNumAmber}>{loading ? '--' : next3Days}</Text>
             <Text style={styles.metricLabelAmber}>Next 3 days</Text>
           </View>
           <View style={styles.metricBoxSlate}>
-            <Text style={styles.metricNumSlate}>{next7Days}</Text>
+            <Text style={styles.metricNumSlate}>{loading ? '--' : next7Days}</Text>
             <Text style={styles.metricLabelSlate}>Next 7 days</Text>
           </View>
         </View>

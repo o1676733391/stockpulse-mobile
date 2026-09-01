@@ -2,14 +2,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
+import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
-import {
-  INITIAL_STORE_SETTINGS,
-  INITIAL_USER_PROFILE,
-} from '@/services/settingsService';
+import { settingsService } from '@/services/settingsService';
+import { StoreSettings } from '@/types/settings';
+import { UserRole } from '@/types/rbac';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -37,10 +38,49 @@ interface SettingsGroup {
 export default function SettingsHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user, role, logout } = useAuth();
   const { t, metadata } = useI18n();
 
-  const [profile] = useState(INITIAL_USER_PROFILE);
-  const [store] = useState(INITIAL_STORE_SETTINGS);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
+
+  const loadSettingsData = useCallback(async () => {
+    try {
+      const data = await settingsService.getStoreSettings();
+      setStoreSettings(data);
+    } catch {
+      // Handled gracefully
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSettingsData();
+  }, [loadSettingsData]);
+
+  const getRoleVariant = (userRole?: string) => {
+    switch (userRole?.toLowerCase()) {
+      case 'admin':
+      case 'superadmin':
+        return 'purple';
+      case 'manager':
+        return 'blue';
+      case 'supervisor':
+        return 'amber';
+      case 'auditor':
+        return 'orange';
+      default:
+        return 'green';
+    }
+  };
+
+  const getRoleLabel = (userRole?: string) => {
+    const r = (userRole || 'staff') as UserRole;
+    return ROLES[r]?.label || r.toUpperCase();
+  };
+
+  const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+  const displayEmail = user?.email || '';
+  const displayStore = storeSettings?.name || user?.storeName || 'StockPulse Kitchen';
+  const displayAvatar = user?.avatarText || displayName.slice(0, 2).toUpperCase();
 
   const groups: SettingsGroup[] = [
     {
@@ -49,7 +89,7 @@ export default function SettingsHubScreen() {
         {
           icon: 'Store',
           label: t('settings.items.storeConfig'),
-          val: store.name,
+          val: displayStore,
           route: '/settings/store',
           iconBg: '#dbeafe',
           iconColor: '#1d4ed8',
@@ -57,7 +97,7 @@ export default function SettingsHubScreen() {
         {
           icon: 'Clock',
           label: t('settings.items.bbdRules'),
-          val: `${store.bbdAlertDays}d`,
+          val: storeSettings ? `${storeSettings.bbdAlertDays}d` : '7d',
           route: '/settings/store',
           iconBg: '#fee2e2',
           iconColor: '#dc2626',
@@ -104,7 +144,7 @@ export default function SettingsHubScreen() {
         {
           icon: 'User',
           label: t('settings.items.profile'),
-          val: profile.email,
+          val: displayEmail,
           route: '/settings/profile',
           iconBg: '#ede9fe',
           iconColor: '#6d28d9',
@@ -135,7 +175,12 @@ export default function SettingsHubScreen() {
         {
           text: t('settings.items.signOut'),
           style: 'destructive',
-          onPress: () => router.replace('/(tabs)' as any),
+          onPress: async () => {
+            try {
+              await logout();
+            } catch {}
+            router.replace('/login');
+          },
         },
       ]
     );
@@ -152,21 +197,23 @@ export default function SettingsHubScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── User Profile Banner ── */}
+        {/* ── Real User Profile Banner ── */}
         <Pressable
           onPress={() => router.push('/settings/profile' as any)}
           style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}
         >
           <View style={styles.avatarBox}>
-            <Text style={styles.avatarText}>{profile.avatarText}</Text>
+            <Text style={styles.avatarText}>{displayAvatar}</Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{profile.name}</Text>
+            <Text style={styles.profileName}>{displayName}</Text>
             <View style={styles.roleBadgeRow}>
-              <Badge variant="purple">Store Admin</Badge>
-              <Text style={styles.profileEmail}>{profile.email}</Text>
+              <Badge variant={getRoleVariant(user?.role || role)}>
+                {getRoleLabel(user?.role || role)}
+              </Badge>
+              <Text style={styles.profileEmail} numberOfLines={1}>{displayEmail}</Text>
             </View>
-            <Text style={styles.profileStore}>{profile.storeName}</Text>
+            <Text style={styles.profileStore} numberOfLines={1}>{displayStore}</Text>
           </View>
           <VectorIcon name="ChevronRight" size={18} color={Colors.neutral.textTertiary} />
         </Pressable>
@@ -191,15 +238,26 @@ export default function SettingsHubScreen() {
                     ]}
                   >
                     <View style={[styles.itemIconBox, { backgroundColor: item.iconBg }]}>
-                      <VectorIcon name={item.icon} size={18} color={item.iconColor} />
+                      <VectorIcon
+                        name={item.icon as any}
+                        size={17}
+                        color={item.iconColor}
+                      />
                     </View>
 
-                    <Text style={styles.itemLabel}>{item.label}</Text>
-
-                    <View style={styles.itemRight}>
-                      {item.val && <Text style={styles.itemValText}>{item.val}</Text>}
-                      <VectorIcon name="ChevronRight" size={15} color={Colors.neutral.textTertiary} />
+                    <View style={styles.itemLabelBox}>
+                      <Text style={styles.itemLabel}>{item.label}</Text>
                     </View>
+
+                    {item.val && (
+                      <Text style={styles.itemVal}>{item.val}</Text>
+                    )}
+
+                    <VectorIcon
+                      name="ChevronRight"
+                      size={15}
+                      color={Colors.neutral.textTertiary}
+                    />
                   </Pressable>
                 );
               })}
@@ -207,14 +265,19 @@ export default function SettingsHubScreen() {
           </View>
         ))}
 
-        {/* ── Sign Out CTA ── */}
+        {/* ── Sign Out Action ── */}
         <Pressable
           onPress={handleSignOut}
           style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
         >
-          <VectorIcon name="LogOut" size={16} color={Colors.critical.main} />
+          <VectorIcon name="LogOut" size={17} color={Colors.critical.main} />
           <Text style={styles.signOutBtnText}>{t('settings.items.signOut')}</Text>
         </Pressable>
+
+        {/* Build / Version Footer */}
+        <Text style={styles.versionFooter}>
+          {t('common.appName')} v2.4.1 (Build 2026.03.11-rc1) · {displayStore}
+        </Text>
       </ScrollView>
     </View>
   );
@@ -225,40 +288,42 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
     gap: Spacing.lg,
   },
   profileCard: {
-    backgroundColor: Colors.neutral.card,
-    borderRadius: Radius.xl,
-    padding: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
     gap: Spacing.md,
+    ...Shadows.sm,
     borderWidth: 1,
     borderColor: Colors.neutral.borderLight,
-    ...Shadows.card,
   },
   avatarBox: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.brand.subtle,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.brand.dark,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#ffffff',
   },
   profileInfo: {
     flex: 1,
     gap: 3,
   },
   profileName: {
-    ...Typography.cardTitle,
-    fontSize: 15,
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
   },
   roleBadgeRow: {
     flexDirection: 'row',
@@ -266,70 +331,75 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   profileEmail: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    flex: 1,
   },
   profileStore: {
     fontSize: 11,
-    color: Colors.neutral.textSecondary,
+    color: Colors.neutral.textMuted,
+    marginTop: 1,
   },
   groupContainer: {
     gap: Spacing.xs,
   },
   groupHeader: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    color: Colors.neutral.textTertiary,
     letterSpacing: 0.8,
+    color: Colors.neutral.textMuted,
     paddingHorizontal: Spacing.xs,
   },
   groupCard: {
-    padding: 0,
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.lg,
     overflow: 'hidden',
+    padding: 0,
+    borderWidth: 1,
+    borderColor: Colors.neutral.borderLight,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    paddingVertical: 13,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    gap: Spacing.md,
   },
   itemRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.neutral.borderLight,
   },
   itemIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.lg,
+    width: 32,
+    height: 32,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  itemLabel: {
+  itemLabelBox: {
     flex: 1,
+  },
+  itemLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: Colors.neutral.textPrimary,
   },
-  itemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  itemValText: {
-    fontSize: 12,
-    color: Colors.neutral.textTertiary,
+  itemVal: {
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+    maxWidth: 160,
+    textAlign: 'right',
   },
   signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.neutral.card,
-    borderColor: Colors.critical.light,
+    backgroundColor: Colors.critical.light,
+    borderRadius: Radius.lg,
+    paddingVertical: 14,
+    gap: Spacing.sm,
     borderWidth: 1,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
     marginTop: Spacing.xs,
   },
   signOutBtnText: {
@@ -337,7 +407,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.critical.main,
   },
+  versionFooter: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: Colors.neutral.textMuted,
+    marginTop: Spacing.xs,
+  },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.75,
   },
 });

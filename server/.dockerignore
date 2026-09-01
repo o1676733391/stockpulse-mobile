@@ -1,7 +1,51 @@
+# Source Control & IDE
+.git
+.gitignore
+.github
+.vscode
+.idea
+*.sublime-project
+*.sublime-workspace
+
+# Build artifacts & Dependencies
 node_modules
 dist
+coverage
+*.tsbuildinfo
+*.map
+
+# Test files & Documentation
+test
+tests
+docs
+*.spec.ts
+*.e2e-spec.ts
+jest*.json
+README.md
+
+# Environment, Secrets, & Cloud Credentials
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.p12
+*.json.key
+*credentials*.json
+*service-account*.json
+gcp-keys
+*-key.json
+
+# Local databases, storage, & logs
 data
 *.db
+*.sqlite
+*.sqlite3
 *.log
-.env
-.git
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-generated files
+.DS_Store
+Thumbs.db

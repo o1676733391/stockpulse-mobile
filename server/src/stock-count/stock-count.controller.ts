@@ -47,6 +47,20 @@ import { StockCountService } from './stock-count.service';
 export class StockCountController {
   constructor(private readonly stockCountService: StockCountService) {}
 
+  @Get('active-items')
+  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @RequirePermissions('stock_count:conduct')
+  @ApiOperation({ summary: 'Get active inventory items ready for stock count' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of countable items in active store',
+  })
+  async getActiveItems(
+    @CurrentStore() storeId: string,
+  ): Promise<any[]> {
+    return this.stockCountService.getActiveCountItems(storeId);
+  }
+
   @Post('sessions')
   @Roles('superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('stock_count:conduct')
@@ -63,6 +77,24 @@ export class StockCountController {
     @CurrentUser('id') actorId: string,
   ): Promise<StockCountSessionResponseDto> {
     return this.stockCountService.startSession(dto, storeId, actorId);
+  }
+
+  @Post('sessions/:sessionId/cancel')
+  @Roles('superadmin', 'manager', 'supervisor')
+  @RequirePermissions('stock_count:conduct')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel active stock count session' })
+  @ApiParam({ name: 'sessionId', description: 'Stock count session UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Stock count session cancelled',
+  })
+  async cancelSession(
+    @Param('sessionId') sessionId: string,
+    @Body('reason') reason: string,
+    @CurrentStore() storeId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.stockCountService.cancelSession(sessionId, storeId, reason);
   }
 
   @Put('sessions/:sessionId/items/:itemId')

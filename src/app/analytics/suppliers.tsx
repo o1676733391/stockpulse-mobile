@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n/I18nContext';
 import { INITIAL_SUPPLIER_PERF } from '@/services/analyticsService';
 import { SupplierPerformance } from '@/types/analytics';
 import { useRouter } from 'expo-router';
@@ -20,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function SuppliersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const [suppliers] = useState<SupplierPerformance[]>(() =>
     JSON.parse(JSON.stringify(INITIAL_SUPPLIER_PERF))
@@ -40,7 +42,7 @@ export default function SuppliersScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       <TopBar
-        title="Suppliers & Scorecards"
+        title={t('analytics.suppliers')}
         large
         showBack
         right={
@@ -49,7 +51,7 @@ export default function SuppliersScreen() {
             style={({ pressed }) => [styles.newOrderBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="ShoppingCart" size={14} color="#ffffff" />
-            <Text style={styles.newOrderBtnText}>Order</Text>
+            <Text style={styles.newOrderBtnText}>{t('common.add')}</Text>
           </Pressable>
         }
       />

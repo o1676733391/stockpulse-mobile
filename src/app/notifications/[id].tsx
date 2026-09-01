@@ -4,14 +4,14 @@ import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import {
-  INITIAL_NOTIFICATIONS,
   NOTIFICATION_TYPE_CONFIG,
   notificationService,
 } from '@/services/notificationService';
 import { AppNotification } from '@/types/notification';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,29 +25,88 @@ export default function NotificationDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [notification, setNotification] = useState<AppNotification>(() => {
-    return (
-      INITIAL_NOTIFICATIONS.find((n) => n.id === id) ??
-      INITIAL_NOTIFICATIONS[0]
-    );
-  });
+  const [notification, setNotification] = useState<AppNotification | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [notFound, setNotFound] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadItem() {
+      if (!id) return;
+      try {
+        setLoading(true);
+        const item = await notificationService.getNotificationById(id);
+        if (!isMounted) return;
+        if (item) {
+          setNotification(item);
+          if (!item.read) {
+            notificationService.markAsRead(item.id).catch(() => {});
+          }
+        } else {
+          setNotFound(true);
+        }
+      } catch {
+        if (isMounted) setNotFound(true);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadItem();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   const cfg = useMemo(() => {
-    return NOTIFICATION_TYPE_CONFIG[notification.type];
-  }, [notification.type]);
+    if (!notification) return NOTIFICATION_TYPE_CONFIG.system_alert;
+    return NOTIFICATION_TYPE_CONFIG[notification.type] ?? NOTIFICATION_TYPE_CONFIG.system_alert;
+  }, [notification]);
 
   const handleToggleRead = async () => {
+    if (!notification) return;
     const nextRead = !notification.read;
     if (nextRead) {
       await notificationService.markAsRead(notification.id);
     }
-    setNotification((prev) => ({ ...prev, read: nextRead }));
+    setNotification((prev) => (prev ? { ...prev, read: nextRead } : null));
   };
 
   const handleDismiss = async () => {
+    if (!notification) return;
     await notificationService.dismissNotification(notification.id);
     router.replace('/notifications' as any);
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
+        <TopBar title="Notification Detail" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={Colors.brand.primary} />
+          <Text style={styles.loadingText}>Loading notification details...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (notFound || !notification) {
+    return (
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
+        <TopBar title="Notification Detail" showBack />
+        <View style={styles.centerContainer}>
+          <VectorIcon name="AlertCircle" size={40} color={Colors.neutral.textTertiary} />
+          <Text style={styles.notFoundTitle}>Notification Not Found</Text>
+          <Text style={styles.notFoundSub}>This notification may have been dismissed or removed.</Text>
+          <Pressable
+            onPress={() => router.replace('/notifications' as any)}
+            style={styles.backBtn}
+          >
+            <Text style={styles.backBtnText}>Back to Notifications</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
@@ -358,5 +417,40 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+    color: Colors.neutral.textSecondary,
+  },
+  notFoundTitle: {
+    marginTop: Spacing.md,
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+  },
+  notFoundSub: {
+    marginTop: Spacing.xs,
+    fontSize: 13,
+    color: Colors.neutral.textTertiary,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
+  backBtn: {
+    backgroundColor: Colors.brand.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.lg,
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

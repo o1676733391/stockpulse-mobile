@@ -1,54 +1,271 @@
-import { mockCountSchedules, mockStockCountItems, mockSummaryItems } from '@/mocks/inventoryMockData';
 import { CountSchedule, CountSummaryItem, StockCountItem } from '@/types/inventory';
 import { apiClient, logDebugFallback } from './apiClient';
+
+export interface StockCountSessionData {
+  id: string;
+  sessionNumber: string;
+  name: string;
+  countType: 'blind' | 'standard';
+  status: 'draft' | 'in_progress' | 'completed' | 'approved' | 'rejected';
+  scheduledDate: string;
+  startedAt?: string;
+  completedAt?: string;
+  countedItemsCount?: number;
+  totalItemsCount?: number;
+}
+
+export interface VarianceReviewData {
+  sessionId: string;
+  status: string;
+  totalItemsCounted: number;
+  discrepancyCount: number;
+  netVarianceValue: number;
+  items: CountSummaryItem[];
+}
 
 export interface IStockCountService {
   getSchedules(): Promise<CountSchedule[]>;
   getActiveItems(): Promise<StockCountItem[]>;
-  submitCount(counts: Record<string, number>, scheduleId?: string): Promise<{ success: boolean; summary: CountSummaryItem[] }>;
+  startSession(name?: string, countType?: 'blind' | 'standard'): Promise<StockCountSessionData>;
+  recordItemCount(sessionId: string, itemId: string, countedQuantity: number, notes?: string): Promise<void>;
+  submitCount(
+    counts: Record<string, number>,
+    sessionId?: string
+  ): Promise<{ success: boolean; summary: CountSummaryItem[]; sessionId?: string }>;
+  getVariances(sessionId: string): Promise<VarianceReviewData>;
+  approveVariance(sessionId: string, notes?: string): Promise<{ success: boolean; netVarianceValue: number }>;
+  cancelSession(sessionId: string, reason?: string): Promise<{ success: boolean }>;
+  getHistory(): Promise<StockCountSessionData[]>;
 }
 
 export class RealStockCountService implements IStockCountService {
+  private activeSessionId: string = '';
+
   async getSchedules(): Promise<CountSchedule[]> {
     try {
-      return await apiClient.get<CountSchedule[]>('/stock-count/schedules');
+      const historyRes = await apiClient.get<any>('/stock-counts/history');
+      const sessions: any[] = Array.isArray(historyRes)
+        ? historyRes
+        : Array.isArray(historyRes?.items)
+        ? historyRes.items
+        : Array.isArray(historyRes?.data)
+        ? historyRes.data
+        : [];
+
+      if (sessions.length > 0) {
+        return sessions.map((s: any) => ({
+          id: s.id,
+          label: s.name || `Stock Count #${s.sessionNumber || s.id.slice(0, 6)}`,
+          sub: `${s.countType === 'blind' ? 'Blind Count' : 'Standard Audit'} · ${s.createdByName || 'Staff Team'}`,
+          progress: s.countedItemsCount || 0,
+          total: s.totalItemsCount || 0,
+          status: s.status === 'in_progress' ? ('in_progress' as const) : ('scheduled' as const),
+          route: '/stock-count/active',
+        }));
+      }
+
+      // Default scheduled stocktake if none in history yet
+      return [
+        {
+          id: 'sched-daily',
+          label: 'Daily Closing Inventory Count',
+          sub: 'Blind Count · Kitchen Staff',
+          progress: 0,
+          total: 0,
+          status: 'scheduled' as const,
+          route: '/stock-count/active',
+        },
+      ];
     } catch (err) {
-      logDebugFallback('StockCountService', '/stock-count/schedules', err);
-      return [...mockCountSchedules];
+      logDebugFallback('StockCountService', '/stock-counts/history [getSchedules]', err);
+      return [];
     }
   }
 
   async getActiveItems(): Promise<StockCountItem[]> {
     try {
-      return await apiClient.get<StockCountItem[]>('/stock-count/active-items');
+      const res = await apiClient.get<any>('/inventory');
+      const rawList: any[] = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res?.data)
+        ? res.data
+        : [];
+
+      return rawList.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        sku: item.sku || '',
+        category: item.category || 'General',
+        expected: Number(item.currentStock ?? item.current_stock ?? item.physicalStock ?? 0),
+        unit: item.unit || 'kg',
+      }));
     } catch (err) {
-      logDebugFallback('StockCountService', '/stock-count/active-items', err);
-      return [...mockStockCountItems];
+      logDebugFallback('StockCountService', '/inventory [getActiveItems]', err);
+      throw err;
+    }
+  }
+
+  async startSession(
+    name: string = 'Daily Closing Count',
+    countType: 'blind' | 'standard' = 'blind'
+  ): Promise<StockCountSessionData> {
+    try {
+      const res = await apiClient.post<StockCountSessionData>('/stock-counts/sessions', {
+        name,
+        countType,
+      });
+      this.activeSessionId = res.id;
+      return res;
+    } catch (err) {
+      logDebugFallback('StockCountService', '/stock-counts/sessions [POST]', err);
+      throw err;
+    }
+  }
+
+  async recordItemCount(
+    sessionId: string,
+    itemId: string,
+    countedQuantity: number,
+    notes?: string
+  ): Promise<void> {
+    try {
+      await apiClient.put(`/stock-counts/sessions/${sessionId}/items/${itemId}`, {
+        countedQuantity,
+        notes,
+      });
+    } catch (err) {
+      logDebugFallback(
+        'StockCountService',
+        `/stock-counts/sessions/${sessionId}/items/${itemId} [PUT]`,
+        err
+      );
+      throw err;
     }
   }
 
   async submitCount(
     counts: Record<string, number>,
-    scheduleId: string = 'daily'
-  ): Promise<{ success: boolean; summary: CountSummaryItem[] }> {
+    sessionId: string = this.activeSessionId
+  ): Promise<{ success: boolean; summary: CountSummaryItem[]; sessionId?: string }> {
     try {
-      await apiClient.post('/stock-count/submit', { counts, scheduleId });
-      const items = await this.getActiveItems();
-      const summary: CountSummaryItem[] = items.map((it) => {
-        const is = counts[it.id] !== undefined ? counts[it.id] : it.expected;
-        return {
-          id: it.id,
-          name: it.name,
-          should: it.expected,
-          is,
-          unit: it.unit,
-          cost: 4.80,
-        };
+      const itemsPayload = Object.entries(counts).map(([itemId, countedQuantity]) => ({
+        itemId,
+        countedQuantity,
+      }));
+
+      await apiClient.post(`/stock-counts/sessions/${sessionId}/submit`, {
+        items: itemsPayload,
       });
-      return { success: true, summary };
+
+      const variances = await this.getVariances(sessionId);
+      return { success: true, summary: variances.items, sessionId };
     } catch (err) {
-      logDebugFallback('StockCountService', '/stock-count/submit', err);
-      return { success: true, summary: [...mockSummaryItems] };
+      logDebugFallback('StockCountService', `/stock-counts/sessions/${sessionId}/submit [POST]`, err);
+      throw err;
+    }
+  }
+
+  async getVariances(sessionId: string): Promise<VarianceReviewData> {
+    try {
+      const res = await apiClient.get<any>(`/stock-counts/sessions/${sessionId}/variance`);
+      const rawItems: any[] = Array.isArray(res?.varianceItems)
+        ? res.varianceItems
+        : Array.isArray(res?.items)
+        ? res.items
+        : [];
+
+      const mappedItems: CountSummaryItem[] = rawItems.map((it: any) => ({
+        id: it.itemId || it.id,
+        name: it.name || it.itemName || 'Item',
+        should: Number(it.systemQty ?? it.theoreticalStock ?? it.expected ?? 0),
+        is: Number(it.countedQty ?? it.physicalStock ?? it.counted ?? 0),
+        unit: it.unit || 'kg',
+        cost: Number(it.varianceValue ?? it.costImpact ?? 0),
+      }));
+
+      return {
+        sessionId: res.sessionId || sessionId,
+        status: res.status || 'completed',
+        totalItemsCounted: res.totalItemsCounted || mappedItems.length,
+        discrepancyCount: res.discrepancyCount || mappedItems.filter((i) => i.is !== i.should).length,
+        netVarianceValue: Number(res.netVarianceValue || 0),
+        items: mappedItems,
+      };
+    } catch (err) {
+      logDebugFallback(
+        'StockCountService',
+        `/stock-counts/sessions/${sessionId}/variance [GET]`,
+        err
+      );
+      throw err;
+    }
+  }
+
+  async approveVariance(
+    sessionId: string,
+    notes?: string
+  ): Promise<{ success: boolean; netVarianceValue: number }> {
+    try {
+      const res = await apiClient.post<any>(
+        `/stock-counts/sessions/${sessionId}/variance/approve`,
+        { notes }
+      );
+      return {
+        success: true,
+        netVarianceValue: res?.netVarianceValue || 0,
+      };
+    } catch (err) {
+      logDebugFallback(
+        'StockCountService',
+        `/stock-counts/sessions/${sessionId}/variance/approve [POST]`,
+        err
+      );
+      throw err;
+    }
+  }
+
+  async cancelSession(sessionId: string, reason?: string): Promise<{ success: boolean }> {
+    try {
+      await apiClient.post(`/stock-counts/sessions/${sessionId}/cancel`, { reason });
+      return { success: true };
+    } catch (err) {
+      logDebugFallback(
+        'StockCountService',
+        `/stock-counts/sessions/${sessionId}/cancel`,
+        err
+      );
+      throw err;
+    }
+  }
+
+  async getHistory(): Promise<StockCountSessionData[]> {
+    try {
+      const res = await apiClient.get<any>('/stock-counts/history');
+      const rawList: any[] = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res?.data)
+        ? res.data
+        : [];
+
+      return rawList.map((s: any) => ({
+        id: s.id,
+        sessionNumber: s.sessionNumber || s.id.slice(0, 6),
+        name: s.name || `Count #${s.sessionNumber || s.id.slice(0, 6)}`,
+        countType: s.countType || 'blind',
+        status: s.status || 'completed',
+        scheduledDate: s.scheduledDate || s.startedAt || new Date().toISOString(),
+        startedAt: s.startedAt,
+        completedAt: s.completedAt,
+        countedItemsCount: s.countedItemsCount,
+        totalItemsCount: s.totalItemsCount,
+      }));
+    } catch (err) {
+      logDebugFallback('StockCountService', '/stock-counts/history', err);
+      throw err;
     }
   }
 }

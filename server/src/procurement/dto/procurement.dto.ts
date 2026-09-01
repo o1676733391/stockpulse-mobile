@@ -142,6 +142,11 @@ export class QueryPurchaseOrdersDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   endDate?: string;
+
+  @ApiPropertyOptional({ example: 'active', description: 'Tab filter: active or history' })
+  @IsOptional()
+  @IsString()
+  tab?: string;
 }
 
 export class PurchaseOrderItemResponseDto {

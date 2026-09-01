@@ -22,6 +22,11 @@ export interface INotificationRepository {
     userId?: string,
   ): Promise<PaginatedResponseDto<NotificationResponseDto>>;
 
+  findById(
+    id: string,
+    storeId: string,
+  ): Promise<NotificationResponseDto | null>;
+
   markAsRead(
     id: string,
     storeId: string,
@@ -32,6 +37,12 @@ export interface INotificationRepository {
     storeId: string,
     userId: string,
   ): Promise<number>;
+
+  deleteNotification(
+    id: string,
+    storeId: string,
+    userId?: string,
+  ): Promise<boolean>;
 
   getUnreadCount(
     storeId: string,

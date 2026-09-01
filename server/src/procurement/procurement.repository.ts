@@ -83,6 +83,10 @@ export class ProcurementRepository implements IProcurementRepository {
 
     if (query.status) {
       supabaseQuery = supabaseQuery.eq('status', query.status);
+    } else if (query.tab === 'active') {
+      supabaseQuery = supabaseQuery.not('status', 'in', '("received","cancelled")');
+    } else if (query.tab === 'history') {
+      supabaseQuery = supabaseQuery.in('status', ['received', 'cancelled']);
     }
 
     if (query.supplierId) {
@@ -1015,5 +1019,59 @@ export class ProcurementRepository implements IProcurementRepository {
         },
       ],
     };
+  }
+
+  async getPOQRecommendations(storeId: string) {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) return [];
+
+    const { data: items } = await client
+      .from('inventory_items')
+      .select('id, name, sku, unit, physical_stock, target_stock, safety_stock, cost_per_unit, supplier_id, suppliers(id, name, email)')
+      .eq('store_id', storeId)
+      .is('deleted_at', null);
+
+    const supplierGroups: Record<string, any> = {};
+
+    (items || []).forEach((item: any) => {
+      const physical = Number(item.physical_stock || 0);
+      const target = Number(item.target_stock || 0);
+      const safety = Number(item.safety_stock || 0);
+      const poq = Math.max(0, parseFloat((target - physical + safety).toFixed(1)));
+      const cost = Number(item.cost_per_unit || 0);
+
+      const supId = item.suppliers?.id || item.supplier_id || 'sup-default';
+      const supName = item.suppliers?.name || 'Default Supplier';
+
+      if (!supplierGroups[supId]) {
+        supplierGroups[supId] = {
+          supplierId: supId,
+          supplierName: supName,
+          email: item.suppliers?.email || 'orders@supplier.com',
+          minOrderValue: 100.0,
+          totalValue: 0,
+          itemCount: 0,
+          items: [],
+        };
+      }
+
+      supplierGroups[supId].items.push({
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        unit: item.unit,
+        currentStock: physical,
+        targetStock: target,
+        safetyStock: safety,
+        suggestedQty: poq > 0 ? poq : 10,
+        pricePerUnit: cost,
+        totalCost: parseFloat(((poq > 0 ? poq : 10) * cost).toFixed(2)),
+      });
+
+      supplierGroups[supId].totalValue += (poq > 0 ? poq : 10) * cost;
+      supplierGroups[supId].itemCount += 1;
+    });
+
+    return Object.values(supplierGroups);
   }
 }

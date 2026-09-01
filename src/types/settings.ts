@@ -1,4 +1,6 @@
-export type UserRole = 'owner' | 'admin' | 'manager' | 'staff';
+import { UserRole } from './rbac';
+
+export type { UserRole };
 export type AppThemeMode = 'system' | 'light' | 'dark';
 
 export interface UserProfile {

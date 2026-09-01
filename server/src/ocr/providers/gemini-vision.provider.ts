@@ -160,10 +160,11 @@ Respond ONLY with valid JSON conforming to this schema:
       let lastErrorText = '';
 
       // Try primary engine (Vertex AI or Studio) with up to 3 attempts (handling 429 with backoff)
+      const isTestEnv = process.env.NODE_ENV === 'test';
       const attempts = [
         { useVertex: isVertexAi, waitMs: 0 },
-        { useVertex: isVertexAi, waitMs: 2000 },
-        { useVertex: !isVertexAi && Boolean(this.apiKey), waitMs: 1500 },
+        { useVertex: isVertexAi, waitMs: isTestEnv ? 20 : 2000 },
+        { useVertex: !isVertexAi && Boolean(this.apiKey), waitMs: isTestEnv ? 20 : 1500 },
       ];
 
       for (const attempt of attempts) {

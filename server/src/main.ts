@@ -1,18 +1,21 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as YAML from 'yaml';
 import { AppModule } from './app.module';
+
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
+  // Increase payload limit for base64 OCR receipt images
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
+
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('app.port') || 5000;
+  const port = parseInt(process.env.PORT || '', 10) || configService.get<number>('app.port') || 8080;
   const apiPrefix = configService.get<string>('app.apiPrefix') || '/api/v1';
   const nodeEnv = configService.get<string>('app.nodeEnv') || process.env.NODE_ENV || 'development';
   const swaggerEnabled =
@@ -20,8 +23,10 @@ async function bootstrap() {
     configService.get<boolean>('app.swaggerEnabled') ||
     nodeEnv !== 'production';
 
-  // Global API Routing Prefix
-  app.setGlobalPrefix(apiPrefix);
+  // Global API Routing Prefix (exclude /health and /api/v1/health for direct Cloud Run startup/liveness probes and v1 clients)
+  app.setGlobalPrefix(apiPrefix, {
+    exclude: ['health', 'api/v1/health'],
+  });
 
   // Global Request Validation Pipeline
   app.useGlobalPipes(
@@ -36,8 +41,13 @@ async function bootstrap() {
   );
 
   // Cross-Origin Resource Sharing
+  const corsOriginsConfig = configService.get<string>('app.corsOrigins') || process.env.CORS_ORIGINS || '*';
+  const allowedOrigins = corsOriginsConfig === '*'
+    ? '*'
+    : corsOriginsConfig.split(',').map((o) => o.trim());
+
   app.enableCors({
-    origin: configService.get<string>('app.corsOrigins') || '*',
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -92,34 +102,13 @@ StockPulse provides unified backend capabilities for restaurant and cloud kitche
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
 
-    // Export static OpenAPI JSON & YAML specs to docs/api/
-    try {
-      const docsDir = path.resolve(__dirname, '../../docs/api');
-      if (!fs.existsSync(docsDir)) {
-        fs.mkdirSync(docsDir, { recursive: true });
-      }
-      fs.writeFileSync(
-        path.join(docsDir, 'openapi.json'),
-        JSON.stringify(document, null, 2),
-        'utf-8',
-      );
-      fs.writeFileSync(
-        path.join(docsDir, 'openapi.yaml'),
-        YAML.stringify(document),
-        'utf-8',
-      );
-      logger.log(`Exported OpenAPI JSON and YAML specs to: ${docsDir}`);
-    } catch (err: any) {
-      logger.warn(`Could not export static OpenAPI files: ${err.message}`);
-    }
-
-    logger.log(`Swagger OpenAPI Documentation enabled: http://localhost:${port}${apiPrefix}/docs`);
+    logger.log(`Swagger OpenAPI Documentation enabled: http://0.0.0.0:${port}${apiPrefix}/docs`);
   } else {
     logger.log('Swagger OpenAPI Documentation disabled in production (SWAGGER_ENABLED=false)');
   }
 
-  await app.listen(port);
-  logger.log(`StockPulse SaaS Backend running on: http://localhost:${port}${apiPrefix}`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`StockPulse SaaS Backend running on: http://0.0.0.0:${port}${apiPrefix} (Health: http://0.0.0.0:${port}/health)`);
 }
 
 bootstrap();

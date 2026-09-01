@@ -1,11 +1,18 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
+import { PermissionGate } from '@/components/ui/permission-gate';
+import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { mockSummaryItems } from '@/mocks/inventoryMockData';
-import { useRouter } from 'expo-router';
-import React from 'react';
+import { useI18n } from '@/i18n/I18nContext';
+import { stockCountService } from '@/services/stockCountService';
+import { CountSummaryItem } from '@/types/inventory';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,198 +24,300 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function CountSummaryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, formatCurrency } = useI18n();
+  const params = useLocalSearchParams<{ sessionId?: string }>();
+  const sessionId = params.sessionId || 'sess-demo-01';
 
-  const varianceItems = mockSummaryItems.filter((s) => s.is !== s.should);
-  const matching = mockSummaryItems.filter((s) => s.is === s.should).length;
+  const [items, setItems] = useState<CountSummaryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approved, setApproved] = useState(false);
+
+  const loadData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+      const data = await stockCountService.getVariances(sessionId);
+      setItems(data.items);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to load stock count variances');
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const varianceItems = items.filter((s) => s.is !== s.should);
+  const matching = items.filter((s) => s.is === s.should).length;
   const minor = varianceItems.filter(
-    (s) => Math.abs((s.is - s.should) / s.should) <= 0.1
+    (s) => Math.abs((s.is - s.should) / (s.should || 1)) <= 0.1
   ).length;
   const major = varianceItems.filter(
-    (s) => Math.abs((s.is - s.should) / s.should) > 0.1
+    (s) => Math.abs((s.is - s.should) / (s.should || 1)) > 0.1
   ).length;
 
-  const totalVarianceEur = mockSummaryItems.reduce((sum, s) => {
+  const totalVarianceEur = items.reduce((sum, s) => {
     const diff = s.is - s.should;
-    return sum + diff * s.cost;
+    return sum + diff * (s.cost || 4.8);
   }, 0);
 
   const stats = [
-    { label: 'Counted', value: 68, color: Colors.neutral.textPrimary, bg: Colors.neutral.surface, border: Colors.neutral.borderLight },
+    { label: 'Counted', value: items.length || 68, color: Colors.neutral.textPrimary, bg: Colors.neutral.surface, border: Colors.neutral.borderLight },
     { label: 'Matching', value: matching, color: Colors.brand.dark, bg: Colors.brand.subtle, border: Colors.brand.light },
     { label: 'Minor Diff', value: minor, color: Colors.warning.dark, bg: Colors.warning.subtle, border: Colors.warning.light },
     { label: 'Major Diff', value: major, color: Colors.critical.dark, bg: Colors.critical.subtle, border: Colors.critical.light },
   ];
 
+  const handleApprove = async () => {
+    try {
+      setApproving(true);
+      await stockCountService.approveVariance(sessionId, 'Approved by shift supervisor');
+      setApproved(true);
+      Alert.alert(
+        'Variances Approved',
+        'Stock levels have been reconciled and ledger adjustments recorded in the WORM audit log.',
+        [
+          {
+            text: 'Return to Inventory',
+            onPress: () => router.replace('/(tabs)/inventory' as any),
+          },
+        ]
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to approve variances.');
+    } finally {
+      setApproving(false);
+    }
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      {/* ── Top Summary Header Card ── */}
-      <View
-        style={[
-          styles.summaryHeader,
-          { paddingTop: insets.top > 0 ? insets.top + Spacing.xs : Spacing.lg },
-        ]}
-      >
-        {/* Completion Icon & Title */}
-        <View style={styles.completionRow}>
-          <View style={styles.completionIconBox}>
-            <VectorIcon name="CheckCircle2" size={26} color={Colors.brand.primary} />
-          </View>
-          <View>
-            <Text style={styles.completionTitle}>Daily Count Complete</Text>
-            <Text style={styles.completionSub}>10 March 2026 · 68 items counted</Text>
-          </View>
-        </View>
+      <TopBar
+        title={t('stockCount.summaryTitle')}
+        showBack
+        onBack={() => router.replace('/(tabs)' as any)}
+      />
 
-        {/* Total Variance Value Banner */}
-        <View
-          style={[
-            styles.totalVarianceBox,
-            {
-              backgroundColor:
-                totalVarianceEur < 0
-                  ? Colors.critical.subtle
-                  : Colors.brand.subtle,
-              borderColor:
-                totalVarianceEur < 0
-                  ? Colors.critical.light
-                  : Colors.brand.light,
-            },
-          ]}
-        >
-          <Text style={styles.totalVarianceHeading}>Total Variance Value</Text>
-          <Text
-            style={[
-              styles.totalVarianceValue,
-              {
-                color:
-                  totalVarianceEur < 0
-                    ? Colors.critical.dark
-                    : Colors.brand.dark,
-              },
-            ]}
-          >
-            {totalVarianceEur > 0 ? '+' : ''}€{Math.abs(totalVarianceEur).toFixed(2)}
-          </Text>
-          <Text
-            style={[
-              styles.totalVarianceSub,
-              {
-                color:
-                  totalVarianceEur < 0
-                    ? Colors.critical.main
-                    : Colors.brand.primary,
-              },
-            ]}
-          >
-            Across {varianceItems.length} items with variance
-          </Text>
-        </View>
-
-        {/* 4-Stat Metric Grid */}
-        <View style={styles.statsGrid}>
-          {stats.map((s) => (
-            <View
-              key={s.label}
-              style={[
-                styles.statCard,
-                { backgroundColor: s.bg, borderColor: s.border },
-              ]}
-            >
-              <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-              <Text style={styles.statLabel} numberOfLines={1}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* ── Scrollable Body: Needs Investigation List ── */}
       <ScrollView
         contentContainerStyle={[
-          styles.content,
-          { paddingBottom: insets.bottom + 120 },
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionHeader}>
-          Needs Investigation ({varianceItems.length})
-        </Text>
+        {errorMsg && (
+          <View style={styles.errorBanner}>
+            <VectorIcon name="AlertCircle" size={18} color={Colors.critical.main} />
+            <Text style={styles.errorBannerText}>{errorMsg}</Text>
+            <Pressable onPress={loadData} style={styles.retryBannerBtn}>
+              <Text style={styles.retryBannerText}>{t('common.retry') || 'Retry'}</Text>
+            </Pressable>
+          </View>
+        )}
 
-        <View style={styles.itemStack}>
-          {varianceItems.map((s) => {
-            const variance = s.is - s.should;
-            const variancePct = (variance / s.should) * 100;
-            const isMajor = Math.abs(variancePct) > 10;
-            const varEur = variance * s.cost;
+        {loading && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={Colors.brand.primary} />
+            <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          </View>
+        )}
 
-            return (
-              <Card
-                key={s.id}
-                urgencyColor={isMajor ? Colors.critical.main : Colors.warning.main}
-                style={styles.varianceItemCard}
+        {/* ── Top Summary Header Card ── */}
+        {!loading && (
+          <View style={styles.summaryHeader}>
+          {/* Completion Icon & Title */}
+          <View style={styles.completionRow}>
+            <View style={styles.completionIconBox}>
+              <VectorIcon name={approved ? "CheckCheck" : "CheckCircle2"} size={26} color={Colors.brand.primary} />
+            </View>
+            <View>
+              <Text style={styles.completionTitle}>
+                {approved ? "Audit Reconciled & Closed" : "Stock Count Complete"}
+              </Text>
+              <Text style={styles.completionSub}>
+                {items.length} items audited · Session #{sessionId.slice(-6)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Total Variance Value Banner */}
+          <View
+            style={[
+              styles.totalVarianceBox,
+              {
+                backgroundColor:
+                  totalVarianceEur < 0
+                    ? Colors.critical.subtle
+                    : Colors.brand.subtle,
+                borderColor:
+                  totalVarianceEur < 0
+                    ? Colors.critical.light
+                    : Colors.brand.light,
+              },
+            ]}
+          >
+            <Text style={styles.totalVarianceHeading}>{t('stockCount.varianceValue')}</Text>
+            <Text
+              style={[
+                styles.totalVarianceValue,
+                {
+                  color:
+                    totalVarianceEur < 0
+                      ? Colors.critical.dark
+                      : Colors.brand.dark,
+                },
+              ]}
+            >
+              {formatCurrency(totalVarianceEur)}
+            </Text>
+            <Text
+              style={[
+                styles.totalVarianceSub,
+                {
+                  color:
+                    totalVarianceEur < 0
+                      ? Colors.critical.main
+                      : Colors.brand.primary,
+                },
+              ]}
+            >
+              Across {varianceItems.length} items with variance
+            </Text>
+          </View>
+
+          {/* 4-Stat Metric Grid */}
+          <View style={styles.statsGrid}>
+            {stats.map((s) => (
+              <View
+                key={s.label}
+                style={[
+                  styles.statCard,
+                  { backgroundColor: s.bg, borderColor: s.border },
+                ]}
               >
-                <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={styles.itemName}>{s.name}</Text>
-                    <Text style={styles.itemUnit}>Unit: {s.unit}</Text>
-                  </View>
-                  <View style={styles.cardHeaderRight}>
-                    <Badge variant={isMajor ? 'red' : 'amber'}>
-                      {isMajor ? 'Major' : 'Minor'}
-                    </Badge>
-                    <Text
-                      style={[
-                        styles.varEurText,
-                        {
-                          color:
-                            varEur < 0
-                              ? Colors.critical.main
-                              : Colors.brand.primary,
-                        },
-                      ]}
-                    >
-                      {varEur > 0 ? '+' : ''}€{Math.abs(varEur).toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
+                <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
-                {/* 3-Column Should / Is / Diff Grid */}
-                <View style={styles.threeColGrid}>
-                  {/* Should */}
-                  <View style={styles.colBox}>
-                    <View style={styles.colHeaderRow}>
-                      <View style={styles.slateDot} />
-                      <Text style={styles.colLabel}>SHOULD</Text>
+        {/* ── Section Title ── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            Discrepancies Requiring Action ({varianceItems.length})
+          </Text>
+        </View>
+
+        {/* ── Variance Items List ── */}
+        <View style={styles.itemsList}>
+          {loading ? (
+            <ActivityIndicator size="large" color={Colors.brand.primary} style={{ marginVertical: 32 }} />
+          ) : (
+            varianceItems.map((s) => {
+              const variance = s.is - s.should;
+              const variancePct = (variance / (s.should || 1)) * 100;
+              const varEur = variance * (s.cost || 4.8);
+              const isMajor = Math.abs(variancePct) > 10;
+
+              return (
+                <Card key={s.id} style={styles.varianceCard}>
+                  {/* Item Header */}
+                  <View style={styles.cardHeader}>
+                    <View>
+                      <Text style={styles.itemName}>{s.name}</Text>
+                      <Text style={styles.itemUnit}>Unit: {s.unit}</Text>
                     </View>
-                    <Text style={styles.colValue}>{s.should}</Text>
-                    <Text style={styles.colUnit}>{s.unit}</Text>
-                  </View>
-
-                  {/* Is */}
-                  <View style={[styles.colBox, styles.colBoxIs]}>
-                    <View style={styles.colHeaderRow}>
-                      <View style={styles.greenDot} />
-                      <Text style={[styles.colLabel, { color: Colors.brand.dark }]}>IS</Text>
-                    </View>
-                    <Text style={[styles.colValue, { color: Colors.brand.dark }]}>{s.is}</Text>
-                    <Text style={[styles.colUnit, { color: Colors.brand.primary }]}>{s.unit}</Text>
-                  </View>
-
-                  {/* Diff */}
-                  <View
-                    style={[
-                      styles.colBox,
-                      isMajor ? styles.colBoxMajor : styles.colBoxMinor,
-                    ]}
-                  >
-                    <View style={styles.colHeaderRow}>
-                      <VectorIcon
-                        name="TrendingDown"
-                        size={10}
-                        color={isMajor ? Colors.critical.main : Colors.warning.dark}
-                      />
+                    <View style={styles.cardHeaderRight}>
+                      <Badge variant={isMajor ? 'red' : 'amber'}>
+                        {isMajor ? 'Major' : 'Minor'}
+                      </Badge>
                       <Text
                         style={[
-                          styles.colLabel,
+                          styles.varEurText,
+                          {
+                            color:
+                              varEur < 0
+                                ? Colors.critical.main
+                                : Colors.brand.primary,
+                          },
+                        ]}
+                      >
+                        {varEur > 0 ? '+' : ''}€{Math.abs(varEur).toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 3-Column Should / Is / Diff Grid */}
+                  <View style={styles.threeColGrid}>
+                    {/* Should */}
+                    <View style={styles.colBox}>
+                      <View style={styles.colHeaderRow}>
+                        <View style={styles.slateDot} />
+                        <Text style={styles.colLabel}>SHOULD</Text>
+                      </View>
+                      <Text style={styles.colValue}>{s.should}</Text>
+                      <Text style={styles.colUnit}>{s.unit}</Text>
+                    </View>
+
+                    {/* Is */}
+                    <View style={[styles.colBox, styles.colBoxIs]}>
+                      <View style={styles.colHeaderRow}>
+                        <View style={styles.greenDot} />
+                        <Text style={[styles.colLabel, { color: Colors.brand.dark }]}>IS</Text>
+                      </View>
+                      <Text style={[styles.colValue, { color: Colors.brand.dark }]}>{s.is}</Text>
+                      <Text style={[styles.colUnit, { color: Colors.brand.primary }]}>{s.unit}</Text>
+                    </View>
+
+                    {/* Diff */}
+                    <View
+                      style={[
+                        styles.colBox,
+                        isMajor ? styles.colBoxMajor : styles.colBoxMinor,
+                      ]}
+                    >
+                      <View style={styles.colHeaderRow}>
+                        <VectorIcon
+                          name="TrendingDown"
+                          size={10}
+                          color={isMajor ? Colors.critical.main : Colors.warning.dark}
+                        />
+                        <Text
+                          style={[
+                            styles.colLabel,
+                            {
+                              color:
+                                isMajor
+                                  ? Colors.critical.main
+                                  : Colors.warning.dark,
+                            },
+                          ]}
+                        >
+                          DIFF
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.colValue,
+                          {
+                            color:
+                              isMajor
+                                ? Colors.critical.dark
+                                : Colors.warning.dark,
+                          },
+                        ]}
+                      >
+                        {variance > 0 ? '+' : ''}{variance.toFixed(1)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.diffPctText,
                           {
                             color:
                               isMajor
@@ -217,47 +326,21 @@ export default function CountSummaryScreen() {
                           },
                         ]}
                       >
-                        DIFF
+                        {variancePct.toFixed(1)}%
                       </Text>
                     </View>
-                    <Text
-                      style={[
-                        styles.colValue,
-                        {
-                          color:
-                            isMajor
-                              ? Colors.critical.dark
-                              : Colors.warning.dark,
-                        },
-                      ]}
-                    >
-                      {variance > 0 ? '+' : ''}{variance.toFixed(1)}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.diffPctText,
-                        {
-                          color:
-                            isMajor
-                              ? Colors.critical.main
-                              : Colors.warning.dark,
-                        },
-                      ]}
-                    >
-                      {variancePct.toFixed(1)}%
-                    </Text>
                   </View>
-                </View>
-              </Card>
-            );
-          })}
+                </Card>
+              );
+            })
+          )}
         </View>
 
-        {/* Matching Items Confirmation Banner */}
+        {/* Matching Items Banner */}
         <View style={styles.matchingBanner}>
           <VectorIcon name="CheckCircle2" size={18} color={Colors.brand.primary} />
           <Text style={styles.matchingBannerText}>
-            {matching} items matched exactly — no action needed
+            {matching} items matched physical count perfectly
           </Text>
         </View>
       </ScrollView>
@@ -267,27 +350,32 @@ export default function CountSummaryScreen() {
         style={[
           styles.fixedBottom,
           {
-            paddingBottom: insets.bottom > 0 ? insets.bottom + Spacing.xs : Spacing.lg,
+            paddingBottom: insets.bottom > 0 ? insets.bottom + Spacing.xs : Spacing.md,
           },
         ]}
       >
-        <Pressable
-          onPress={() => router.push('/inventory' as any)}
-          style={({ pressed }) => [styles.primaryReviewBtn, pressed && styles.pressed]}
-        >
-          <Text style={styles.primaryReviewBtnText}>
-            Review Variances in Inventory
-          </Text>
-        </Pressable>
+        <PermissionGate anyPermissions={['stock_count:approve', 'inventory:audit_approve']}>
+          {!approved && (
+            <Button
+              label={approving ? "Reconciling Stock..." : "Approve Variances & Reconcile"}
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={approving || loading}
+              loading={approving}
+              onPress={handleApprove}
+              style={{ marginBottom: Spacing.sm }}
+            />
+          )}
+        </PermissionGate>
 
-        <Pressable
-          onPress={() => router.push('/(tabs)' as any)}
-          style={({ pressed }) => [styles.secondaryReturnBtn, pressed && styles.pressed]}
-        >
-          <Text style={styles.secondaryReturnBtnText}>
-            Complete & Return to Dashboard
-          </Text>
-        </Pressable>
+        <Button
+          label="Return to Dashboard"
+          variant="outline"
+          size="md"
+          fullWidth
+          onPress={() => router.replace('/(tabs)' as any)}
+        />
       </View>
     </View>
   );
@@ -297,12 +385,15 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: Spacing.xxl,
+  },
   summaryHeader: {
     backgroundColor: Colors.neutral.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.neutral.borderLight,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    paddingVertical: Spacing.lg,
     gap: Spacing.md,
   },
   completionRow: {
@@ -320,107 +411,113 @@ const styles = StyleSheet.create({
   },
   completionTitle: {
     ...Typography.cardTitle,
-    fontSize: 17,
+    fontSize: 16,
+    color: Colors.neutral.textPrimary,
   },
   completionSub: {
-    fontSize: 12,
+    ...Typography.caption,
     color: Colors.neutral.textSecondary,
     marginTop: 2,
   },
   totalVarianceBox: {
-    borderRadius: Radius.xl,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    padding: Spacing.md,
     alignItems: 'center',
+    gap: 4,
   },
   totalVarianceHeading: {
-    ...Typography.sectionHeader,
-    fontSize: 10,
-    marginBottom: 4,
+    ...Typography.caption,
+    fontWeight: '600',
+    color: Colors.neutral.textSecondary,
   },
   totalVarianceValue: {
-    ...Typography.monoKpiLarge,
-    fontSize: 34,
-    lineHeight: 38,
+    ...Typography.display,
+    fontSize: 26,
+    fontWeight: '800',
   },
   totalVarianceSub: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
-    marginTop: 4,
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   statCard: {
     flex: 1,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderRadius: Radius.lg,
     paddingVertical: Spacing.sm,
     alignItems: 'center',
     gap: 2,
   },
   statValue: {
-    ...Typography.monoValue,
-    fontSize: 18,
-    lineHeight: 20,
+    ...Typography.body,
+    fontWeight: '800',
+    fontSize: 16,
   },
   statLabel: {
     fontSize: 10,
     fontWeight: '600',
     color: Colors.neutral.textSecondary,
   },
-  content: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
   sectionHeader: {
-    ...Typography.sectionHeader,
-    paddingHorizontal: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.sm,
   },
-  itemStack: {
+  sectionTitle: {
+    ...Typography.sectionHeader,
+  },
+  itemsList: {
+    paddingHorizontal: Spacing.lg,
     gap: Spacing.md,
   },
-  varianceItemCard: {
+  varianceCard: {
     padding: Spacing.md,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.neutral.card,
+    borderWidth: 1,
+    borderColor: Colors.neutral.border,
+    gap: Spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: Spacing.md,
+    alignItems: 'flex-start',
   },
   itemName: {
-    ...Typography.cardTitle,
-    fontSize: 14,
+    ...Typography.body,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
   },
   itemUnit: {
-    fontSize: 11,
+    ...Typography.caption,
     color: Colors.neutral.textTertiary,
-    marginTop: 2,
   },
   cardHeaderRight: {
     alignItems: 'flex-end',
-    gap: 3,
+    gap: 4,
   },
   varEurText: {
-    ...Typography.monoCaption,
-    fontSize: 11,
+    ...Typography.caption,
     fontWeight: '700',
+    fontSize: 13,
   },
   threeColGrid: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   colBox: {
     flex: 1,
     backgroundColor: Colors.neutral.surface,
-    borderColor: Colors.neutral.border,
-    borderWidth: 1,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.md,
     padding: Spacing.sm,
     alignItems: 'center',
+    gap: 2,
+    borderWidth: 1,
+    borderColor: Colors.neutral.borderLight,
   },
   colBoxIs: {
     backgroundColor: Colors.brand.subtle,
@@ -437,97 +534,104 @@ const styles = StyleSheet.create({
   colHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     marginBottom: 2,
   },
   slateDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: Colors.neutral.textTertiary,
   },
   greenDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: Colors.brand.primary,
   },
   colLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.neutral.textSecondary,
   },
   colValue: {
-    ...Typography.monoValue,
-    fontSize: 14,
-    color: Colors.neutral.textSecondary,
-    marginVertical: 1,
+    ...Typography.body,
+    fontWeight: '800',
+    fontSize: 15,
+    color: Colors.neutral.textPrimary,
   },
   colUnit: {
-    fontSize: 9,
-    color: Colors.neutral.textTertiary,
+    fontSize: 11,
+    color: Colors.neutral.textSecondary,
   },
   diffPctText: {
-    ...Typography.monoCaption,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
   },
   matchingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
     backgroundColor: Colors.brand.subtle,
-    borderColor: Colors.brand.light,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    gap: Spacing.sm,
     borderWidth: 1,
-    borderRadius: Radius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    borderColor: Colors.brand.light,
   },
   matchingBannerText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...Typography.caption,
     color: Colors.brand.dark,
+    fontWeight: '600',
     flex: 1,
   },
   fixedBottom: {
     position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
     backgroundColor: Colors.neutral.card,
     borderTopWidth: 1,
     borderTopColor: Colors.neutral.borderLight,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    gap: Spacing.xs,
-    ...Shadows.elevated,
+    paddingTop: Spacing.md,
+    ...Shadows.lg,
   },
-  primaryReviewBtn: {
-    backgroundColor: Colors.brand.primary,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.critical.light,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    margin: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.critical.light,
+  },
+  errorBannerText: {
+    flex: 1,
+    ...Typography.body,
+    color: Colors.critical.dark,
+  },
+  retryBannerBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: Colors.critical.main,
+    borderRadius: Radius.md,
+  },
+  retryBannerText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  loadingBox: {
+    paddingVertical: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.card,
+    gap: Spacing.sm,
   },
-  primaryReviewBtnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  secondaryReturnBtn: {
-    backgroundColor: Colors.neutral.borderLight,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryReturnBtnText: {
-    color: Colors.neutral.textSecondary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  pressed: {
-    opacity: 0.8,
+  loadingText: {
+    ...Typography.bodySecondary,
   },
 });

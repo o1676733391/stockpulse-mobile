@@ -1,0 +1,15 @@
+.gcloudignore
+.git
+.gitignore
+node_modules
+dist
+coverage
+test
+tests
+docs
+.env*
+*.env
+*.key
+*.pem
+*.log
+*.db

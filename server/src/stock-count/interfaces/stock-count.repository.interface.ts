@@ -88,6 +88,12 @@ export interface IStockCountRepository {
     notes?: string,
   ): Promise<void>;
 
+  cancelSession(
+    sessionId: string,
+    storeId: string,
+    reason?: string,
+  ): Promise<void>;
+
   applyVarianceSyncToLedger(
     sessionId: string,
     varianceId: string,

@@ -128,11 +128,32 @@ export class NotificationsRepository implements INotificationRepository {
 
     supabaseQuery = supabaseQuery.order('created_at', { ascending: false }).range(from, to);
 
-    const { data, count, error } = await supabaseQuery;
+    let { data, count, error } = await supabaseQuery;
 
     if (error) {
       this.logger.error(`Failed to retrieve notifications: ${error.message}`);
       throw new InternalServerErrorException('Failed to retrieve notifications');
+    }
+
+    if ((!count || count === 0) && page === 1 && !query.isRead && !query.eventType) {
+      await this.ensureOperationalNotifications(storeId, client);
+      let retryQuery = client
+        .from('notifications')
+        .select('*', { count: 'exact' })
+        .eq('store_id', storeId);
+
+      if (userId) {
+        retryQuery = retryQuery.or(`user_id.eq.${userId},user_id.is.null`);
+      }
+
+      const retry = await retryQuery
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (retry.data && retry.data.length > 0) {
+        data = retry.data;
+        count = retry.count;
+      }
     }
 
     const total = count || 0;
@@ -151,6 +172,24 @@ export class NotificationsRepository implements INotificationRepository {
         hasPreviousPage: page > 1,
       },
     };
+  }
+
+  /**
+   * Find notification by ID in store context.
+   */
+  async findById(id: string, storeId: string): Promise<NotificationResponseDto | null> {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) return null;
+
+    const { data, error } = await client
+      .from('notifications')
+      .select('*')
+      .eq('id', id)
+      .eq('store_id', storeId)
+      .single();
+
+    if (error || !data) return null;
+    return this.mapRowToDto(data);
   }
 
   /**
@@ -221,28 +260,76 @@ export class NotificationsRepository implements INotificationRepository {
   }
 
   /**
+   * Delete or dismiss an in-app notification.
+   */
+  async deleteNotification(id: string, storeId: string, userId?: string): Promise<boolean> {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) return true;
+
+    let query = client
+      .from('notifications')
+      .delete()
+      .eq('id', id)
+      .eq('store_id', storeId);
+
+    if (userId) {
+      query = query.or(`user_id.eq.${userId},user_id.is.null`);
+    }
+
+    const { error } = await query;
+    if (error) {
+      this.logger.error(`Failed to delete notification: ${error.message}`);
+      throw new InternalServerErrorException('Failed to delete notification');
+    }
+
+    return true;
+  }
+
+  /**
    * Count unread and critical notifications.
    */
   async getUnreadCount(storeId: string, userId: string): Promise<UnreadCountResponseDto> {
     const client = this.supabaseService.getAdminClient();
     if (!client) {
-      return { unreadCount: 2, criticalCount: 1 };
+      return { unreadCount: 0, criticalCount: 0 };
     }
 
-    const { count: unreadCount } = await client
+    let { count: unreadCount } = await client
       .from('notifications')
       .select('id', { count: 'exact' })
       .eq('store_id', storeId)
       .eq('is_read', false)
       .or(`user_id.eq.${userId},user_id.is.null`);
 
-    const { count: criticalCount } = await client
+    let { count: criticalCount } = await client
       .from('notifications')
       .select('id', { count: 'exact' })
       .eq('store_id', storeId)
       .eq('is_read', false)
       .eq('urgency', 'CRITICAL')
       .or(`user_id.eq.${userId},user_id.is.null`);
+
+    if (!unreadCount || unreadCount === 0) {
+      await this.ensureOperationalNotifications(storeId, client);
+
+      const retryUnread = await client
+        .from('notifications')
+        .select('id', { count: 'exact' })
+        .eq('store_id', storeId)
+        .eq('is_read', false)
+        .or(`user_id.eq.${userId},user_id.is.null`);
+
+      const retryCritical = await client
+        .from('notifications')
+        .select('id', { count: 'exact' })
+        .eq('store_id', storeId)
+        .eq('is_read', false)
+        .eq('urgency', 'CRITICAL')
+        .or(`user_id.eq.${userId},user_id.is.null`);
+
+      unreadCount = retryUnread.count;
+      criticalCount = retryCritical.count;
+    }
 
     return {
       unreadCount: unreadCount || 0,
@@ -354,6 +441,125 @@ export class NotificationsRepository implements INotificationRepository {
       ...dto,
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  private async ensureOperationalNotifications(storeId: string, client: any): Promise<void> {
+    try {
+      const { count } = await client
+        .from('notifications')
+        .select('id', { count: 'exact' })
+        .eq('store_id', storeId);
+
+      if (count && count > 0) return;
+
+      const notificationsToInsert: any[] = [];
+      const now = new Date();
+      const todayIso = now.toISOString().slice(0, 10);
+      const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+      // Check inventory items
+      const { data: items } = await client
+        .from('inventory_items')
+        .select('id, name, physical_stock, safety_stock, unit')
+        .eq('store_id', storeId)
+        .is('deleted_at', null);
+
+      if (items && items.length > 0) {
+        // 1. Low stock alerts
+        for (const item of items) {
+          const phys = Number(item.physical_stock || 0);
+          const safe = Number(item.safety_stock || 0);
+          if (phys <= safe) {
+            notificationsToInsert.push({
+              store_id: storeId,
+              user_id: null,
+              notification_number: `NOTIF-LOW-${Date.now().toString(36).slice(-4).toUpperCase()}`,
+              event_type: 'LOW_STOCK',
+              title: `Low Stock: ${item.name}`,
+              message: `${item.name} (${phys} ${item.unit || 'units'}) is below minimum safety threshold (${safe} ${item.unit || 'units'}).`,
+              urgency: 'CRITICAL',
+              route: `/inventory/${item.id}`,
+              metadata: { itemId: item.id },
+              is_read: false,
+            });
+          }
+        }
+
+        // 2. Expiring / Expired batches
+        const itemIds = items.map((i: any) => i.id);
+        const { data: batches } = await client
+          .from('inventory_batches')
+          .select('id, item_id, batch_number, quantity, expiry_date')
+          .in('item_id', itemIds)
+          .is('deleted_at', null);
+
+        if (batches && batches.length > 0) {
+          const itemMap = new Map(items.map((i: any) => [i.id, i.name]));
+          for (const b of batches) {
+            const itemName = itemMap.get(b.item_id) || 'Item';
+            if (b.expiry_date < todayIso) {
+              notificationsToInsert.push({
+                store_id: storeId,
+                user_id: null,
+                notification_number: `NOTIF-EXP-${Date.now().toString(36).slice(-4).toUpperCase()}`,
+                event_type: 'EXPIRED_ITEMS',
+                title: `Expired Batch: ${itemName}`,
+                message: `Batch ${b.batch_number} expired on ${b.expiry_date}. Waste logging or disposal action required.`,
+                urgency: 'CRITICAL',
+                route: '/expiration',
+                metadata: { batchId: b.id, itemId: b.item_id },
+                is_read: false,
+              });
+            } else if (b.expiry_date <= sevenDaysLater) {
+              notificationsToInsert.push({
+                store_id: storeId,
+                user_id: null,
+                notification_number: `NOTIF-EXP-${Date.now().toString(36).slice(-4).toUpperCase()}`,
+                event_type: 'EXPIRING_SOON',
+                title: `Expiring Soon: ${itemName}`,
+                message: `Batch ${b.batch_number} (${b.quantity} units) expires on ${b.expiry_date}. Prioritize in prep schedule.`,
+                urgency: 'CRITICAL',
+                route: '/expiration',
+                metadata: { batchId: b.id, itemId: b.item_id },
+                is_read: false,
+              });
+            }
+          }
+        }
+
+        // 3. Stock count schedule reminder
+        notificationsToInsert.push({
+          store_id: storeId,
+          user_id: null,
+          notification_number: `NOTIF-CNT-${Date.now().toString(36).slice(-4).toUpperCase()}`,
+          event_type: 'COUNT_DUE',
+          title: 'Daily Stock Count Due',
+          message: 'Scheduled closing inventory count is due for kitchen audit and ledger alignment.',
+          urgency: 'NORMAL',
+          route: '/stock-count',
+          is_read: false,
+        });
+      } else {
+        // Welcome notification for store
+        notificationsToInsert.push({
+          store_id: storeId,
+          user_id: null,
+          notification_number: `NOTIF-SYS-${Date.now().toString(36).slice(-4).toUpperCase()}`,
+          event_type: 'SYSTEM_HEALTH_CHECK',
+          title: 'Store System Online',
+          message: 'Store connection established. Add ingredients in Master Inventory to enable real-time tracking.',
+          urgency: 'NORMAL',
+          route: '/inventory',
+          is_read: false,
+        });
+      }
+
+      if (notificationsToInsert.length > 0) {
+        await client.from('notifications').insert(notificationsToInsert);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to auto-seed operational notifications: ${err.message}`);
+    }
   }
 
   private mapRowToDto(row: any): NotificationResponseDto {

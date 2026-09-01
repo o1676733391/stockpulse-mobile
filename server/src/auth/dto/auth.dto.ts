@@ -14,6 +14,23 @@ export class LoginDto {
   password!: string;
 }
 
+export class InvitedMemberDto {
+  @ApiProperty({ example: 'Marco Bauer' })
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @ApiProperty({ example: 'marco@restaurant.de' })
+  @IsEmail()
+  @IsNotEmpty()
+  email!: string;
+
+  @ApiProperty({ example: 'manager', enum: ['admin', 'manager', 'supervisor', 'staff', 'auditor'] })
+  @IsString()
+  @IsNotEmpty()
+  role!: string;
+}
+
 export class SignupDto {
   @ApiProperty({ example: 'chef@restaurant.com', description: 'Tenant owner email' })
   @IsEmail({}, { message: 'A valid email address is required' })
@@ -31,20 +48,49 @@ export class SignupDto {
   @IsNotEmpty({ message: 'Full name is required' })
   name!: string;
 
-  @ApiProperty({ example: 'Union Street Cafe Group', description: 'Name of the business organization' })
+  @ApiProperty({ example: 'Bella Cucina Restaurant', description: 'Name of the business / store' })
   @IsString()
-  @IsNotEmpty({ message: 'Organization name is required' })
+  @IsNotEmpty({ message: 'Store / Restaurant name is required' })
   organizationName!: string;
 
-  @ApiPropertyOptional({ example: 'union-street-cafe', description: 'Unique organization subdomain / slug' })
+  @ApiPropertyOptional({ example: 'bella-cucina', description: 'Unique organization subdomain / slug' })
   @IsOptional()
   @IsString()
   organizationSlug?: string;
 
-  @ApiPropertyOptional({ example: '+1 555-0144', description: 'Contact phone number' })
+  @ApiPropertyOptional({ example: '+49 30 1234567', description: 'Contact phone number' })
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @ApiPropertyOptional({ example: 'Germany', default: 'Germany' })
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional({ example: 'EUR', default: 'EUR' })
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @ApiPropertyOptional({ example: 'English', default: 'English' })
+  @IsOptional()
+  @IsString()
+  language?: string;
+
+  @ApiPropertyOptional({ example: 'Europe/Berlin', default: 'Europe/Berlin' })
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
+  @ApiPropertyOptional({ example: 'daily', default: 'daily' })
+  @IsOptional()
+  @IsString()
+  countSchedule?: string;
+
+  @ApiPropertyOptional({ type: [InvitedMemberDto] })
+  @IsOptional()
+  invitedMembers?: InvitedMemberDto[];
 }
 
 export class RefreshTokenDto {

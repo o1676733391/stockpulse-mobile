@@ -106,71 +106,9 @@ export const NOTIFICATION_TYPE_CONFIG: Record<
   },
 };
 
-export const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'n1',
-    type: 'expiring_soon',
-    title: 'Salmon Expiring Tomorrow',
-    body: 'Batch B1030 (4.2 kg Fresh Salmon) will expire on 11 Mar. Action waste reduction promo recommended.',
-    time: '2h ago',
-    timestamp: Date.now() - 2 * 3600 * 1000,
-    read: false,
-    urgent: true,
-    priority: 'urgent',
-    actions: [{ label: 'View Item', route: '/expiration' }],
-  },
-  {
-    id: 'n2',
-    type: 'variance',
-    title: 'High Variance Detected',
-    body: 'Chicken Breast daily count has −2.5 kg variance (−€12.00). Theoretical: 27.0 kg, Physical: 24.5 kg.',
-    time: '4h ago',
-    timestamp: Date.now() - 4 * 3600 * 1000,
-    read: false,
-    urgent: true,
-    priority: 'high',
-    actions: [{ label: 'Review Variance', route: '/stock-count/summary' }],
-  },
-  {
-    id: 'n3',
-    type: 'low_stock',
-    title: 'Low Stock: Whole Milk',
-    body: 'Current physical stock (8.0 L) is approaching safety threshold (4.0 L). POQ suggests reordering 16 L.',
-    time: '5h ago',
-    timestamp: Date.now() - 5 * 3600 * 1000,
-    read: false,
-    urgent: false,
-    priority: 'normal',
-    actions: [{ label: 'Create PO', route: '/orders/poq' }],
-  },
-  {
-    id: 'n4',
-    type: 'ocr_complete',
-    title: 'POS Scan #2048 Processed',
-    body: 'Lunch shift POS report parsed with 94% confidence. 5 menu items mapped to BOM recipes.',
-    time: 'Yesterday',
-    timestamp: Date.now() - 24 * 3600 * 1000,
-    read: true,
-    urgent: false,
-    priority: 'normal',
-    actions: [{ label: 'Review Deductions', route: '/scan/review' }],
-  },
-  {
-    id: 'n5',
-    type: 'goods_receipt_update',
-    title: 'Goods Received: GR-20481',
-    body: 'Metro Foods GmbH delivery of 20 kg Chicken Breast received and logged to Batch B1029.',
-    time: '08 Mar',
-    timestamp: Date.now() - 48 * 3600 * 1000,
-    read: true,
-    urgent: false,
-    priority: 'low',
-    actions: [{ label: 'View Order', route: '/orders' }],
-  },
-];
-
 export interface INotificationService {
   getNotifications(filter?: NotificationFilter): Promise<AppNotification[]>;
+  getNotificationById(id: string): Promise<AppNotification | null>;
   markAsRead(id: string): Promise<void>;
   markAllAsRead(): Promise<void>;
   dismissNotification(id: string): Promise<void>;
@@ -178,35 +116,117 @@ export interface INotificationService {
   getUnreadCount(): Promise<number>;
 }
 
-export class RealNotificationService implements INotificationService {
-  private notifications: AppNotification[] = JSON.parse(JSON.stringify(INITIAL_NOTIFICATIONS));
+function formatRelativeTime(timestamp: number): string {
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(timestamp).toLocaleDateString();
+}
+
+export class RealNotificationService implements INotificationService {
   async getNotifications(filter: NotificationFilter = 'all'): Promise<AppNotification[]> {
     try {
-      const items = await apiClient.get<any[]>('/notifications');
-      this.notifications = items.map((it) => ({
-        id: it.id,
-        type: it.type as NotificationType,
-        title: it.title,
-        body: it.message,
-        time: it.time || 'Today',
-        timestamp: Date.now(),
-        read: Boolean(it.isRead),
-        urgent: it.urgency === 'critical',
-        priority: it.urgency === 'critical' ? 'urgent' : 'normal',
-        actions: [{ label: 'View Details', route: it.route || '/notifications' }],
-      }));
+      const res = await apiClient.get<any>('/notifications');
+      const rawList: any[] = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res?.data)
+        ? res.data
+        : [];
+
+      const notifications: AppNotification[] = rawList.map((it) => {
+        const rawType = String(it.eventType || it.event_type || it.type || '').toUpperCase();
+        let mappedType: NotificationType = 'system_alert';
+        if (rawType.includes('LOW_STOCK')) mappedType = 'low_stock';
+        else if (rawType.includes('EXPIRED_') || rawType === 'EXPIRED' || rawType.includes('EXPIRED_ITEMS')) mappedType = 'expired_items';
+        else if (rawType.includes('EXPIR')) mappedType = 'expiring_soon';
+        else if (rawType.includes('PO_') || rawType.includes('PURCHASE')) mappedType = 'po_update';
+        else if (rawType.includes('GOODS') || rawType.includes('RECEIPT')) mappedType = 'goods_receipt_update';
+        else if (rawType.includes('VARIANCE')) mappedType = 'variance';
+        else if (rawType.includes('COUNT')) mappedType = 'count_due';
+        else if (rawType.includes('OCR')) mappedType = 'ocr_complete';
+
+        const isUrgent = it.urgency === 'CRITICAL' || it.urgency === 'critical';
+        const isRead = Boolean(it.isRead ?? it.is_read ?? false);
+        const createdAt = it.createdAt || it.created_at;
+        const timestamp = createdAt ? new Date(createdAt).getTime() : Date.now();
+
+        return {
+          id: it.id,
+          type: mappedType,
+          title: it.title || 'Notification',
+          body: it.message || it.body || '',
+          time: formatRelativeTime(timestamp),
+          timestamp,
+          read: isRead,
+          urgent: isUrgent,
+          priority: isUrgent ? 'urgent' : 'normal',
+          actions: it.route ? [{ label: 'View Details', route: it.route }] : [],
+        };
+      });
+
+      if (filter === 'unread') {
+        return notifications.filter((n) => !n.read);
+      }
+      if (filter === 'urgent') {
+        return notifications.filter((n) => n.urgent);
+      }
+      return notifications;
     } catch (err) {
       logDebugFallback('NotificationService', '/notifications', err);
+      throw err;
     }
+  }
 
-    if (filter === 'unread') {
-      return this.notifications.filter((n) => !n.read);
+  async getNotificationById(id: string): Promise<AppNotification | null> {
+    try {
+      const it = await apiClient.get<any>(`/notifications/${id}`);
+      if (!it) return null;
+
+      const rawType = String(it.eventType || it.event_type || it.type || '').toUpperCase();
+      let mappedType: NotificationType = 'system_alert';
+      if (rawType.includes('LOW_STOCK')) mappedType = 'low_stock';
+      else if (rawType.includes('EXPIRED_') || rawType === 'EXPIRED' || rawType.includes('EXPIRED_ITEMS')) mappedType = 'expired_items';
+      else if (rawType.includes('EXPIR')) mappedType = 'expiring_soon';
+      else if (rawType.includes('PO_') || rawType.includes('PURCHASE')) mappedType = 'po_update';
+      else if (rawType.includes('GOODS') || rawType.includes('RECEIPT')) mappedType = 'goods_receipt_update';
+      else if (rawType.includes('VARIANCE')) mappedType = 'variance';
+      else if (rawType.includes('COUNT')) mappedType = 'count_due';
+      else if (rawType.includes('OCR')) mappedType = 'ocr_complete';
+
+      const isUrgent = it.urgency === 'CRITICAL' || it.urgency === 'critical';
+      const isRead = Boolean(it.isRead ?? it.is_read ?? false);
+      const createdAt = it.createdAt || it.created_at;
+      const timestamp = createdAt ? new Date(createdAt).getTime() : Date.now();
+
+      return {
+        id: it.id,
+        type: mappedType,
+        title: it.title || 'Notification',
+        body: it.message || it.body || '',
+        time: formatRelativeTime(timestamp),
+        timestamp,
+        read: isRead,
+        urgent: isUrgent,
+        priority: isUrgent ? 'urgent' : 'normal',
+        actions: it.route ? [{ label: 'View Details', route: it.route }] : [],
+      };
+    } catch {
+      try {
+        const all = await this.getNotifications('all');
+        return all.find((n) => n.id === id) || null;
+      } catch {
+        return null;
+      }
     }
-    if (filter === 'urgent') {
-      return this.notifications.filter((n) => n.urgent);
-    }
-    return [...this.notifications];
   }
 
   async markAsRead(id: string): Promise<void> {
@@ -214,32 +234,48 @@ export class RealNotificationService implements INotificationService {
       await apiClient.patch(`/notifications/${id}/read`);
     } catch (err) {
       logDebugFallback('NotificationService', `/notifications/${id}/read`, err);
+      throw err;
     }
-    const item = this.notifications.find((n) => n.id === id);
-    if (item) item.read = true;
   }
 
   async markAllAsRead(): Promise<void> {
     try {
-      await apiClient.post('/notifications/mark-all-read');
+      await apiClient.post('/notifications/read-all');
     } catch (err) {
-      logDebugFallback('NotificationService', '/notifications/mark-all-read', err);
+      logDebugFallback('NotificationService', '/notifications/read-all', err);
+      throw err;
     }
-    this.notifications.forEach((n) => {
-      n.read = true;
-    });
   }
 
   async dismissNotification(id: string): Promise<void> {
-    this.notifications = this.notifications.filter((n) => n.id !== id);
+    try {
+      await apiClient.del(`/notifications/${id}`);
+    } catch (err) {
+      logDebugFallback('NotificationService', `/notifications/${id} [DELETE]`, err);
+      throw err;
+    }
   }
 
   async deleteNotification(id: string): Promise<void> {
-    this.notifications = this.notifications.filter((n) => n.id !== id);
+    try {
+      await apiClient.del(`/notifications/${id}`);
+    } catch (err) {
+      logDebugFallback('NotificationService', `/notifications/${id} [DELETE]`, err);
+      throw err;
+    }
   }
 
   async getUnreadCount(): Promise<number> {
-    return this.notifications.filter((n) => !n.read).length;
+    try {
+      const res = await apiClient.get<any>('/notifications/unread-count');
+      if (typeof res?.unreadCount === 'number') {
+        return res.unreadCount;
+      }
+      const items = await this.getNotifications('unread');
+      return items.length;
+    } catch {
+      return 0;
+    }
   }
 }
 

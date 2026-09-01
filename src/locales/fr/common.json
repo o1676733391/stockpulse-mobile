@@ -48,7 +48,13 @@
     "savedSuccess": "Enregistré avec succès",
     "changesSaved": "Modifications enregistrées avec succès",
     "offlineMode": "Mode hors ligne — Synchronisation dès rétablissement du réseau",
-    "onlineMode": "De retour en ligne — Synchronisé"
+    "onlineMode": "De retour en ligne — Synchronisé",
+    "add": "Ajouter",
+    "inProgress": "En cours",
+    "accessDenied": "Accès restreint",
+    "accessDeniedMessage": "Vous ne disposez pas des autorisations nécessaires pour accéder à ce module.",
+    "requiredPermission": "Autorisation requise : {{permission}}",
+    "returnToDashboard": "Retour au tableau de bord"
   },
   "navigation": {
     "home": "Accueil",
@@ -99,7 +105,23 @@
     "loginFailed": "Échec de connexion. Veuillez vérifier vos identifiants.",
     "registerFailed": "Échec de l'inscription. Veuillez réessayer.",
     "fillAllFields": "Veuillez remplir tous les champs obligatoires.",
-    "passwordMinLength": "Le mot de passe doit comporter au moins 6 caractères."
+    "passwordMinLength": "Le mot de passe doit comporter au moins 6 caractères.",
+    "nameLabel": "Nom complet",
+    "creatingStore": "Création de votre établissement...",
+    "createStoreButton": "Créer le compte établissement",
+    "signInLink": "Se connecter ici",
+    "staffLogin": "Connexion Collaborateur",
+    "staffLoginSub": "Rejoignez ou connectez-vous avec votre compte d'équipe",
+    "joinWithCode": "Rejoindre avec un code d'invitation",
+    "joinWithCodeSub": "Vous avez reçu un code de votre responsable ? Saisissez-le ci-dessous.",
+    "loginTabs": {
+      "account": "Connexion E-mail",
+      "invitationCode": "Code Collaborateur"
+    },
+    "staffPrompt": "Membre d'équipe avec un code d'invitation ?",
+    "claimInvite": "Rejoindre avec un code",
+    "quickRoleSelect": "Connexion rapide par rôle",
+    "quickRoleSelectSub": "Touchez un rôle pour pré-remplir les identifiants"
   },
   "dashboard": {
     "welcome": "Bienvenue, {{name}}",
@@ -133,7 +155,8 @@
       "scan": "Scanner ticket / Z de caisse",
       "order": "Créer bon de commande",
       "expiry": "Gestion DLC"
-    }
+    },
+    "noTasks": "Toutes les tâches d'inventaire sont terminées pour aujourd'hui."
   },
   "inventory": {
     "title": "Gestion des stocks",
@@ -179,7 +202,13 @@
     "manualCorrection": "Correction manuelle d'inventaire",
     "deltaQuantity": "Variation de quantité (+/-)",
     "emptyState": "Aucun article trouvé",
-    "emptyStateDesc": "Modifiez vos critères de recherche ou vos filtres."
+    "emptyStateDesc": "Modifiez vos critères de recherche ou vos filtres.",
+    "noBatches": "Aucun lot actif enregistré.",
+    "daysRemaining": "{{days}} jours restants",
+    "itemCount": "{{count}} Articles",
+    "variance": "Écart",
+    "parLevel": "Stock idéal",
+    "reorderPoint": "Seuil de réapprovisionnement"
   },
   "stockCount": {
     "title": "Inventaire & Audit de stock",
@@ -203,7 +232,12 @@
     "netVariance": "Écart net (€ / %)",
     "approveVariance": "Valider & Synchroniser le grand livre",
     "approving": "Synchronisation en cours...",
-    "discrepanciesFound": "{{count}} écarts détectés nécessitant l'approbation du responsable."
+    "discrepanciesFound": "{{count}} écarts détectés nécessitant l'approbation du responsable.",
+    "itemsToCount": "Articles à compter",
+    "countSummaryTitle": "Bilan d'inventaire & Audit",
+    "status": {
+      "completed": "Terminé"
+    }
   },
   "ocr": {
     "title": "IA Documentaire & Scanner de tickets",
@@ -248,7 +282,13 @@
     "goodsReceiptTitle": "Réception marchandises & Contrôle",
     "goodsReceiptSub": "Vérifiez les livraisons, contrôlez les numéros de lots et enregistrez les lots FEFO.",
     "receiveGoods": "Valider la réception",
-    "receiving": "Traitement de la réception..."
+    "receiving": "Traitement de la réception...",
+    "status": {
+      "draft": "Brouillon",
+      "sent": "Envoyé",
+      "confirmed": "Confirmé",
+      "received": "Reçu"
+    }
   },
   "expiration": {
     "title": "Gestion DLC & Fraîcheur",
@@ -261,7 +301,12 @@
       "cook": "Préparer & Surgeler",
       "discard": "Enregistrer en perte"
     },
-    "potentialLoss": "Perte potentielle estimée : {{value}}"
+    "potentialLoss": "Perte potentielle estimée : {{value}}",
+    "urgentAction": "Action urgente requise",
+    "actions": {
+      "reduceWaste": "Stratégie anti-gaspillage",
+      "triageBbd": "Traiter les lots proches de la DLC"
+    }
   },
   "analytics": {
     "title": "Analyses & Rapports de stock",
@@ -271,22 +316,106 @@
     "wasteLoss": "Coût des pertes & avaries",
     "supplierLeadTimes": "Délais & fiabilité fournisseurs",
     "exportPdf": "Exporter rapport financier (PDF)",
-    "exportCsv": "Exporter inventaire (CSV)"
+    "exportCsv": "Exporter inventaire (CSV)",
+    "trends": "Tendances historiques",
+    "reports": "Rapports de valorisation & Audit",
+    "suppliers": "Performance des fournisseurs"
   },
   "team": {
     "title": "Équipe & Droits d'accès",
     "subtitle": "Gérer les rôles et affectations aux établissements",
     "inviteMember": "Inviter un collaborateur",
     "membersList": "Membres actifs ({{count}})",
+    "tabs": {
+      "members": "Membres",
+      "invitations": "Invitations",
+      "roles": "Rôles & Accès"
+    },
+    "activeMembers": "Membres actifs",
+    "pendingInvitations": "Invitations en attente",
+    "noMembersFound": "Aucun membre trouvé",
+    "noPendingInvitations": "Aucune invitation en attente",
+    "noPendingDesc": "Générez un code d'invitation pour intégrer de nouveaux collaborateurs en cuisine ou en salle.",
+    "copyCode": "Copier le code",
+    "codeCopied": "Code copié dans le presse-papier",
+    "share": "Partager",
+    "resend": "Renvoyer le code",
+    "resending": "Actualisation...",
+    "revoke": "Révoquer",
+    "revoking": "Révocation...",
+    "revokeConfirmTitle": "Révoquer l'invitation",
+    "revokeConfirmMsg": "Êtes-vous sûr de vouloir révoquer l'invitation pour {{email}} ? Le code sera immédiatement désactivé.",
+    "changeRole": "Changer de rôle",
+    "removeFromStore": "Retirer de l'établissement",
+    "removeMemberTitle": "Retirer le membre",
+    "removeMemberConfirm": "Êtes-vous sûr de vouloir retirer {{name}} de cet établissement ? Son accès sera immédiatement révoqué.",
+    "roleUpdatedSuccess": "Le rôle de {{name}} a été mis à jour vers {{role}}.",
+    "memberRemovedSuccess": "{{name}} a été retiré de l'établissement.",
+    "invitationSentSuccess": "Invitation créée ! Code : {{code}}",
+    "inviteDetails": "Détails de l'invitation",
+    "expiresIn": "Expire dans {{days}} jours",
+    "sendInvitation": "Envoyer l'invitation",
+    "sendingInvitation": "Création de l'invitation...",
+    "invitedBy": "Invité par {{name}}",
     "roles": {
-      "superadmin": "Propriétaire de l'organisation",
+      "superadmin": "Propriétaire",
+      "admin": "Administrateur",
       "manager": "Directeur d'établissement",
       "supervisor": "Chef de partie / Superviseur",
       "staff": "Personnel de cuisine",
       "auditor": "Auditeur externe"
     },
     "permissionsMatrix": "Matrice des permissions par rôle",
-    "roleAssigned": "Rôle : {{role}}"
+    "roleAssigned": "Rôle : {{role}}",
+    "rolesDesc": "Gérer les rôles et affectations d'établissements"
+  },
+  "onboarding": {
+    "getStarted": "Comment souhaitez-vous commencer ?",
+    "getStartedSub": "Rejoignez une brigade existante ou créez votre propre établissement.",
+    "joinStore": "Rejoindre un établissement existant",
+    "joinStoreDesc": "Saisissez le code d'invitation fourni par votre responsable pour rejoindre la brigade.",
+    "createStore": "Créer un nouvel établissement",
+    "createStoreDesc": "Configurez un nouvel établissement en tant qu'administrateur.",
+    "skipForNow": "Passer pour le moment",
+    "skipForNowDesc": "Explorer l'application. Vous pourrez rejoindre ou créer un établissement à tout moment dans les Paramètres.",
+    "joinTitle": "Rejoindre votre établissement",
+    "joinDesc": "Saisissez le code d'invitation à 6 caractères fourni par votre administrateur.",
+    "codeLabel": "Code d'invitation",
+    "codePlaceholder": "ex. A9B8C7 ou INV-A9B8C7",
+    "joinBtn": "Rejoindre l'établissement",
+    "validateBtn": "Vérifier & Prévisualiser",
+    "validating": "Vérification du code...",
+    "accepting": "Connexion à l'établissement...",
+    "previewTitle": "Vous êtes invité(e) à rejoindre",
+    "storeLabel": "Établissement",
+    "roleLabel": "Rôle assigné",
+    "emailLabel": "E-mail invité",
+    "expiresLabel": "Valide jusqu'au",
+    "acceptBtn": "Accepter l'invitation",
+    "cancelBtn": "Annuler",
+    "changeCode": "Saisir un autre code",
+    "createTitle": "Créer votre établissement",
+    "createSub": "Renseignez les détails de votre restaurant.",
+    "storeName": "Nom de l'établissement",
+    "storeCode": "Code établissement (Optionnel)",
+    "storeCity": "Ville",
+    "createBtn": "Créer l'établissement",
+    "creatingStore": "Création de l'établissement...",
+    "noStoreSelected": "Aucun établissement sélectionné",
+    "noStoreDesc": "Rejoignez ou créez un établissement pour accéder aux stocks, recettes, commandes et scans de caisse.",
+    "noStoreBannerTitle": "Aucun établissement connecté",
+    "noStoreBannerSub": "Vous êtes actuellement en mode non affecté."
+  },
+  "invitationErrors": {
+    "invalidCode": "Ce code d'invitation n'est pas valide.",
+    "expired": "Cette invitation a expiré. Demandez un nouveau code à votre responsable.",
+    "revoked": "Cette invitation n'est plus disponible.",
+    "alreadyClaimed": "Cette invitation a déjà été utilisée.",
+    "emailMismatch": "Cette invitation est associée à une autre adresse e-mail. Veuillez vous connecter avec l'adresse invitée.",
+    "rateLimited": "Trop de tentatives. Veuillez patienter un instant.",
+    "networkError": "Impossible de se connecter au serveur. Veuillez vérifier votre connexion.",
+    "generic": "Échec de l'acceptation de l'invitation. Veuillez réessayer.",
+    "tryAgain": "Réessayer"
   },
   "notifications": {
     "title": "Notifications & Alertes",
@@ -302,7 +431,10 @@
       "system": "Alerte système"
     },
     "emptyState": "Aucune notification",
-    "emptyStateDesc": "Tout est à jour ! Vos alertes de stock apparaîtront ici."
+    "emptyStateDesc": "Tout est à jour ! Vos alertes de stock apparaîtront ici.",
+    "filterUnread": "Non lus",
+    "filterUrgent": "Urgents",
+    "unreadCount": "{{count}} notifications non lues"
   },
   "settings": {
     "title": "Paramètres",
@@ -311,7 +443,8 @@
       "notificationsAlerts": "Notifications & Alertes",
       "preferencesDisplay": "Affichage & Langue",
       "accountSecurity": "Compte & Sécurité",
-      "supportLegal": "Assistance & Légal"
+      "supportLegal": "Assistance & Légal",
+      "generalSettings": "Paramètres généraux"
     },
     "items": {
       "storeConfig": "Configuration de l'établissement",
@@ -321,7 +454,8 @@
       "language": "Langue & Région",
       "profile": "Profil & Identifiants",
       "about": "À propos & Licences",
-      "signOut": "Se déconnecter"
+      "signOut": "Se déconnecter",
+      "userProfile": "Profil utilisateur & Compte"
     },
     "language": {
       "title": "Langue & Région",
@@ -369,7 +503,13 @@
     "signOutConfirm": {
       "title": "Déconnexion",
       "message": "Êtes-vous sûr de vouloir vous déconnecter de StockPulse ?"
-    }
+    },
+    "permissionDeniedTitle": "Permission restreinte",
+    "permissionDeniedMessage": "Le rôle utilisateur '{{role}}' ne dispose pas du rôle requis : [admin, superadmin, manager] pour modifier les paramètres de l'établissement.",
+    "readOnlyBannerTitle": "Accès en lecture seule ({{role}})",
+    "readOnlyBannerSub": "Votre rôle permet de consulter les paramètres de l'établissement. L'enregistrement des modifications nécessite des privilèges de responsable ou d'administrateur.",
+    "restrictedSave": "Restreint (Lecture seule)",
+    "understood": "Compris"
   },
   "errors": {
     "networkError": "Erreur réseau. Veuillez vérifier votre connexion Internet.",
@@ -381,5 +521,39 @@
     "invalidInput": "Veuillez vérifier les informations saisies.",
     "itemNotFound": "Article de stock introuvable.",
     "insufficientStock": "Stock insuffisant pour effectuer cette opération."
+  },
+  "scan": {
+    "title": "Scanner de ticket de caisse",
+    "instructions": "Alignez le ticket Z ou le rapport de caisse dans le cadre",
+    "galleryButton": "Choisir depuis la galerie",
+    "tip": "Assurez-vous que les numéros et quantités sont bien lisibles et éclairés",
+    "processingTitle": "Traitement du ticket de caisse",
+    "processingSubtitle": "Analyse des lignes avec Google Gemini Vision",
+    "processingSteps": {
+      "uploading": "Téléversement de l'image...",
+      "reading": "Lecture optique des caractères...",
+      "detecting": "Extraction des plats, prix et quantités...",
+      "calculating": "Calcul des ratios d'ingrédients de recette...",
+      "mapping": "Synchronisation avec le catalogue..."
+    },
+    "reviewTitle": "Vérifier les lignes du ticket",
+    "reviewStats": {
+      "detected": "Articles détectés",
+      "confidence": "Précision globale",
+      "reviewNeeded": "À vérifier"
+    },
+    "lowConfidenceBanner": "Certains articles ont un faible indice de confiance. Veuillez vérifier les quantités.",
+    "tableHeaders": {
+      "item": "Article / Plat",
+      "qty": "Qté",
+      "confidence": "Confiance"
+    },
+    "confirmAndDeduct": "Confirmer & Déduire du stock",
+    "resultTitle": "Déduction effectuée",
+    "totalPortionsSold": "Total des portions vendues",
+    "ingredientsDeductedTitle": "Ingrédients déduits du stock",
+    "theoreticalUpdatedTitle": "Stocks théoriques mis à jour",
+    "theoreticalDeductionNotice": "Les stocks théoriques ont été automatiquement déduits selon les recettes de cuisine.",
+    "retakeButton": "Scanner un autre ticket"
   }
 }

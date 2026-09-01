@@ -1,17 +1,26 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { MODULE_PERMISSIONS_MATRIX, ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { authService } from '@/services/authService';
-import { AuthUser, ModulePermissionRow, UserRole } from '@/types/rbac';
+import { invitationService } from '@/services/invitationService';
+import { StoreInvitation } from '@/types/invitation';
+import { AuthUser, UserRole } from '@/types/rbac';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -19,41 +28,227 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+type TeamTab = 'members' | 'invitations' | 'roles';
+
 export default function TeamScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const { t, formatDate } = useI18n();
 
-  const [tab, setTab] = useState<'members' | 'roles'>('members');
+  const isManagerOrAdmin = hasPermission('team:manage') || user.role === 'admin' || user.role === 'manager';
+
+  const [activeTab, setActiveTab] = useState<TeamTab>('members');
+
+  // Members State
   const [members, setMembers] = useState<AuthUser[]>([]);
-  const [search, setSearch] = useState('');
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [membersError, setMembersError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Invitations State
+  const [invitations, setInvitations] = useState<StoreInvitation[]>([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(true);
+  const [invitationsError, setInvitationsError] = useState<string | null>(null);
+
+  // Role Change Modal State
+  const [selectedMemberForRole, setSelectedMemberForRole] = useState<AuthUser | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+
+  // ── Fetch Real Team Members (Real API) ──
+  const fetchMembers = useCallback(async () => {
+    try {
+      setLoadingMembers(true);
+      setMembersError(null);
+      const data = await authService.getTeamMembers();
+      setMembers(data);
+    } catch (err: any) {
+      setMembersError(err?.message || t('errors.networkError'));
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [t]);
+
+  // ── Fetch Real Store Invitations (Real API) ──
+  const fetchInvitations = useCallback(async () => {
+    const storeId = user?.storeId || '01915dfa-9012-7000-8000-000000000002';
+    try {
+      setLoadingInvitations(true);
+      setInvitationsError(null);
+      const data = await invitationService.getStoreInvitations(storeId);
+      setInvitations(data);
+    } catch (err: any) {
+      setInvitationsError(err?.message || t('errors.networkError'));
+    } finally {
+      setLoadingInvitations(false);
+    }
+  }, [user?.storeId, t]);
 
   useEffect(() => {
-    authService.getTeamMembers().then(setMembers);
-  }, []);
+    fetchMembers();
+    if (isManagerOrAdmin) {
+      fetchInvitations();
+    }
+  }, [fetchMembers, fetchInvitations, isManagerOrAdmin]);
+
+  // ── Change Role Handler (Real API) ──
+  const handleUpdateRole = async (targetRole: UserRole) => {
+    if (!selectedMemberForRole || isUpdatingRole) return;
+
+    try {
+      setIsUpdatingRole(true);
+      const updated = await authService.updateMemberRole(selectedMemberForRole.id, targetRole);
+      setMembers((prev) =>
+        prev.map((m) => (m.id === updated.id ? updated : m))
+      );
+      setSelectedMemberForRole(null);
+      Alert.alert(
+        t('team.changeRole'),
+        t('team.roleUpdatedSuccess', {
+          name: updated.name,
+          role: ROLES[targetRole]?.label || targetRole,
+        })
+      );
+    } catch (err: any) {
+      Alert.alert(t('errors.serverError'), err?.message || 'Could not update member role.');
+    } finally {
+      setIsUpdatingRole(false);
+    }
+  };
+
+  // ── Remove Member Handler (Real API) ──
+  const handleRemoveMember = (targetUser: AuthUser) => {
+    Alert.alert(
+      t('team.removeMemberTitle'),
+      t('team.removeMemberConfirm', { name: targetUser.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authService.removeMember(targetUser.id);
+              setMembers((prev) => prev.filter((m) => m.id !== targetUser.id));
+              Alert.alert(
+                t('team.removeFromStore'),
+                t('team.memberRemovedSuccess', { name: targetUser.name })
+              );
+            } catch (err: any) {
+              Alert.alert(t('errors.serverError'), err?.message || 'Failed to remove member.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // ── Share / Copy Invitation Code ──
+  const handleShareInvitation = async (inv: StoreInvitation) => {
+    const store = user?.storeName || 'our store';
+    const message = `You've been invited to join ${store} on StockPulse as ${ROLES[inv.role]?.label || inv.role}.\n\nInvitation Code: ${inv.invitationCode}\nLink: https://app.stockpulse.io/invite?code=${inv.invitationCode}`;
+
+    try {
+      await Share.share({
+        message,
+        title: `Join ${store} on StockPulse`,
+      });
+    } catch (err) {}
+  };
+
+  // ── Resend Invitation Handler (Real API) ──
+  const handleResendInvitation = async (inv: StoreInvitation) => {
+    const storeId = user?.storeId || '01915dfa-9012-7000-8000-000000000002';
+    try {
+      const res = await invitationService.resendInvitation(storeId, inv.id, 7);
+      setInvitations((prev) =>
+        prev.map((item) => (item.id === inv.id ? { ...item, ...res } : item))
+      );
+      Alert.alert(
+        t('team.resend'),
+        t('team.invitationSentSuccess', { code: res.invitationCode }),
+        [
+          {
+            text: t('team.share'),
+            onPress: () => handleShareInvitation(res),
+          },
+          { text: t('common.done') },
+        ]
+      );
+    } catch (err: any) {
+      Alert.alert(t('errors.serverError'), err?.message || 'Failed to resend invitation.');
+    }
+  };
+
+  // ── Revoke Invitation Handler (Real API) ──
+  const handleRevokeInvitation = (inv: StoreInvitation) => {
+    const storeId = user?.storeId || '01915dfa-9012-7000-8000-000000000002';
+    Alert.alert(
+      t('team.revokeConfirmTitle'),
+      t('team.revokeConfirmMsg', { email: inv.email }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('team.revoke'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await invitationService.revokeInvitation(storeId, inv.id);
+              setInvitations((prev) =>
+                prev.map((item) =>
+                  item.id === inv.id ? { ...item, status: 'REVOKED' } : item
+                )
+              );
+              Alert.alert(t('team.revoke'), `Invitation for ${inv.email} has been revoked.`);
+            } catch (err: any) {
+              Alert.alert(t('errors.serverError'), err?.message || 'Failed to revoke invitation.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const filteredMembers = members.filter(
     (m) =>
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.email.toLowerCase().includes(search.toLowerCase()) ||
-      m.role.toLowerCase().includes(search.toLowerCase())
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const activeCount = members.filter((m) => m.status === 'active').length;
+  const pendingInvitations = invitations.filter((i) => i.status === 'PENDING');
+
+  const getRoleVariant = (roleKey?: string) => {
+    switch (roleKey?.toLowerCase()) {
+      case 'admin':
+      case 'superadmin':
+        return 'purple';
+      case 'manager':
+        return 'blue';
+      case 'supervisor':
+        return 'amber';
+      case 'auditor':
+        return 'orange';
+      default:
+        return 'green';
+    }
+  };
 
   return (
-    <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
+    <View style={[styles.screen, { backgroundColor: Colors.neutral.background }]}>
       <TopBar
-        title="Team & Roles"
+        title={t('team.title')}
         showBack
         right={
-          hasPermission('team:manage') ? (
+          isManagerOrAdmin ? (
             <Pressable
               onPress={() => router.push('/team/invite' as any)}
-              style={({ pressed }) => [styles.inviteBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('team.inviteMember')}
+              style={({ pressed }) => [styles.inviteHeaderBtn, pressed && styles.pressed]}
             >
-              <VectorIcon name="Plus" size={14} color="#ffffff" />
-              <Text style={styles.inviteBtnText}>Invite</Text>
+              <VectorIcon name="Plus" size={16} color="#ffffff" />
+              <Text style={styles.inviteHeaderBtnText}>{t('team.inviteMember')}</Text>
             </Pressable>
           ) : undefined
         }
@@ -63,30 +258,46 @@ export default function TeamScreen() {
       <View style={styles.tabBar}>
         <View style={styles.tabPillContainer}>
           <Pressable
-            onPress={() => setTab('members')}
-            style={[styles.tabPill, tab === 'members' && styles.tabPillActive]}
+            onPress={() => setActiveTab('members')}
+            style={[styles.tabPill, activeTab === 'members' && styles.tabPillActive]}
           >
             <Text
               style={[
                 styles.tabPillText,
-                tab === 'members' && styles.tabPillTextActive,
+                activeTab === 'members' && styles.tabPillTextActive,
               ]}
             >
-              Members ({members.length})
+              {t('team.tabs.members')} ({members.length})
             </Text>
           </Pressable>
 
+          {isManagerOrAdmin && (
+            <Pressable
+              onPress={() => setActiveTab('invitations')}
+              style={[styles.tabPill, activeTab === 'invitations' && styles.tabPillActive]}
+            >
+              <Text
+                style={[
+                  styles.tabPillText,
+                  activeTab === 'invitations' && styles.tabPillTextActive,
+                ]}
+              >
+                {t('team.tabs.invitations')} ({pendingInvitations.length})
+              </Text>
+            </Pressable>
+          )}
+
           <Pressable
-            onPress={() => setTab('roles')}
-            style={[styles.tabPill, tab === 'roles' && styles.tabPillActive]}
+            onPress={() => setActiveTab('roles')}
+            style={[styles.tabPill, activeTab === 'roles' && styles.tabPillActive]}
           >
             <Text
               style={[
                 styles.tabPillText,
-                tab === 'roles' && styles.tabPillTextActive,
+                activeTab === 'roles' && styles.tabPillTextActive,
               ]}
             >
-              Role Guide & Matrix
+              {t('team.tabs.roles')}
             </Text>
           </Pressable>
         </View>
@@ -99,179 +310,422 @@ export default function TeamScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {tab === 'members' ? (
-          <>
-            {/* ── Stats Grid ── */}
-            <View style={styles.statsGrid}>
-              <Card style={styles.statCard}>
-                <Text style={styles.statValue}>{members.length}</Text>
-                <Text style={styles.statLabel}>Total Staff</Text>
-              </Card>
-              <Card style={styles.statCard}>
-                <Text style={[styles.statValue, { color: Colors.brand.primary }]}>
-                  {activeCount}
-                </Text>
-                <Text style={styles.statLabel}>Active Now</Text>
-              </Card>
-              <Card style={styles.statCard}>
-                <Text style={[styles.statValue, { color: Colors.warning.main }]}>
-                  {members.length - activeCount}
-                </Text>
-                <Text style={styles.statLabel}>Inactive</Text>
-              </Card>
-            </View>
-
-            {/* ── Search Bar ── */}
-            <View style={styles.searchWrap}>
-              <VectorIcon name="Search" size={16} color={Colors.neutral.textTertiary} />
+        {/* ══════════════════════════════════════════════════════════
+            TAB 1: MEMBERS
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'members' && (
+          <View style={styles.tabContent}>
+            {/* Search Input */}
+            <View style={styles.searchBox}>
+              <VectorIcon name="Search" size={18} color={Colors.neutral.textTertiary} />
               <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search by name, email, or role..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t('common.searchPlaceholder')}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 style={styles.searchInput}
               />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')}>
+                  <VectorIcon name="X" size={16} color={Colors.neutral.textTertiary} />
+                </Pressable>
+              )}
             </View>
 
-            {/* ── Members List ── */}
-            <View style={styles.membersStack}>
-              {filteredMembers.map((m) => {
-                const roleDef = ROLES[m.role] ?? ROLES.staff;
-
-                return (
-                  <Card
-                    key={m.id}
-                    onPress={() => router.push(`/team/${m.id}` as any)}
-                    style={styles.memberCard}
-                  >
-                    <View
-                      style={[
-                        styles.memberAvatar,
-                        { backgroundColor: roleDef.bg },
-                      ]}
-                    >
-                      <Text style={[styles.avatarText, { color: roleDef.color }]}>
-                        {m.avatarText}
-                      </Text>
-                    </View>
-
-                    <View style={styles.memberInfo}>
-                      <View style={styles.memberNameRow}>
-                        <Text style={styles.memberName}>{m.name}</Text>
-                        <Badge variant={roleDef.badgeVariant}>{roleDef.label}</Badge>
-                      </View>
-                      <Text style={styles.memberEmail}>{m.email}</Text>
-                    </View>
-
-                    <View style={styles.memberStatusCol}>
-                      <View style={styles.statusIndicatorRow}>
-                        <View
-                          style={[
-                            styles.statusDot,
-                            {
-                              backgroundColor:
-                                m.status === 'active'
-                                  ? Colors.brand.primary
-                                  : Colors.neutral.textTertiary,
-                            },
-                          ]}
-                        />
-                        <Text style={styles.statusText}>{m.status}</Text>
-                      </View>
-                      <Text style={styles.lastActiveText}>{m.lastActive}</Text>
-                    </View>
-                  </Card>
-                );
-              })}
-            </View>
-          </>
-        ) : (
-          <>
-            {/* ── Role Definitions Guide ── */}
-            <Text style={styles.sectionHeader}>ROLE DEFINITIONS</Text>
-            <View style={styles.roleDefinitionsStack}>
-              {(Object.keys(ROLES) as UserRole[]).map((r) => {
-                const def = ROLES[r];
-
-                return (
-                  <Card key={r} style={styles.roleDefCard}>
-                    <View style={styles.roleDefHeader}>
-                      <Badge variant={def.badgeVariant}>{def.label}</Badge>
-                      <Text style={styles.permCountText}>
-                        {def.permissions.length} permissions
-                      </Text>
-                    </View>
-                    <Text style={styles.roleDefDescription}>{def.description}</Text>
-                  </Card>
-                );
-              })}
-            </View>
-
-            {/* ── Interactive Permission Matrix ── */}
-            <Text style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
-              PERMISSION MATRIX
-            </Text>
-            <Card style={styles.matrixCard}>
-              {/* Matrix Table Header */}
-              <View style={styles.matrixTableHeader}>
-                <Text style={styles.moduleHeaderCol}>Module / Action</Text>
-                <Text style={styles.roleHeaderCol}>Adm</Text>
-                <Text style={styles.roleHeaderCol}>Mgr</Text>
-                <Text style={styles.roleHeaderCol}>Sup</Text>
-                <Text style={styles.roleHeaderCol}>Stf</Text>
-                <Text style={styles.roleHeaderCol}>Aud</Text>
+            {/* Error State with Retry */}
+            {membersError && (
+              <View style={styles.errorBanner}>
+                <VectorIcon name="AlertTriangle" size={20} color={Colors.critical.main} />
+                <Text style={styles.errorBannerText}>{membersError}</Text>
+                <Pressable onPress={fetchMembers} style={styles.retryBtn}>
+                  <Text style={styles.retryBtnText}>{t('common.retry')}</Text>
+                </Pressable>
               </View>
+            )}
 
-              {/* Rows */}
-              {MODULE_PERMISSIONS_MATRIX.map((row, i) => {
-                const isLast = i === MODULE_PERMISSIONS_MATRIX.length - 1;
+            {/* Loading State */}
+            {loadingMembers && (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="large" color={Colors.brand.primary} />
+                <Text style={styles.loadingText}>{t('common.loading')}</Text>
+              </View>
+            )}
 
-                return (
-                  <View
-                    key={row.module}
-                    style={[styles.matrixTableRow, !isLast && styles.matrixRowBorder]}
-                  >
-                    <View style={styles.moduleInfoCol}>
-                      <Text style={styles.moduleName}>{row.module}</Text>
-                      <Text style={styles.moduleDesc}>{row.description}</Text>
-                    </View>
+            {/* Empty State */}
+            {!loadingMembers && !membersError && filteredMembers.length === 0 && (
+              <Card style={styles.emptyCard}>
+                <VectorIcon name="Users" size={40} color={Colors.neutral.textTertiary} />
+                <Text style={styles.emptyTitle}>{t('team.noMembersFound')}</Text>
+                <Text style={styles.emptySub}>{t('team.noPendingDesc')}</Text>
+                {isManagerOrAdmin && !searchQuery && (
+                  <Button
+                    label={t('team.inviteMember')}
+                    variant="primary"
+                    onPress={() => router.push('/team/invite' as any)}
+                    style={{ marginTop: Spacing.md }}
+                    leftIcon={<VectorIcon name="Plus" size={16} color="#FFFFFF" />}
+                  />
+                )}
+              </Card>
+            )}
 
-                    <PermCell val={row.admin} />
-                    <PermCell val={row.manager} />
-                    <PermCell val={row.supervisor} />
-                    <PermCell val={row.staff} />
-                    <PermCell val={row.auditor} />
-                  </View>
-                );
-              })}
-            </Card>
-          </>
+            {/* Members List */}
+            {!loadingMembers && !membersError && (
+              <View style={styles.memberList}>
+                {filteredMembers.map((m) => {
+                  const roleDef = ROLES[m.role] || ROLES.staff;
+                  const isSelf = m.id === user?.id || m.email === user?.email;
+
+                  return (
+                    <Card key={m.id} style={styles.memberCard}>
+                      <View style={styles.memberRow}>
+                        {/* Avatar */}
+                        <View style={[styles.avatar, { backgroundColor: roleDef.bg }]}>
+                          <Text style={[styles.avatarText, { color: roleDef.color }]}>
+                            {m.avatarText || 'US'}
+                          </Text>
+                        </View>
+
+                        {/* Info */}
+                        <View style={styles.memberInfo}>
+                          <View style={styles.nameRow}>
+                            <Text style={styles.memberName}>{m.name}</Text>
+                            {isSelf && <Badge variant="gray">YOU</Badge>}
+                          </View>
+                          <Text style={styles.memberEmail}>{m.email}</Text>
+                          {m.phone ? (
+                            <Text style={styles.memberPhone}>{m.phone}</Text>
+                          ) : null}
+                        </View>
+
+                        {/* Role Badge */}
+                        <View style={styles.roleCol}>
+                          <Badge variant={getRoleVariant(m.role)}>
+                            {roleDef.label}
+                          </Badge>
+                        </View>
+                      </View>
+
+                      {/* Admin Actions */}
+                      {isManagerOrAdmin && !isSelf && (
+                        <View style={styles.memberActionsRow}>
+                          <Pressable
+                            onPress={() => setSelectedMemberForRole(m)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${t('team.changeRole')} for ${m.name}`}
+                            style={({ pressed }) => [
+                              styles.actionPill,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <VectorIcon name="Shield" size={13} color={Colors.brand.primary} />
+                            <Text style={styles.actionPillTextPrimary}>{t('team.changeRole')}</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => handleRemoveMember(m)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${t('team.removeFromStore')} ${m.name}`}
+                            style={({ pressed }) => [
+                              styles.actionPill,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <VectorIcon name="Trash2" size={13} color={Colors.critical.main} />
+                            <Text style={styles.actionPillTextDanger}>{t('common.delete')}</Text>
+                          </Pressable>
+                        </View>
+                      )}
+                    </Card>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB 2: PENDING INVITATIONS
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'invitations' && (
+          <View style={styles.tabContent}>
+            {/* Header info */}
+            <View style={styles.sectionHeaderBox}>
+              <Text style={styles.sectionHeading}>{t('team.pendingInvitations')}</Text>
+              <Text style={styles.sectionSub}>
+                {t('team.noPendingDesc')}
+              </Text>
+            </View>
+
+            {/* Error Banner with Retry */}
+            {invitationsError && (
+              <View style={styles.errorBanner}>
+                <VectorIcon name="AlertTriangle" size={20} color={Colors.critical.main} />
+                <Text style={styles.errorBannerText}>{invitationsError}</Text>
+                <Pressable onPress={fetchInvitations} style={styles.retryBtn}>
+                  <Text style={styles.retryBtnText}>{t('common.retry')}</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Loading */}
+            {loadingInvitations && (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="large" color={Colors.brand.primary} />
+                <Text style={styles.loadingText}>{t('common.loading')}</Text>
+              </View>
+            )}
+
+            {/* Empty Invitations */}
+            {!loadingInvitations && !invitationsError && invitations.length === 0 && (
+              <Card style={styles.emptyCard}>
+                <VectorIcon name="Mail" size={40} color={Colors.neutral.textTertiary} />
+                <Text style={styles.emptyTitle}>{t('team.noPendingInvitations')}</Text>
+                <Text style={styles.emptySub}>{t('team.noPendingDesc')}</Text>
+                <Button
+                  label={t('team.inviteMember')}
+                  variant="primary"
+                  onPress={() => router.push('/team/invite' as any)}
+                  style={{ marginTop: Spacing.md }}
+                  leftIcon={<VectorIcon name="Plus" size={16} color="#FFFFFF" />}
+                />
+              </Card>
+            )}
+
+            {/* Invitations List */}
+            {!loadingInvitations && !invitationsError && (
+              <View style={styles.invitationList}>
+                {invitations.map((inv) => {
+                  const roleDef = ROLES[inv.role] || ROLES.staff;
+                  const isPending = inv.status === 'PENDING';
+                  const isRevoked = inv.status === 'REVOKED';
+                  const isAccepted = inv.status === 'ACCEPTED';
+
+                  return (
+                    <Card key={inv.id} style={styles.invitationCard}>
+                      <View style={styles.invitationHeader}>
+                        <View style={styles.invitationEmailGroup}>
+                          <Text style={styles.invitationEmail}>{inv.email}</Text>
+                          <Text style={styles.invitationMeta}>
+                            Code: <Text style={styles.invitationCodeText}>{inv.invitationCode}</Text>
+                          </Text>
+                        </View>
+
+                        <Badge
+                          variant={
+                            isAccepted
+                              ? 'green'
+                              : isPending
+                              ? 'amber'
+                              : isRevoked
+                              ? 'red'
+                              : 'gray'
+                          }
+                        >
+                          {inv.status}
+                        </Badge>
+                      </View>
+
+                      <View style={styles.invitationDetailsRow}>
+                        <View style={styles.invitationRoleBox}>
+                          <Text style={styles.invitationDetailLabel}>{t('onboarding.roleLabel')}:</Text>
+                          <Badge variant={getRoleVariant(inv.role)}>
+                            {roleDef.label}
+                          </Badge>
+                        </View>
+
+                        <Text style={styles.invitationExpiryText}>
+                          {isPending
+                            ? `${t('onboarding.expiresLabel')}: ${formatDate ? formatDate(inv.expiresAt) : inv.expiresAt.split('T')[0]}`
+                            : isAccepted
+                            ? `Accepted: ${inv.acceptedAt ? (formatDate ? formatDate(inv.acceptedAt) : inv.acceptedAt.split('T')[0]) : 'Yes'}`
+                            : isRevoked
+                            ? 'Revoked'
+                            : 'Expired'}
+                        </Text>
+                      </View>
+
+                      {/* Action Buttons for Pending Invites */}
+                      {isPending && (
+                        <View style={styles.invitationActions}>
+                          <Pressable
+                            onPress={() => handleShareInvitation(inv)}
+                            style={({ pressed }) => [
+                              styles.invitationActionBtn,
+                              styles.invitationActionBtnPrimary,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <VectorIcon name="Share2" size={13} color={Colors.brand.primary} />
+                            <Text style={styles.invitationActionTextPrimary}>{t('team.share')}</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => handleResendInvitation(inv)}
+                            style={({ pressed }) => [
+                              styles.invitationActionBtn,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <VectorIcon name="RefreshCw" size={13} color={Colors.neutral.textPrimary} />
+                            <Text style={styles.invitationActionText}>{t('team.resend')}</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => handleRevokeInvitation(inv)}
+                            style={({ pressed }) => [
+                              styles.invitationActionBtn,
+                              styles.invitationActionBtnDanger,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <VectorIcon name="XCircle" size={13} color={Colors.critical.main} />
+                            <Text style={styles.invitationActionTextDanger}>{t('team.revoke')}</Text>
+                          </Pressable>
+                        </View>
+                      )}
+                    </Card>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB 3: ROLE PERMISSIONS MATRIX
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'roles' && (
+          <View style={styles.tabContent}>
+            <View style={styles.sectionHeaderBox}>
+              <Text style={styles.sectionHeading}>{t('team.permissionsMatrix')}</Text>
+              <Text style={styles.sectionSub}>
+                {t('team.rolesDesc')}
+              </Text>
+            </View>
+
+            {/* Role Cards */}
+            <View style={styles.roleGuideContainer}>
+              {(['admin', 'manager', 'supervisor', 'staff', 'auditor'] as UserRole[]).map(
+                (roleKey) => {
+                  const roleDef = ROLES[roleKey];
+                  return (
+                    <Card key={roleKey} style={styles.roleCard}>
+                      <View style={styles.roleCardHeader}>
+                        <Badge variant={getRoleVariant(roleKey)}>
+                          {roleDef.label}
+                        </Badge>
+                      </View>
+                      <Text style={styles.roleCardDesc}>{roleDef.description}</Text>
+                      <View style={styles.permCountBox}>
+                        <VectorIcon name="ShieldCheck" size={14} color={Colors.brand.primary} />
+                        <Text style={styles.permCountText}>
+                          {roleDef.permissions.length} module permissions granted
+                        </Text>
+                      </View>
+                    </Card>
+                  );
+                }
+              )}
+            </View>
+          </View>
         )}
       </ScrollView>
-    </View>
-  );
-}
 
-function PermCell({ val }: { val: 'full' | 'view' | 'none' }) {
-  if (val === 'full') {
-    return (
-      <View style={styles.permCell}>
-        <View style={styles.fullCheckCircle}>
-          <VectorIcon name="Check" size={10} color="#ffffff" strokeWidth={3} />
-        </View>
-      </View>
-    );
-  }
-  if (val === 'view') {
-    return (
-      <View style={styles.permCell}>
-        <Text style={styles.viewOnlyBadge}>V</Text>
-      </View>
-    );
-  }
-  return (
-    <View style={styles.permCell}>
-      <VectorIcon name="X" size={12} color={Colors.neutral.border} strokeWidth={2} />
+      {/* ── Change Role Modal ── */}
+      <Modal
+        visible={!!selectedMemberForRole}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedMemberForRole(null)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setSelectedMemberForRole(null)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('team.changeRole')}</Text>
+              <Pressable
+                onPress={() => setSelectedMemberForRole(null)}
+                style={styles.modalCloseBtn}
+              >
+                <VectorIcon name="X" size={20} color={Colors.neutral.textSecondary} />
+              </Pressable>
+            </View>
+
+            {selectedMemberForRole && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTargetUser}>
+                  Update role for{' '}
+                  <Text style={{ fontWeight: '700' }}>
+                    {selectedMemberForRole.name}
+                  </Text>{' '}
+                  ({selectedMemberForRole.email})
+                </Text>
+
+                <View style={styles.roleOptionsList}>
+                  {(['manager', 'supervisor', 'staff', 'auditor'] as UserRole[]).map(
+                    (roleKey) => {
+                      const isCurrent = selectedMemberForRole.role === roleKey;
+                      const roleDef = ROLES[roleKey];
+
+                      return (
+                        <Pressable
+                          key={roleKey}
+                          onPress={() => handleUpdateRole(roleKey)}
+                          disabled={isUpdatingRole}
+                          style={({ pressed }) => [
+                            styles.roleOptionCard,
+                            isCurrent && styles.roleOptionCardActive,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <View style={styles.roleOptionRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.roleOptionLabel}>
+                                {roleDef.label}
+                              </Text>
+                              <Text style={styles.roleOptionDesc}>
+                                {roleDef.description}
+                              </Text>
+                            </View>
+                            {isCurrent && (
+                              <VectorIcon
+                                name="CheckCircle"
+                                size={18}
+                                color={Colors.brand.primary}
+                              />
+                            )}
+                          </View>
+                        </Pressable>
+                      );
+                    }
+                  )}
+                </View>
+
+                {isUpdatingRole && (
+                  <View style={styles.updatingRoleBox}>
+                    <ActivityIndicator size="small" color={Colors.brand.primary} />
+                    <Text style={styles.updatingRoleText}>Updating role...</Text>
+                  </View>
+                )}
+
+                <Button
+                  label={t('common.cancel')}
+                  variant="secondary"
+                  onPress={() => setSelectedMemberForRole(null)}
+                  disabled={isUpdatingRole}
+                  style={{ marginTop: Spacing.md, width: '100%' }}
+                />
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -280,106 +734,146 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  inviteBtn: {
+  inviteHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     backgroundColor: Colors.brand.primary,
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 5,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: Radius.md,
+    gap: 4,
   },
-  inviteBtnText: {
+  inviteHeaderBtnText: {
+    color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
-    color: '#ffffff',
   },
   tabBar: {
-    backgroundColor: Colors.neutral.card,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: Colors.neutral.borderLight,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xs,
   },
   tabPillContainer: {
     flexDirection: 'row',
-    backgroundColor: Colors.neutral.surface,
+    backgroundColor: Colors.neutral.borderLight,
     borderRadius: Radius.lg,
     padding: 3,
-    gap: 4,
+    gap: 2,
   },
   tabPill: {
     flex: 1,
-    paddingVertical: 6,
-    borderRadius: Radius.md,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: Radius.md,
   },
   tabPillActive: {
-    backgroundColor: Colors.neutral.card,
-    ...Shadows.card,
+    backgroundColor: '#ffffff',
+    ...Shadows.sm,
   },
   tabPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.neutral.textTertiary,
+    color: Colors.neutral.textSecondary,
   },
   tabPillTextActive: {
-    color: Colors.neutral.textPrimary,
+    color: Colors.brand.primary,
     fontWeight: '700',
   },
   content: {
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  tabContent: {
     gap: Spacing.md,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    gap: 2,
-  },
-  statValue: {
-    ...Typography.monoValue,
-    fontSize: 20,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
-  },
-  searchWrap: {
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.neutral.card,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
     borderColor: Colors.neutral.border,
-    borderWidth: 1,
-    borderRadius: Radius.xl,
+    borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    height: 44,
+    gap: Spacing.sm,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.neutral.textPrimary,
-    paddingVertical: 4,
   },
-  membersStack: {
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.critical.subtle,
+    borderWidth: 1,
+    borderColor: Colors.critical.light,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.critical.dark,
+    fontWeight: '500',
+  },
+  retryBtn: {
+    backgroundColor: Colors.critical.main,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+  },
+  retryBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  loadingBox: {
+    padding: Spacing.xxl,
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    ...Typography.caption,
+    color: Colors.neutral.textSecondary,
+  },
+  emptyCard: {
+    padding: Spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+    marginTop: Spacing.sm,
+  },
+  emptySub: {
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  memberList: {
     gap: Spacing.sm,
   },
   memberCard: {
+    padding: Spacing.md,
+  },
+  memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
     gap: Spacing.md,
   },
-  memberAvatar: {
+  avatar: {
     width: 44,
     height: 44,
-    borderRadius: Radius.xl,
+    borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -389,146 +883,267 @@ const styles = StyleSheet.create({
   },
   memberInfo: {
     flex: 1,
-    gap: 2,
   },
-  memberNameRow: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    flexWrap: 'wrap',
   },
   memberName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
   },
   memberEmail: {
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    marginTop: 2,
+  },
+  memberPhone: {
     fontSize: 11,
     color: Colors.neutral.textTertiary,
+    marginTop: 1,
   },
-  memberStatusCol: {
+  roleCol: {
     alignItems: 'flex-end',
-    gap: 2,
   },
-  statusIndicatorRow: {
+  memberActionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.neutral.borderLight,
+  },
+  actionPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: Colors.neutral.border,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
     gap: 4,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
+  actionPillTextPrimary: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.neutral.textSecondary,
-    textTransform: 'capitalize',
+    color: Colors.brand.primary,
   },
-  lastActiveText: {
-    fontSize: 10,
-    color: Colors.neutral.textTertiary,
-  },
-  sectionHeader: {
+  actionPillTextDanger: {
     fontSize: 11,
-    fontWeight: '700',
-    color: Colors.neutral.textTertiary,
-    letterSpacing: 0.8,
-    paddingHorizontal: Spacing.xs,
+    fontWeight: '600',
+    color: Colors.critical.main,
   },
-  roleDefinitionsStack: {
+  sectionHeaderBox: {
+    marginBottom: Spacing.xs,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+  },
+  sectionSub: {
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+    marginTop: 2,
+  },
+  invitationList: {
     gap: Spacing.sm,
   },
-  roleDefCard: {
+  invitationCard: {
+    padding: Spacing.md,
+  },
+  invitationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  invitationEmailGroup: {
+    flex: 1,
+  },
+  invitationEmail: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+  },
+  invitationMeta: {
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    marginTop: 2,
+  },
+  invitationCodeText: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontWeight: '700',
+    color: Colors.brand.primary,
+  },
+  invitationDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.sm,
+  },
+  invitationRoleBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  invitationDetailLabel: {
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+  },
+  invitationExpiryText: {
+    fontSize: 11,
+    color: Colors.neutral.textTertiary,
+  },
+  invitationActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.neutral.borderLight,
+  },
+  invitationActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: Colors.neutral.border,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
+    gap: 4,
+  },
+  invitationActionBtnPrimary: {
+    borderColor: Colors.brand.light,
+    backgroundColor: Colors.brand.subtle,
+  },
+  invitationActionBtnDanger: {
+    borderColor: Colors.critical.light,
+    backgroundColor: Colors.critical.subtle,
+  },
+  invitationActionTextPrimary: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.brand.primary,
+  },
+  invitationActionText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.neutral.textPrimary,
+  },
+  invitationActionTextDanger: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.critical.main,
+  },
+  roleGuideContainer: {
+    gap: Spacing.sm,
+  },
+  roleCard: {
     padding: Spacing.md,
     gap: Spacing.xs,
   },
-  roleDefHeader: {
+  roleCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  roleCardDesc: {
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+    lineHeight: 18,
+  },
+  permCountBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   permCountText: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
-  },
-  roleDefDescription: {
     fontSize: 12,
-    color: Colors.neutral.textSecondary,
-    lineHeight: 16,
+    fontWeight: '600',
+    color: Colors.brand.dark,
   },
-  matrixCard: {
-    padding: 0,
-    overflow: 'hidden',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
   },
-  matrixTableHeader: {
+  modalContent: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    ...Shadows.modal,
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.neutral.surface,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral.borderLight,
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
   },
-  moduleHeaderCol: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.neutral.textSecondary,
-  },
-  roleHeaderCol: {
-    width: 32,
-    textAlign: 'center',
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.neutral.textSecondary,
-  },
-  matrixTableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  matrixRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral.borderLight,
-  },
-  moduleInfoCol: {
-    flex: 1,
-    gap: 1,
-    paddingRight: Spacing.xs,
-  },
-  moduleName: {
-    fontSize: 12,
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
   },
-  moduleDesc: {
-    fontSize: 10,
-    color: Colors.neutral.textTertiary,
+  modalCloseBtn: {
+    padding: 4,
   },
-  permCell: {
-    width: 32,
+  modalBody: {
+    gap: Spacing.md,
+  },
+  modalTargetUser: {
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+  },
+  roleOptionsList: {
+    gap: Spacing.sm,
+  },
+  roleOptionCard: {
+    borderWidth: 1.5,
+    borderColor: Colors.neutral.border,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    backgroundColor: '#ffffff',
+  },
+  roleOptionCardActive: {
+    borderColor: Colors.brand.primary,
+    backgroundColor: Colors.brand.subtle,
+  },
+  roleOptionRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.sm,
   },
-  fullCheckCircle: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewOnlyBadge: {
-    fontSize: 9,
+  roleOptionLabel: {
+    fontSize: 14,
     fontWeight: '700',
-    color: Colors.warning.dark,
-    backgroundColor: Colors.warning.subtle,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
+    color: Colors.neutral.textPrimary,
+  },
+  roleOptionDesc: {
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    marginTop: 2,
+  },
+  updatingRoleBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+  },
+  updatingRoleText: {
+    fontSize: 13,
+    color: Colors.brand.primary,
+    fontWeight: '600',
   },
   pressed: {
     opacity: 0.8,

@@ -5,10 +5,12 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n/I18nContext';
-import { mockCountSchedules } from '@/mocks/inventoryMockData';
+import { stockCountService } from '@/services/stockCountService';
+import { CountSchedule } from '@/types/inventory';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,8 +24,29 @@ export default function StockCountScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
 
-  const inProgress = mockCountSchedules.filter((s) => s.status === 'in_progress');
-  const scheduled = mockCountSchedules.filter((s) => s.status === 'scheduled');
+  const [schedules, setSchedules] = useState<CountSchedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const loadSchedules = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+      const data = await stockCountService.getSchedules();
+      setSchedules(data);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to load stock count schedules');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [loadSchedules]);
+
+  const inProgress = schedules.filter((s) => s.status === 'in_progress');
+  const scheduled = schedules.filter((s) => s.status === 'scheduled');
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
@@ -36,8 +59,35 @@ export default function StockCountScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {errorMsg && (
+          <View style={styles.errorBanner}>
+            <VectorIcon name="AlertCircle" size={18} color={Colors.critical.main} />
+            <Text style={styles.errorBannerText}>{errorMsg}</Text>
+            <Pressable onPress={loadSchedules} style={styles.retryBannerBtn}>
+              <Text style={styles.retryBannerText}>{t('common.retry') || 'Retry'}</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {loading && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={Colors.brand.primary} />
+            <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          </View>
+        )}
+
+        {!loading && !errorMsg && schedules.length === 0 && (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <VectorIcon name="ClipboardList" size={28} color={Colors.neutral.textTertiary} />
+            </View>
+            <Text style={styles.emptyTitle}>No scheduled counts</Text>
+            <Text style={styles.emptySub}>All audit sessions have been completed or reconciled</Text>
+          </View>
+        )}
+
         {/* ── Active In-Progress Counts ── */}
-        {inProgress.length > 0 && (
+        {!loading && inProgress.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>{t('common.active')}</Text>
             {inProgress.map((s) => (
@@ -332,5 +382,64 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.critical.light,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.critical.light,
+  },
+  errorBannerText: {
+    flex: 1,
+    ...Typography.body,
+    color: Colors.critical.dark,
+  },
+  retryBannerBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: Colors.critical.main,
+    borderRadius: Radius.md,
+  },
+  retryBannerText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  loadingBox: {
+    paddingVertical: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    ...Typography.bodySecondary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50,
+    gap: Spacing.sm,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.neutral.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    ...Typography.cardTitle,
+    fontSize: 15,
+  },
+  emptySub: {
+    ...Typography.bodySecondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.xl,
   },
 });

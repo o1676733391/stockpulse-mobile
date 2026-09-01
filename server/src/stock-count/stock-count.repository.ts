@@ -760,6 +760,28 @@ export class StockCountRepository implements IStockCountRepository {
   }
 
   /**
+   * Mark session as cancelled/rejected.
+   */
+  async cancelSession(
+    sessionId: string,
+    storeId: string,
+    reason?: string,
+  ): Promise<void> {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) return;
+
+    await client
+      .from('stock_counts')
+      .update({
+        status: 'rejected',
+        notes: reason || 'Cancelled by user',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', sessionId)
+      .eq('store_id', storeId);
+  }
+
+  /**
    * Apply approved variance counts directly to physical stock and create audit ledger movements.
    */
   async applyVarianceSyncToLedger(

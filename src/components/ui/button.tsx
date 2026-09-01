@@ -15,7 +15,9 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'critical' | '
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
-  label: string;
+  label?: string;
+  title?: string;
+  children?: React.ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
@@ -23,6 +25,7 @@ export interface ButtonProps {
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  icon?: React.ReactNode;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
@@ -30,6 +33,8 @@ export interface ButtonProps {
 
 export function Button({
   label,
+  title,
+  children,
   variant = 'primary',
   size = 'md',
   disabled = false,
@@ -37,11 +42,14 @@ export function Button({
   fullWidth = false,
   leftIcon,
   rightIcon,
+  icon,
   onPress,
   style,
   textStyle,
 }: ButtonProps) {
   const isInteractive = !disabled && !loading;
+  const displayLabel = label || title || (typeof children === 'string' ? children : '');
+  const prefixIcon = leftIcon || icon;
 
   return (
     <Pressable
@@ -63,18 +71,22 @@ export function Button({
         />
       ) : (
         <View style={styles.contentRow}>
-          {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
-          <Text
-            style={[
-              styles.textBase,
-              styles[`text_${variant}`],
-              styles[`textSize_${size}`],
-              disabled && styles.textDisabled,
-              textStyle,
-            ]}
-          >
-            {label}
-          </Text>
+          {prefixIcon && <View style={styles.leftIcon}>{prefixIcon}</View>}
+          {displayLabel ? (
+            <Text
+              style={[
+                styles.textBase,
+                styles[`text_${variant}`],
+                styles[`textSize_${size}`],
+                disabled && styles.textDisabled,
+                textStyle,
+              ]}
+            >
+              {displayLabel}
+            </Text>
+          ) : (
+            children
+          )}
           {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
         </View>
       )}

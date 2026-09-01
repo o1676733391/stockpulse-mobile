@@ -167,8 +167,39 @@ CREATE TABLE IF NOT EXISTS user_store_assignments (
     deleted_at TIMESTAMPTZ
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_store_assignment_unique 
-    ON user_store_assignments (user_id, store_id) WHERE deleted_at IS NULL;
+DO $$ BEGIN
+    CREATE TYPE invitation_status_enum AS ENUM ('PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+CREATE TABLE IF NOT EXISTS store_invitations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+    token_hash VARCHAR(128) NOT NULL UNIQUE,
+    invitation_code VARCHAR(32) NOT NULL UNIQUE,
+    status invitation_status_enum NOT NULL DEFAULT 'PENDING',
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    accepted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    accepted_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    revoked_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_store_invitations_store ON store_invitations (store_id);
+CREATE INDEX IF NOT EXISTS idx_store_invitations_org ON store_invitations (organization_id);
+CREATE INDEX IF NOT EXISTS idx_store_invitations_email ON store_invitations (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_store_invitations_status ON store_invitations (status);
+CREATE INDEX IF NOT EXISTS idx_store_invitations_expires ON store_invitations (expires_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_store_invitations_unique_pending
+    ON store_invitations (store_id, LOWER(email))
+    WHERE status = 'PENDING';
 
 
 -- ============================================================================

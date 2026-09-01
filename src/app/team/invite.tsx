@@ -1,18 +1,25 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { authService } from '@/services/authService';
+import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { invitationService } from '@/services/invitationService';
+import { StoreInvitation } from '@/types/invitation';
 import { UserRole } from '@/types/rbac';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -23,37 +30,88 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function InviteMemberScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
+  const { user } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('staff');
+  const [expiresInDays, setExpiresInDays] = useState<number>(7);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Success Modal State
+  const [createdInvitation, setCreatedInvitation] = useState<(StoreInvitation & { rawToken?: string }) | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const availableRoles: UserRole[] = ['manager', 'supervisor', 'staff', 'auditor'];
 
   const handleSendInvite = async () => {
-    if (!name.trim() || !email.trim()) {
-      Alert.alert('Required Fields', 'Please provide a member name and email address.');
+    if (loading) return;
+    setErrorMsg(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
       return;
     }
 
-    setLoading(true);
-    await authService.inviteMember(name.trim(), email.trim(), selectedRole);
-    setLoading(false);
+    const storeId = user?.storeId || '01915dfa-9012-7000-8000-000000000002';
 
-    Alert.alert(
-      'Invitation Sent',
-      `An invitation link has been dispatched to ${email}.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/team/index' as any),
-        },
-      ]
-    );
+    try {
+      setLoading(true);
+      const res = await invitationService.createInvitation(storeId, {
+        email: cleanEmail,
+        role: selectedRole,
+        name: name.trim() || undefined,
+        phone: phone.trim() || undefined,
+        expiresInDays,
+      });
+
+      setCreatedInvitation(res);
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to generate invitation';
+      setErrorMsg(msg);
+      Alert.alert('Invitation Error', msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShareInvitation = async () => {
+    if (!createdInvitation) return;
+    const code = createdInvitation.invitationCode;
+    const store = user?.storeName || 'our restaurant';
+    const message = `You've been invited to join ${store} on StockPulse as ${ROLES[createdInvitation.role]?.label || createdInvitation.role}.\n\nInvitation Code: ${code}\nLink: https://app.stockpulse.io/invite?code=${code}`;
+
+    try {
+      await Share.share({
+        message,
+        title: `Join ${store} on StockPulse`,
+      });
+    } catch (err) {
+      // User cancelled share
+    }
+  };
+
+  const getRoleBadgeVariant = (roleKey: UserRole) => {
+    switch (roleKey) {
+      case 'manager':
+        return 'blue';
+      case 'supervisor':
+        return 'amber';
+      case 'auditor':
+        return 'orange';
+      default:
+        return 'green';
+    }
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Invite Team Member" showBack />
+    <View style={[styles.screen, { backgroundColor: Colors.neutral.background }]}>
+      <TopBar title={t('team.inviteMember')} showBack />
 
       <ScrollView
         contentContainerStyle={[
@@ -61,13 +119,15 @@ export default function InviteMemberScreen() {
           { paddingBottom: insets.bottom + 120 },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* ── Member Details Card ── */}
+        {/* ── Form Card ── */}
         <Card style={styles.formCard}>
-          <SectionHeader title="Member Information" />
+          <SectionHeader title={t('team.inviteDetails')} />
 
+          {/* Full Name Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
+            <Text style={styles.inputLabel}>{t('common.details')} (Optional)</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -77,81 +137,182 @@ export default function InviteMemberScreen() {
             />
           </View>
 
+          {/* Work Email Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Work Email</Text>
+            <Text style={styles.inputLabel}>{t('auth.emailLabel')} *</Text>
             <TextInput
               value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
+              onChangeText={(val) => {
+                setEmail(val);
+                setErrorMsg(null);
+              }}
               placeholder="e.g. maria.rossi@restaurant.de"
               placeholderTextColor={Colors.neutral.textTertiary}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.textInput, errorMsg && styles.textInputError]}
+            />
+            {errorMsg && <Text style={styles.errorCaption}>{errorMsg}</Text>}
+          </View>
+
+          {/* Phone Number Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>{t('auth.phoneLabel')}</Text>
+            <TextInput
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="e.g. +49 151 23456789"
+              placeholderTextColor={Colors.neutral.textTertiary}
+              keyboardType="phone-pad"
               style={styles.textInput}
             />
           </View>
-        </Card>
 
-        {/* ── Assign Role Card ── */}
-        <Card style={styles.formCard}>
-          <SectionHeader title="Select Role & Permissions" />
+          {/* Role Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>{t('onboarding.roleLabel')} *</Text>
+            <Text style={styles.inputHint}>
+              Select the initial operational role and permissions for this member.
+            </Text>
 
-          <View style={styles.rolesCol}>
-            {(['manager', 'supervisor', 'staff', 'auditor'] as UserRole[]).map((r) => {
-              const def = ROLES[r];
-              const isSelected = r === selectedRole;
+            <View style={styles.rolesGrid}>
+              {availableRoles.map((r) => {
+                const isSelected = selectedRole === r;
+                const roleDef = ROLES[r];
 
-              return (
-                <Pressable
-                  key={r}
-                  onPress={() => setSelectedRole(r)}
-                  style={[
-                    styles.roleCard,
-                    isSelected && styles.roleCardActive,
-                  ]}
-                >
-                  <View style={styles.roleCardInfo}>
-                    <View style={styles.roleCardTitleRow}>
-                      <Text style={styles.roleLabel}>{def.label}</Text>
-                      <Badge variant={def.badgeVariant}>{r.toUpperCase()}</Badge>
-                    </View>
-                    <Text style={styles.roleDesc}>{def.description}</Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.radioCircle,
-                      isSelected && styles.radioCircleActive,
+                return (
+                  <Pressable
+                    key={r}
+                    onPress={() => setSelectedRole(r)}
+                    style={({ pressed }) => [
+                      styles.roleOptionCard,
+                      isSelected && styles.roleOptionCardSelected,
+                      pressed && styles.pressed,
                     ]}
                   >
-                    {isSelected && <View style={styles.radioInnerDot} />}
-                  </View>
-                </Pressable>
-              );
-            })}
+                    <View style={styles.roleOptionHeader}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.roleOptionName, isSelected && styles.roleOptionNameSelected]}>
+                          {roleDef.label}
+                        </Text>
+                        <Text style={styles.roleOptionDesc}>{roleDef.description}</Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.radioCircle,
+                          isSelected && styles.radioCircleSelected,
+                        ]}
+                      >
+                        {isSelected && <View style={styles.radioInnerCircle} />}
+                      </View>
+                    </View>
+
+                    <View style={styles.roleBadgeRow}>
+                      <Badge variant={getRoleBadgeVariant(r)}>
+                        {r.toUpperCase()}
+                      </Badge>
+                      <Text style={styles.rolePermCount}>
+                        {roleDef.permissions.length} module permissions
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
+
+          {/* Expiration Validity Selector */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Validity Duration</Text>
+            <View style={styles.validityPillRow}>
+              {[3, 7, 14, 30].map((days) => (
+                <Pressable
+                  key={days}
+                  onPress={() => setExpiresInDays(days)}
+                  style={[
+                    styles.validityPill,
+                    expiresInDays === days && styles.validityPillActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.validityPillText,
+                      expiresInDays === days && styles.validityPillTextActive,
+                    ]}
+                  >
+                    {days} Days
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <Button
+            label={loading ? t('team.sendingInvitation') : t('team.sendInvitation')}
+            variant="primary"
+            onPress={handleSendInvite}
+            disabled={loading || !email.trim()}
+            loading={loading}
+            leftIcon={<VectorIcon name="Send" size={16} color="#ffffff" />}
+          />
         </Card>
       </ScrollView>
 
-      {/* ── Fixed Bottom Send Button ── */}
-      <View
-        style={[
-          styles.fixedBottom,
-          {
-            paddingBottom: insets.bottom > 0 ? insets.bottom + Spacing.xs : Spacing.md,
-          },
-        ]}
+      {/* ── Success Modal with 6-character Code & Share sheet ── */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowSuccessModal(false);
+          router.back();
+        }}
       >
-        <Pressable
-          onPress={handleSendInvite}
-          disabled={loading}
-          style={({ pressed }) => [styles.sendBtn, pressed && styles.pressed]}
-        >
-          <VectorIcon name="Mail" size={16} color="#ffffff" />
-          <Text style={styles.sendBtnText}>
-            {loading ? 'Sending Invite...' : 'Send Team Invitation'}
-          </Text>
-        </Pressable>
-      </View>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.successIconBox}>
+              <VectorIcon name="CheckCircle2" size={36} color={Colors.brand.primary} />
+            </View>
+
+            <Text style={styles.successModalTitle}>Invitation Ready</Text>
+            <Text style={styles.successModalSub}>
+              Share this 6-character code with <Text style={{ fontWeight: '700' }}>{createdInvitation?.email}</Text> to join the kitchen store.
+            </Text>
+
+            {/* Code Box */}
+            <View style={styles.codeContainer}>
+              <Text style={styles.codeLabel}>INVITATION CODE</Text>
+              <Text style={styles.codeValue}>{createdInvitation?.invitationCode}</Text>
+              <Text style={styles.codeExpiry}>
+                Expires in {expiresInDays} days · Single-use secure token
+              </Text>
+            </View>
+
+            <View style={styles.modalActionsCol}>
+              <Button
+                label="Copy & Share Code"
+                variant="primary"
+                onPress={handleShareInvitation}
+                leftIcon={<VectorIcon name="Share2" size={16} color="#ffffff" />}
+                style={{ width: '100%' }}
+              />
+
+              <Button
+                label={t('common.done')}
+                variant="secondary"
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.back();
+                }}
+                style={{ width: '100%' }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -161,114 +322,207 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: Spacing.lg,
-    gap: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
   },
   formCard: {
     padding: Spacing.lg,
     gap: Spacing.md,
   },
   inputGroup: {
-    gap: 4,
+    marginBottom: Spacing.sm,
   },
   inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...Typography.label,
+    marginBottom: Spacing.xs,
+  },
+  inputHint: {
+    ...Typography.caption,
     color: Colors.neutral.textSecondary,
+    marginBottom: Spacing.sm,
   },
   textInput: {
-    backgroundColor: Colors.neutral.surface,
+    borderWidth: 1.5,
     borderColor: Colors.neutral.border,
-    borderWidth: 1,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.md,
+    backgroundColor: '#ffffff',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: 13,
+    height: 48,
+    fontSize: 14,
     color: Colors.neutral.textPrimary,
   },
-  rolesCol: {
+  textInputError: {
+    borderColor: Colors.critical.main,
+  },
+  errorCaption: {
+    fontSize: 12,
+    color: Colors.critical.main,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  rolesGrid: {
     gap: Spacing.sm,
   },
-  roleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.md,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.neutral.surface,
+  roleOptionCard: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
     borderColor: Colors.neutral.border,
-    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.xs,
   },
-  roleCardActive: {
+  roleOptionCardSelected: {
     borderColor: Colors.brand.primary,
     backgroundColor: Colors.brand.subtle,
   },
-  roleCardInfo: {
-    flex: 1,
-    gap: 2,
-    paddingRight: Spacing.sm,
-  },
-  roleCardTitleRow: {
+  roleOptionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
   },
-  roleLabel: {
-    fontSize: 13,
+  roleOptionName: {
+    fontSize: 15,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
   },
-  roleDesc: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
-    lineHeight: 15,
+  roleOptionNameSelected: {
+    color: Colors.brand.primary,
+  },
+  roleOptionDesc: {
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
   },
   radioCircle: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: Radius.full,
     borderWidth: 2,
     borderColor: Colors.neutral.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioCircleActive: {
+  radioCircleSelected: {
     borderColor: Colors.brand.primary,
   },
-  radioInnerDot: {
+  radioInnerCircle: {
     width: 10,
     height: 10,
-    borderRadius: 5,
+    borderRadius: Radius.full,
     backgroundColor: Colors.brand.primary,
   },
-  fixedBottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: Colors.neutral.card,
-    borderTopWidth: 1,
-    borderTopColor: Colors.neutral.borderLight,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    ...Shadows.elevated,
-  },
-  sendBtn: {
+  roleBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.brand.primary,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
-    ...Shadows.card,
+    justifyContent: 'space-between',
+    marginTop: 4,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.neutral.borderLight,
   },
-  sendBtnText: {
-    color: '#ffffff',
-    fontSize: 14,
+  rolePermCount: {
+    fontSize: 11,
+    color: Colors.neutral.textTertiary,
+  },
+  validityPillRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  validityPill: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: Colors.neutral.border,
+    borderRadius: Radius.md,
+  },
+  validityPillActive: {
+    borderColor: Colors.brand.primary,
+    backgroundColor: Colors.brand.subtle,
+  },
+  validityPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.neutral.textSecondary,
+  },
+  validityPillTextActive: {
+    color: Colors.brand.primary,
     fontWeight: '700',
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    ...Shadows.modal,
+  },
+  successIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(5, 150, 105, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  successModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+    marginBottom: 4,
+  },
+  successModalSub: {
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: Spacing.lg,
+  },
+  codeContainer: {
+    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: Colors.brand.light,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  codeLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.neutral.textTertiary,
+    letterSpacing: 1,
+  },
+  codeValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: Colors.brand.primary,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    marginVertical: 4,
+    letterSpacing: 2,
+  },
+  codeExpiry: {
+    fontSize: 11,
+    color: Colors.neutral.textSecondary,
+  },
+  modalActionsCol: {
+    width: '100%',
+    gap: Spacing.sm,
+  },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.85,
   },
 });

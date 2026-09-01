@@ -86,4 +86,12 @@ export class InventoryService {
   ): Promise<StockAdjustmentResponseDto> {
     return this.inventoryRepository.adjustStock(itemId, dto, storeId, actorId);
   }
+
+  async getExpiringBatches(storeId: string) {
+    return this.inventoryRepository.getExpiringBatches(storeId);
+  }
+
+  async getExpiredBatches(storeId: string) {
+    return this.inventoryRepository.getExpiredBatches(storeId);
+  }
 }

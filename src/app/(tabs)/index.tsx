@@ -5,24 +5,20 @@ import { VectorIcon } from '@/components/ui/icons';
 import { KpiCard } from '@/components/ui/kpi-card';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SectionHeader } from '@/components/ui/section-header';
+import { NoStoreState } from '@/components/ui/no-store-state';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
-import {
-  mockActivityItems,
-  mockAdminKpis,
-  mockDashboardTasks,
-  mockExpiryItems,
-  mockQuickActions,
-  mockSparklineTrend,
-  mockStockHealth,
-} from '@/mocks/inventoryMockData';
 import { analyticsService } from '@/services/analyticsService';
 import { expirationService } from '@/services/expirationService';
-import { authService } from '@/services/authService';
-import { DashboardExpiryItem, DashboardKpi } from '@/types/inventory';
+import { inventoryService } from '@/services/inventoryService';
+import { notificationService } from '@/services/notificationService';
+import { procurementService } from '@/services/procurementService';
+import { DashboardExpiryItem, DashboardKpi, StockHealthSegment } from '@/types/inventory';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   RefreshControl,
@@ -33,56 +29,299 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+interface QuickActionItem {
+  id: string;
+  iconName: string;
+  label: string;
+  route: string;
+  bg: string;
+  iconColor: string;
+}
+
+interface ActivityItem {
+  id: string;
+  iconName: string;
+  label: string;
+  sub: string;
+  time: string;
+  dotColor: string;
+}
+
+interface DashboardTask {
+  id: string;
+  iconName: string;
+  color: string;
+  bg: string;
+  label: string;
+  sub: string;
+  badge?: string;
+  badgeVariant?: 'red' | 'amber' | 'green' | 'blue' | 'gray' | 'purple';
+  done?: number;
+  total?: number;
+  route: string;
+}
+
+const DEFAULT_QUICK_ACTIONS: QuickActionItem[] = [
+  {
+    id: 'count',
+    iconName: 'ClipboardList',
+    label: 'Stock Count',
+    route: '/stock-count',
+    bg: '#ede9fe',
+    iconColor: '#6d28d9',
+  },
+  {
+    id: 'scan',
+    iconName: 'ScanLine',
+    label: 'Scan POS Receipt',
+    route: '/scan',
+    bg: '#dbeafe',
+    iconColor: '#1d4ed8',
+  },
+  {
+    id: 'order',
+    iconName: 'ShoppingCart',
+    label: 'Create PO',
+    route: '/orders',
+    bg: '#d1fae5',
+    iconColor: '#047857',
+  },
+  {
+    id: 'expiry',
+    iconName: 'AlertTriangle',
+    label: 'BBD Expiry',
+    route: '/expiration',
+    bg: '#fee2e2',
+    iconColor: '#dc2626',
+  },
+];
+
+const INITIAL_ADMIN_KPIS: DashboardKpi[] = [
+  { label: 'Total Valuation', value: '--', sub: 'Active inventory value', variant: 'green', trend: { dir: 'up', label: '+3.4%' } },
+  { label: 'Healthy Rate', value: '--', sub: 'Optimal stock vs min/max', variant: 'blue', trend: { dir: 'flat', label: '0%' } },
+  { label: 'Expiring Soon', value: '--', sub: 'Items expiring in ≤7 days', variant: 'amber', trend: { dir: 'down', label: 'Critical' } },
+  { label: 'Open Orders', value: '--', sub: 'Pending supplier deliveries', variant: 'purple', trend: { dir: 'flat', label: 'Pending' } },
+];
+
 export default function DashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t, formatDate, formatCurrency, formatNumber } = useI18n();
+  const { user } = useAuth();
+  const { t, formatDate, formatCurrency } = useI18n();
+
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [expiryItems, setExpiryItems] = useState<DashboardExpiryItem[]>(mockExpiryItems);
-  const [adminKpis, setAdminKpis] = useState<DashboardKpi[]>(mockAdminKpis);
-  const [sparklineData, setSparklineData] = useState<number[]>(mockSparklineTrend);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [adminKpis, setAdminKpis] = useState<DashboardKpi[]>(INITIAL_ADMIN_KPIS);
+  const [sparklineData, setSparklineData] = useState<number[]>([]);
+  const [expiryItems, setExpiryItems] = useState<DashboardExpiryItem[]>([]);
+  const [stockHealth, setStockHealth] = useState<StockHealthSegment[]>([
+    { label: 'Optimal', count: 0, pct: 0, color: Colors.brand.primary, bg: Colors.brand.subtle },
+    { label: 'Low Stock', count: 0, pct: 0, color: Colors.warning.main, bg: Colors.warning.subtle },
+    { label: 'Critical', count: 0, pct: 0, color: Colors.critical.main, bg: Colors.critical.subtle },
+    { label: 'Overstock', count: 0, pct: 0, color: Colors.info.main, bg: Colors.info.subtle },
+  ]);
+  const [totalItemsCount, setTotalItemsCount] = useState<number | null>(null);
+  const [pendingPoCount, setPendingPoCount] = useState<number | null>(null);
+  const [pendingPoTotal, setPendingPoTotal] = useState<number | null>(null);
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
+  const [tasks, setTasks] = useState<DashboardTask[]>([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+
+  const hasNoStore = !user?.storeId || user.storeId === 'unassigned' || user.storeId === '' || user.storeId === 'pending';
 
   const loadData = useCallback(async () => {
+    if (hasNoStore) {
+      setLoading(false);
+      setExpiryItems([]);
+      setAdminKpis(INITIAL_ADMIN_KPIS);
+      setTotalItemsCount(0);
+      setPendingPoCount(0);
+      setPendingPoTotal(0);
+      setUnreadNotifCount(0);
+      return;
+    }
+
     try {
-      const [valRes, expRes] = await Promise.all([
+      setLoading(true);
+      setErrorMsg(null);
+
+      const [valRes, expRes, ordersRes, itemsRes, notifsRes] = await Promise.allSettled([
         analyticsService.getStockValuation(),
         expirationService.getExpiringItems(),
+        procurementService.getOrders('active'),
+        inventoryService.getItems(),
+        notificationService.getNotifications(),
       ]);
 
-      if (valRes?.trend7D?.values) {
-        setSparklineData(valRes.trend7D.values);
-        setAdminKpis((prev) => [
-          {
-            ...prev[0],
-            value: formatCurrency(valRes.totalValuation),
-          },
-          prev[1],
-          {
-            ...prev[2],
-            value: `${expRes.length}`,
-          },
-          prev[3],
-        ]);
+      const valuationData = valRes.status === 'fulfilled' ? valRes.value : null;
+      const expiringData = expRes.status === 'fulfilled' ? expRes.value : [];
+      const activeOrdersData = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
+      const inventoryItems = itemsRes.status === 'fulfilled' ? itemsRes.value : [];
+      const notifications = notifsRes.status === 'fulfilled' ? notifsRes.value : [];
+
+      // 1. Process Total Valuation & Sparkline
+      const totalVal = valuationData?.totalValuation ?? (inventoryItems.reduce((acc, it) => acc + (it.physicalStock * it.costPerUnit), 0));
+      if (valuationData?.trend7D?.values) {
+        setSparklineData(valuationData.trend7D.values);
       }
 
-      if (expRes && expRes.length > 0) {
-        setExpiryItems(
-          expRes.map((e) => ({
-            id: e.id,
-            name: e.name,
-            qty: `${e.qty} ${e.unit}`,
-            exp: t('inventory.daysRemaining', { count: e.days }),
-            days: e.days,
-            urgency: e.status === 'critical' ? 'critical' : 'warning',
-            value: formatCurrency(e.value),
+      // 2. Process Inventory Stock Health
+      const totalItems = inventoryItems.length;
+      setTotalItemsCount(totalItems);
+
+      const optimalCount = inventoryItems.filter((i) => i.status === 'healthy').length;
+      const lowCount = inventoryItems.filter((i) => i.status === 'low').length;
+      const criticalCount = inventoryItems.filter((i) => i.status === 'critical').length;
+      const overstockCount = inventoryItems.filter((i) => i.status === 'overstock').length;
+
+      const healthyPct = totalItems > 0 ? Math.round((optimalCount / totalItems) * 100) : 100;
+      const lowPct = totalItems > 0 ? Math.round((lowCount / totalItems) * 100) : 0;
+      const criticalPct = totalItems > 0 ? Math.round((criticalCount / totalItems) * 100) : 0;
+      const overstockPct = totalItems > 0 ? Math.round((overstockCount / totalItems) * 100) : 0;
+
+      setStockHealth([
+        { label: 'Optimal', count: optimalCount, pct: healthyPct, color: Colors.brand.primary, bg: Colors.brand.subtle },
+        { label: 'Low Stock', count: lowCount, pct: lowPct, color: Colors.warning.main, bg: Colors.warning.subtle },
+        { label: 'Critical', count: criticalCount, pct: criticalPct, color: Colors.critical.main, bg: Colors.critical.subtle },
+        { label: 'Overstock', count: overstockCount, pct: overstockPct, color: Colors.info.main, bg: Colors.info.subtle },
+      ]);
+
+      // 3. Process Pending Purchase Orders
+      const openOrders = activeOrdersData.length;
+      const poTotal = activeOrdersData.reduce((sum, po) => sum + (po.total || 0), 0);
+      setPendingPoCount(openOrders);
+      setPendingPoTotal(poTotal);
+
+      // 4. Update KPIs
+      setAdminKpis([
+        {
+          label: t('dashboard.kpis.totalValuation'),
+          value: formatCurrency(totalVal),
+          sub: 'Active inventory value',
+          variant: 'green',
+          trend: { dir: 'up', label: '+3.4%' },
+        },
+        {
+          label: t('dashboard.kpis.healthyRate'),
+          value: `${healthyPct}%`,
+          sub: 'Optimal stock vs min/max',
+          variant: 'blue',
+          trend: { dir: healthyPct >= 90 ? 'up' : 'down', label: `${healthyPct}%` },
+        },
+        {
+          label: t('dashboard.kpis.expiringSoon'),
+          value: `${expiringData.length}`,
+          sub: 'Items expiring in ≤7 days',
+          variant: 'amber',
+          trend: { dir: expiringData.length > 0 ? 'down' : 'flat', label: `${expiringData.length}` },
+        },
+        {
+          label: t('dashboard.kpis.openOrders'),
+          value: `${openOrders}`,
+          sub: 'Pending supplier deliveries',
+          variant: 'purple',
+          trend: { dir: 'flat', label: `${openOrders} active` },
+        },
+      ]);
+
+      // 5. Process Expiring Items
+      setExpiryItems(
+        expiringData.map((e) => ({
+          id: e.id,
+          name: e.name,
+          qty: `${e.qty} ${e.unit}`,
+          exp: t('inventory.daysRemaining', { count: e.days }),
+          days: e.days,
+          urgency: e.status === 'critical' ? 'critical' : 'warning',
+          value: formatCurrency(e.value),
+        }))
+      );
+
+      // 6. Process Dynamic Dashboard Tasks
+      const dynamicTasks: DashboardTask[] = [];
+      if (expiringData.length > 0) {
+        dynamicTasks.push({
+          id: 'task-exp',
+          iconName: 'AlertTriangle',
+          color: Colors.critical.main,
+          bg: Colors.critical.subtle,
+          label: 'Expiring Stock Items',
+          sub: `${expiringData.length} batches require promotional or kitchen priority`,
+          badge: `${expiringData.length} Batches`,
+          badgeVariant: 'red',
+          route: '/expiration',
+        });
+      }
+
+      if (lowCount + criticalCount > 0) {
+        dynamicTasks.push({
+          id: 'task-low',
+          iconName: 'Package',
+          color: Colors.warning.main,
+          bg: Colors.warning.subtle,
+          label: 'Low Stock Safety Thresholds',
+          sub: `${lowCount + criticalCount} SKUs below minimum reorder points`,
+          badge: `${lowCount + criticalCount} SKUs`,
+          badgeVariant: 'amber',
+          route: '/inventory',
+        });
+      }
+
+      if (openOrders > 0) {
+        dynamicTasks.push({
+          id: 'task-orders',
+          iconName: 'Truck',
+          color: Colors.brand.primary,
+          bg: Colors.brand.subtle,
+          label: 'Awaiting Purchase Deliveries',
+          sub: `${openOrders} purchase orders in transit / awaiting receipt`,
+          badge: `${openOrders} Orders`,
+          badgeVariant: 'green',
+          route: '/orders',
+        });
+      }
+
+      dynamicTasks.push({
+        id: 'task-count',
+        iconName: 'ClipboardList',
+        color: '#6d28d9',
+        bg: '#ede9fe',
+        label: 'Daily Stock Count Audit',
+        sub: 'Conduct physical inventory audit and resolve discrepancies',
+        badge: 'Scheduled',
+        badgeVariant: 'purple',
+        route: '/stock-count',
+      });
+
+      setTasks(dynamicTasks);
+
+      // 7. Process Recent Activities from Real In-App Notifications
+      const unreadCount = notifications.filter((n) => !n.read).length;
+      setUnreadNotifCount(unreadCount);
+
+      if (notifications.length > 0) {
+        setRecentActivities(
+          notifications.slice(0, 5).map((n) => ({
+            id: n.id,
+            iconName: n.type === 'expiring_soon' ? 'AlertTriangle' : n.type === 'variance' ? 'TrendingDown' : n.type === 'goods_receipt_update' ? 'Truck' : n.type === 'ocr_complete' ? 'ScanLine' : 'Info',
+            label: n.title,
+            sub: n.body,
+            time: n.time || 'Today',
+            dotColor: n.urgent ? Colors.critical.main : Colors.brand.primary,
           }))
         );
+      } else {
+        setRecentActivities([]);
       }
-    } catch {
-      // Fallback already logged by service
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Unable to load dashboard data');
+    } finally {
+      setLoading(false);
     }
-  }, [formatCurrency, t]);
+  }, [formatCurrency, hasNoStore, t]);
 
   useEffect(() => {
     loadData();
@@ -114,6 +353,7 @@ export default function DashboardScreen() {
         <View style={styles.headerRow}>
           {/* Store Switcher */}
           <Pressable
+            onPress={() => router.push('/settings/store' as any)}
             style={({ pressed }) => [styles.storeSelector, pressed && styles.pressed]}
             hitSlop={4}
           >
@@ -125,7 +365,7 @@ export default function DashboardScreen() {
             <View>
               <Text style={styles.storeSub}>{t('dashboard.activeStore', { store: '' })}</Text>
               <View style={styles.storeNameRow}>
-                <Text style={styles.storeName}>Bella Cucina</Text>
+                <Text style={styles.storeName}>{user?.storeName || 'Store Location'}</Text>
                 <VectorIcon name="ChevronDown" size={14} color={Colors.brand.primary} strokeWidth={2.5} />
               </View>
             </View>
@@ -135,25 +375,26 @@ export default function DashboardScreen() {
           <View style={styles.headerRight}>
             <View style={styles.dateBadge}>
               <VectorIcon name="Calendar" size={12} color={Colors.neutral.textSecondary} />
-              <Text style={styles.dateText}>{formatDate(new Date(), { month: 'short', day: 'numeric' })}</Text>
+              <Text style={styles.dateText}>
+                {formatDate(new Date().toISOString(), {
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </Text>
             </View>
 
             <Pressable
               onPress={() => router.push('/notifications' as any)}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.notifBtn, pressed && styles.pressed]}
+              hitSlop={6}
             >
-              <VectorIcon name="Bell" size={20} color={Colors.neutral.textPrimary} strokeWidth={1.8} />
-              <View style={styles.notificationDot} />
+              <VectorIcon name="Bell" size={18} color={Colors.neutral.textPrimary} />
+              {unreadNotifCount > 0 && <View style={styles.notifBadgeDot} />}
             </Pressable>
-
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>AS</Text>
-            </View>
           </View>
         </View>
       </View>
 
-      {/* ── Scrollable Dashboard Content ── */}
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -169,34 +410,28 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* ── Urgent Expiration Alert ── */}
-        {!alertDismissed && criticalExpiry.length > 0 && (
-          <View style={styles.alertBanner}>
-            <VectorIcon name="AlertTriangle" size={18} color={Colors.critical.main} />
-            <View style={styles.alertTextContainer}>
-              <Text style={styles.alertTitle}>
-                {t('dashboard.tasks.expiringBrd', { count: criticalExpiry.length })}
+        {/* Guard for unassigned store */}
+        {hasNoStore && (
+          <NoStoreState style={{ marginHorizontal: 0, marginBottom: Spacing.lg }} />
+        )}
+
+        {/* Urgent Critical Alerts Banner */}
+        {!alertDismissed && !loading && criticalExpiry.length > 0 && (
+          <View style={styles.criticalAlertBanner}>
+            <View style={styles.criticalAlertIconBox}>
+              <VectorIcon name="AlertTriangle" size={18} color="#FFFFFF" strokeWidth={2.4} />
+            </View>
+            <View style={styles.criticalAlertContent}>
+              <Text style={styles.criticalAlertTitle}>
+                {criticalExpiry.length} {criticalExpiry.length === 1 ? 'Batch Expiring Tomorrow' : 'Batches Expiring Soon'}
               </Text>
-              <Text style={styles.alertSub}>
-                {t('dashboard.tasks.expiringBrdSub')}
+              <Text style={styles.criticalAlertSub}>
+                {formatCurrency(totalValueAtRisk)} potential loss. Promo discount recommended.
               </Text>
             </View>
-            <View style={styles.alertActions}>
-              <Pressable
-                onPress={() => router.push('/expiration' as any)}
-                hitSlop={4}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <Text style={styles.alertLink}>{t('common.details')}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setAlertDismissed(true)}
-                hitSlop={8}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <VectorIcon name="X" size={16} color={Colors.critical.main} />
-              </Pressable>
-            </View>
+            <Pressable onPress={() => setAlertDismissed(true)} hitSlop={8} style={styles.dismissBtn}>
+              <VectorIcon name="X" size={16} color="rgba(255,255,255,0.7)" />
+            </Pressable>
           </View>
         )}
 
@@ -211,7 +446,7 @@ export default function DashboardScreen() {
             <View style={styles.kpiRow}>
               <KpiCard
                 label={t('dashboard.kpis.totalValuation')}
-                value={adminKpis[0]?.value || '€48,920.00'}
+                value={loading ? '--' : adminKpis[0]?.value || '--'}
                 sub={adminKpis[0]?.sub}
                 variant={adminKpis[0]?.variant}
                 trend={adminKpis[0]?.trend}
@@ -219,7 +454,7 @@ export default function DashboardScreen() {
               />
               <KpiCard
                 label={t('dashboard.kpis.healthyRate')}
-                value={adminKpis[1]?.value || '82.4%'}
+                value={loading ? '--' : adminKpis[1]?.value || '--'}
                 sub={adminKpis[1]?.sub}
                 variant={adminKpis[1]?.variant}
                 trend={adminKpis[1]?.trend}
@@ -229,7 +464,7 @@ export default function DashboardScreen() {
             <View style={styles.kpiRow}>
               <KpiCard
                 label={t('dashboard.kpis.expiringSoon')}
-                value={adminKpis[2]?.value || '7'}
+                value={loading ? '--' : adminKpis[2]?.value || '--'}
                 sub={adminKpis[2]?.sub}
                 variant={adminKpis[2]?.variant}
                 trend={adminKpis[2]?.trend}
@@ -237,7 +472,7 @@ export default function DashboardScreen() {
               />
               <KpiCard
                 label={t('dashboard.kpis.openOrders')}
-                value={adminKpis[3]?.value || '3'}
+                value={loading ? '--' : adminKpis[3]?.value || '--'}
                 sub={adminKpis[3]?.sub}
                 variant={adminKpis[3]?.variant}
                 trend={adminKpis[3]?.trend}
@@ -257,12 +492,18 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.pendingPoText}>
                 <Text style={styles.poTitle}>{t('orders.title')}</Text>
-                <Text style={styles.poSub}>{formatCurrency(485)} {t('common.total')}</Text>
+                <Text style={styles.poSub}>
+                  {loading || pendingPoTotal === null
+                    ? '--'
+                    : `${formatCurrency(pendingPoTotal)} ${t('common.total')}`}
+                </Text>
               </View>
             </View>
             <View style={styles.pendingPoRight}>
               <View style={styles.poCountBadge}>
-                <Text style={styles.poCountText}>3</Text>
+                <Text style={styles.poCountText}>
+                  {loading || pendingPoCount === null ? '--' : `${pendingPoCount}`}
+                </Text>
               </View>
               <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
             </View>
@@ -273,7 +514,7 @@ export default function DashboardScreen() {
         <View style={styles.section}>
           <SectionHeader title={t('dashboard.urgentTasksTitle')} action={t('common.viewAll')} />
           <View style={styles.taskStack}>
-            {mockDashboardTasks.map((task) => (
+            {tasks.map((task) => (
               <Card
                 key={task.id}
                 onPress={() => router.push(task.route as any)}
@@ -281,7 +522,7 @@ export default function DashboardScreen() {
               >
                 <View style={styles.taskRow}>
                   <View style={[styles.taskIconBox, { backgroundColor: task.bg }]}>
-                    <VectorIcon name={task.iconName} size={18} color={task.color} />
+                    <VectorIcon name={task.iconName as any} size={18} color={task.color} />
                   </View>
 
                   <View style={styles.taskInfo}>
@@ -293,20 +534,7 @@ export default function DashboardScreen() {
                         </Badge>
                       )}
                     </View>
-
-                    {task.done != null && task.total != null ? (
-                      <View style={styles.progressContainer}>
-                        <View style={styles.progressLabelRow}>
-                          <Text style={styles.taskSub}>{task.sub}</Text>
-                          <Text style={styles.taskProgressText}>
-                            {task.done} / {task.total}
-                          </Text>
-                        </View>
-                        <ProgressBar value={task.done} max={task.total} variant="green" height={5} />
-                      </View>
-                    ) : (
-                      <Text style={styles.taskSub}>{task.sub}</Text>
-                    )}
+                    <Text style={styles.taskSub}>{task.sub}</Text>
                   </View>
 
                   <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
@@ -320,24 +548,16 @@ export default function DashboardScreen() {
         <View style={styles.section}>
           <SectionHeader title={t('dashboard.quickActions')} />
           <View style={styles.quickActionGrid}>
-            {mockQuickActions.map((action) => (
+            {DEFAULT_QUICK_ACTIONS.map((action) => (
               <Pressable
                 key={action.id}
                 onPress={() => router.push(action.route as any)}
                 style={({ pressed }) => [styles.quickActionCard, pressed && styles.pressed]}
               >
                 <View style={[styles.actionIconBox, { backgroundColor: action.bg }]}>
-                  <VectorIcon name={action.iconName} size={20} color={action.iconColor} />
+                  <VectorIcon name={action.iconName as any} size={20} color={action.iconColor} />
                 </View>
-                <Text style={styles.actionLabel}>
-                  {action.id === 'count'
-                    ? t('dashboard.quickActionButtons.count')
-                    : action.id === 'scan'
-                    ? t('dashboard.quickActionButtons.scan')
-                    : action.id === 'order'
-                    ? t('dashboard.quickActionButtons.order')
-                    : t('dashboard.quickActionButtons.expiry')}
-                </Text>
+                <Text style={styles.actionLabel}>{action.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -353,15 +573,19 @@ export default function DashboardScreen() {
           <Card style={styles.stockHealthCard}>
             <View style={styles.donutRow}>
               <DonutChart
-                segments={mockStockHealth.map((s) => ({ value: s.count, color: s.color }))}
+                segments={
+                  loading || totalItemsCount === 0
+                    ? [{ value: 1, color: Colors.neutral.borderLight }]
+                    : stockHealth.map((s) => ({ value: s.count, color: s.color }))
+                }
                 size={86}
                 strokeWidth={8}
-                centerNumber="100"
+                centerNumber={loading || totalItemsCount === null ? '--' : `${totalItemsCount}`}
                 centerLabel={t('navigation.inventory')}
               />
 
               <View style={styles.healthLegend}>
-                {mockStockHealth.map((item) => (
+                {stockHealth.map((item) => (
                   <View key={item.label} style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: item.color }]} />
                     <Text style={styles.legendLabel}>
@@ -373,8 +597,12 @@ export default function DashboardScreen() {
                         ? t('dashboard.stockHealth.critical')
                         : t('dashboard.stockHealth.overstock')}
                     </Text>
-                    <Text style={styles.legendCount}>{item.count}</Text>
-                    <Text style={styles.legendPct}>{item.pct}%</Text>
+                    <Text style={styles.legendCount}>
+                      {loading ? '--' : item.count}
+                    </Text>
+                    <Text style={styles.legendPct}>
+                      {loading ? '--' : `${item.pct}%`}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -382,7 +610,14 @@ export default function DashboardScreen() {
 
             {/* Segmented Stock Bar */}
             <View style={{ marginVertical: Spacing.md }}>
-              <StockBar segments={mockStockHealth} height={8} />
+              <StockBar
+                segments={
+                  loading || totalItemsCount === 0
+                    ? [{ label: 'Loading', count: 1, pct: 100, color: Colors.neutral.borderLight, bg: Colors.neutral.borderLight }]
+                    : stockHealth
+                }
+                height={8}
+              />
             </View>
           </Card>
         </View>
@@ -398,12 +633,20 @@ export default function DashboardScreen() {
           <View style={styles.riskSummaryRow}>
             <VectorIcon name="AlertTriangle" size={12} color={Colors.critical.main} />
             <Text style={styles.riskSummaryText}>
-              {t('expiration.potentialLoss', { value: formatCurrency(totalValueAtRisk) })}
+              {loading
+                ? '--'
+                : t('expiration.potentialLoss', { value: formatCurrency(totalValueAtRisk) })}
             </Text>
           </View>
 
           <View style={styles.expiryStack}>
-            {mockExpiryItems.map((item) => (
+            {expiryItems.length === 0 && !loading && (
+              <Card style={styles.emptyCard}>
+                <Text style={styles.emptyCardText}>No batches expiring within the next 7 days</Text>
+              </Card>
+            )}
+
+            {expiryItems.map((item) => (
               <Card
                 key={item.id}
                 onPress={() => router.push('/expiration' as any)}
@@ -457,14 +700,14 @@ export default function DashboardScreen() {
 
                   <View style={styles.expiryInfo}>
                     <Text style={styles.expiryName}>{item.name}</Text>
-                    <Text style={styles.expiryMeta}>{item.qty} · {item.exp}</Text>
+                    <Text style={styles.expirySub}>
+                      {item.qty} · {item.exp}
+                    </Text>
                   </View>
 
-                  <View style={styles.expiryRight}>
-                    <Badge variant={item.urgency === 'critical' ? 'red' : 'amber'}>
-                      {item.urgency === 'critical' ? t('dashboard.stockHealth.critical') : t('dashboard.stockHealth.low')}
-                    </Badge>
+                  <View style={styles.expiryValueBox}>
                     <Text style={styles.expiryValue}>{item.value}</Text>
+                    <Text style={styles.expiryValueLabel}>{t('common.value')}</Text>
                   </View>
                 </View>
               </Card>
@@ -476,17 +719,23 @@ export default function DashboardScreen() {
         <View style={styles.section}>
           <SectionHeader title={t('dashboard.recentActivityTitle')} />
           <Card noPadding style={styles.activityCard}>
-            {mockActivityItems.map((item, index) => (
+            {recentActivities.length === 0 && !loading && (
+              <View style={{ padding: Spacing.md, alignItems: 'center' }}>
+                <Text style={styles.emptyCardText}>No recent activities recorded</Text>
+              </View>
+            )}
+
+            {recentActivities.map((item, index) => (
               <View
                 key={item.id}
                 style={[
                   styles.activityRow,
-                  index < mockActivityItems.length - 1 && styles.activityBorder,
+                  index < recentActivities.length - 1 && styles.activityBorder,
                 ]}
               >
                 <View style={styles.activityIconWrapper}>
                   <View style={styles.activityIconCircle}>
-                    <VectorIcon name={item.iconName} size={15} color={Colors.neutral.textSecondary} strokeWidth={2} />
+                    <VectorIcon name={item.iconName as any} size={15} color={Colors.neutral.textSecondary} strokeWidth={2} />
                   </View>
                   <View style={[styles.activityDot, { backgroundColor: item.dotColor }]} />
                 </View>
@@ -528,17 +777,19 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   storeIcon: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: Radius.md,
     backgroundColor: Colors.brand.subtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   storeSub: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.neutral.textMuted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   storeNameRow: {
     flexDirection: 'row',
@@ -560,28 +811,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: Colors.neutral.surface,
-    borderColor: Colors.neutral.borderLight,
-    borderWidth: 1,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Radius.lg,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.neutral.borderLight,
   },
   dateText: {
     fontSize: 12,
-    color: Colors.neutral.textSecondary,
     fontWeight: '600',
+    color: Colors.neutral.textSecondary,
   },
-  iconBtn: {
+  notifBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.neutral.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.neutral.borderLight,
   },
-  notificationDot: {
+  notifBadgeDot: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 7,
+    right: 7,
     width: 8,
     height: 8,
     borderRadius: 4,
@@ -589,58 +843,46 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.neutral.card,
   },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.brand.primary,
+  content: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    gap: Spacing.lg,
+  },
+  criticalAlertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#991b1b',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.md,
+    ...Shadows.sm,
+  },
+  criticalAlertIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  content: {
-    padding: Spacing.lg,
-    gap: Spacing.xl,
-  },
-  section: {
-    gap: Spacing.xs,
-  },
-  alertBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: Colors.critical.subtle,
-    borderColor: Colors.critical.light,
-    borderWidth: 1,
-    borderRadius: Radius.xl,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  alertTextContainer: {
+  criticalAlertContent: {
     flex: 1,
   },
-  alertTitle: {
+  criticalAlertTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.critical.dark,
+    color: '#FFFFFF',
   },
-  alertSub: {
-    fontSize: 12,
-    color: Colors.critical.main,
-    marginTop: 2,
+  criticalAlertSub: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 1,
   },
-  alertActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  dismissBtn: {
+    padding: 4,
+  },
+  section: {
     gap: Spacing.sm,
-  },
-  alertLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.critical.main,
   },
   kpiGrid: {
     gap: Spacing.sm,
@@ -654,13 +896,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: Spacing.md,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   pendingPoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    flex: 1,
   },
   poIconBox: {
     width: 38,
@@ -671,38 +912,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pendingPoText: {
-    flex: 1,
+    gap: 2,
   },
   poTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
   },
   poSub: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
-    marginTop: 2,
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
   },
   pendingPoRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: Spacing.sm,
   },
   poCountBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.info.main,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: Colors.info.subtle,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
   },
   poCountText: {
-    color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
+    color: Colors.info.dark,
   },
   taskStack: {
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   taskCard: {
     padding: Spacing.md,
@@ -713,9 +951,9 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   taskIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.lg,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -727,56 +965,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.sm,
   },
   taskTitle: {
-    ...Typography.cardTitle,
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
   },
   taskSub: {
-    fontSize: 12,
-    color: Colors.neutral.textSecondary,
-  },
-  progressContainer: {
-    marginTop: 2,
-    gap: 4,
-  },
-  progressLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  taskProgressText: {
-    ...Typography.monoCaption,
     fontSize: 11,
-    fontWeight: '700',
     color: Colors.neutral.textSecondary,
   },
   quickActionGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
   quickActionCard: {
-    width: '48.5%',
+    flex: 1,
     backgroundColor: Colors.neutral.card,
-    borderRadius: Radius.xl,
-    borderColor: Colors.neutral.borderLight,
-    borderWidth: 1,
+    borderRadius: Radius.lg,
     padding: Spacing.md,
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.neutral.borderLight,
     ...Shadows.card,
   },
   actionIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.xl,
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
     textAlign: 'center',
@@ -791,7 +1013,7 @@ const styles = StyleSheet.create({
   },
   healthLegend: {
     flex: 1,
-    gap: Spacing.xs,
+    gap: 6,
   },
   legendItem: {
     flexDirection: 'row',
@@ -801,78 +1023,37 @@ const styles = StyleSheet.create({
   legendDot: {
     width: 8,
     height: 8,
-    borderRadius: 2,
+    borderRadius: 4,
   },
   legendLabel: {
+    flex: 1,
     fontSize: 12,
     color: Colors.neutral.textSecondary,
-    flex: 1,
   },
   legendCount: {
-    ...Typography.monoCaption,
     fontSize: 12,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
   },
   legendPct: {
-    ...Typography.monoCaption,
     fontSize: 11,
-    color: Colors.neutral.textTertiary,
+    color: Colors.neutral.textMuted,
     width: 32,
     textAlign: 'right',
-  },
-  sparklineSection: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.neutral.borderLight,
-    paddingTop: Spacing.md,
-  },
-  sparklineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.xs,
-  },
-  sparklineTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.neutral.textTertiary,
-  },
-  sparklineTrend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  sparklineTrendText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.brand.primary,
-  },
-  sparklineContainer: {
-    alignItems: 'center',
-    marginVertical: Spacing.xs,
-  },
-  sparklineDates: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  sparklineDate: {
-    fontSize: 10,
-    color: Colors.neutral.textTertiary,
   },
   riskSummaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.xs,
-    paddingHorizontal: Spacing.xs,
+    gap: 4,
+    marginBottom: 4,
   },
   riskSummaryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.critical.main,
+    color: Colors.critical.dark,
   },
   expiryStack: {
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   expiryCard: {
     padding: Spacing.md,
@@ -883,52 +1064,57 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   daysBox: {
-    width: 42,
-    height: 42,
-    borderRadius: Radius.lg,
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   daysNumber: {
-    ...Typography.monoValue,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '800',
     lineHeight: 18,
   },
   daysLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
   expiryInfo: {
     flex: 1,
   },
   expiryName: {
-    ...Typography.cardTitle,
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
   },
-  expiryMeta: {
-    fontSize: 12,
+  expirySub: {
+    fontSize: 11,
     color: Colors.neutral.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
-  expiryRight: {
+  expiryValueBox: {
     alignItems: 'flex-end',
-    gap: 4,
   },
   expiryValue: {
-    ...Typography.monoCaption,
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+  },
+  expiryValueLabel: {
+    fontSize: 10,
+    color: Colors.neutral.textMuted,
   },
   activityCard: {
-    borderRadius: Radius.xl,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
   },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: Spacing.md,
     gap: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
   },
   activityBorder: {
     borderBottomWidth: 1,
@@ -938,39 +1124,48 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   activityIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.neutral.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   activityDot: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     right: 0,
     width: 8,
     height: 8,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: Colors.neutral.card,
+    borderColor: '#ffffff',
   },
   activityContent: {
     flex: 1,
   },
   activityLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.neutral.textPrimary,
   },
   activitySub: {
     fontSize: 11,
-    color: Colors.neutral.textTertiary,
+    color: Colors.neutral.textSecondary,
     marginTop: 1,
   },
   activityTime: {
     fontSize: 11,
-    color: Colors.neutral.textTertiary,
+    color: Colors.neutral.textMuted,
+  },
+  emptyCard: {
+    padding: Spacing.md,
+    alignItems: 'center',
+    backgroundColor: Colors.neutral.card,
+  },
+  emptyCardText: {
+    fontSize: 12,
+    color: Colors.neutral.textMuted,
   },
   pressed: {
     opacity: 0.8,

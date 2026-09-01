@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -68,26 +69,40 @@ export class SupabaseAuthGuard implements CanActivate {
       const authUser = authData.user;
 
       // Query domain public.users table to fetch synced role, organization, and store assignments
-      const { data: userProfile } = await client
-        .from('users')
-        .select(`
-          id,
-          email,
-          name,
-          organization_id,
-          default_store_id,
-          is_active,
-          user_store_assignments (
-            store_id,
-            roles (
-              name
+      let userProfile: any = null;
+      try {
+        const query: any = client
+          .from('users')
+          .select(`
+            id,
+            email,
+            name,
+            organization_id,
+            default_store_id,
+            is_active,
+            deleted_at,
+            user_store_assignments (
+              store_id,
+              roles (
+                name
+              )
             )
-          )
-        `)
-        .eq('id', authUser.id)
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .single();
+          `)
+          .eq('id', authUser.id);
+
+        const res = typeof query.maybeSingle === 'function' ? await query.maybeSingle() : await query.single();
+        userProfile = res?.data;
+      } catch (err: any) {
+        this.logger.debug(`Could not query users table: ${err.message}`);
+      }
+
+      // Check if user account is deactivated or deleted
+      if (userProfile) {
+        if (userProfile.is_active === false || Boolean(userProfile.deleted_at)) {
+          this.logger.warn(`Rejected request for deactivated user ${authUser.id} (${authUser.email})`);
+          throw new ForbiddenException('User account has been deactivated or disabled');
+        }
+      }
 
       let assignedStoreIds: string[] = [];
       let role = authUser.user_metadata?.role || 'staff';
@@ -106,13 +121,61 @@ export class SupabaseAuthGuard implements CanActivate {
         assignedStoreIds = authUser.user_metadata.assigned_store_ids;
       }
 
+      const ROLE_PERMISSIONS: Record<string, string[]> = {
+        superadmin: ['*'],
+        admin: ['*'],
+        manager: [
+          'inventory:create',
+          'inventory:view',
+          'inventory:adjust',
+          'inventory:archive',
+          'stock_count:conduct',
+          'stock_count:approve',
+          'ocr:scan',
+          'ocr:view',
+          'ocr:review',
+          'procurement:create',
+          'procurement:view',
+          'procurement:approve',
+          'procurement:receive',
+          'notifications:send',
+          'audit:read',
+        ],
+        supervisor: [
+          'inventory:view',
+          'inventory:adjust',
+          'stock_count:conduct',
+          'ocr:scan',
+          'ocr:view',
+          'ocr:review',
+          'procurement:create',
+          'procurement:view',
+          'procurement:receive',
+        ],
+        staff: [
+          'inventory:view',
+          'stock_count:conduct',
+          'ocr:scan',
+          'ocr:view',
+          'procurement:view',
+          'procurement:receive',
+        ],
+        auditor: [
+          'inventory:view',
+          'stock_count:conduct',
+          'ocr:view',
+          'procurement:view',
+          'audit:read',
+        ],
+      };
+
       const authenticatedUser: AuthenticatedUser = {
         id: authUser.id,
         email: authUser.email || '',
         name,
         organizationId,
         role,
-        permissions: authUser.user_metadata?.permissions || (role === 'superadmin' ? ['*'] : []),
+        permissions: authUser.user_metadata?.permissions || ROLE_PERMISSIONS[role] || (role === 'superadmin' || role === 'admin' ? ['*'] : []),
         assignedStoreIds,
         defaultStoreId: userProfile?.default_store_id,
       };
@@ -120,7 +183,7 @@ export class SupabaseAuthGuard implements CanActivate {
       request.user = authenticatedUser;
       return true;
     } catch (err: any) {
-      if (err instanceof UnauthorizedException) {
+      if (err instanceof UnauthorizedException || err instanceof ForbiddenException) {
         throw err;
       }
       this.logger.error(`SupabaseAuthGuard authentication failure: ${err.message}`);

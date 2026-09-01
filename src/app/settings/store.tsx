@@ -5,15 +5,14 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
-import {
-  INITIAL_AVAILABLE_STORES,
-  INITIAL_STORE_SETTINGS,
-  settingsService,
-} from '@/services/settingsService';
+import { settingsService } from '@/services/settingsService';
 import { StoreOption, StoreSettings } from '@/types/settings';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -25,37 +24,140 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function StoreSettingsScreen() {
   const insets = useSafeAreaInsets();
+  const { refreshUser } = useAuth();
   const { t, metadata } = useI18n();
 
-  const [store, setStore] = useState<StoreSettings>(() =>
-    JSON.parse(JSON.stringify(INITIAL_STORE_SETTINGS))
-  );
-  const [stores] = useState<StoreOption[]>(() =>
-    JSON.parse(JSON.stringify(INITIAL_AVAILABLE_STORES))
-  );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [bbdDays, setBbdDays] = useState(store.bbdAlertDays);
+  const [store, setStore] = useState<StoreSettings | null>(null);
+  const [stores, setStores] = useState<StoreOption[]>([]);
+
+  const [bbdDays, setBbdDays] = useState(7);
   const [countFreq, setCountFreq] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
   const [units, setUnits] = useState<'Metric' | 'Imperial'>('Metric');
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  const loadStoreData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [storeData, storeOptions] = await Promise.all([
+        settingsService.getStoreSettings(),
+        settingsService.getAvailableStores(),
+      ]);
+      setStore(storeData);
+      setStores(storeOptions);
+      setBbdDays(storeData.bbdAlertDays);
+      setCountFreq(
+        storeData.countSchedule === 'daily'
+          ? 'Daily'
+          : storeData.countSchedule === 'weekly'
+          ? 'Weekly'
+          : 'Monthly'
+      );
+      setUnits(storeData.defaultUnits === 'imperial' ? 'Imperial' : 'Metric');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load store settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStoreData();
+  }, []);
+
   const handleSwitchStore = async (storeId: string) => {
-    const updated = await settingsService.switchStore(storeId);
-    setStore(updated);
-    setShowStoreModal(false);
+    try {
+      setLoading(true);
+      const updated = await settingsService.switchStore(storeId);
+      setStore(updated);
+      setBbdDays(updated.bbdAlertDays);
+      setCountFreq(
+        updated.countSchedule === 'daily'
+          ? 'Daily'
+          : updated.countSchedule === 'weekly'
+          ? 'Weekly'
+          : 'Monthly'
+      );
+      setUnits(updated.defaultUnits === 'imperial' ? 'Imperial' : 'Metric');
+      await refreshUser();
+      setShowStoreModal(false);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to switch active store');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async () => {
-    const updated = await settingsService.updateStoreSettings({
-      bbdAlertDays: bbdDays,
-      countSchedule: countFreq.toLowerCase() as any,
-      defaultUnits: units.toLowerCase() as any,
-    });
-    setStore(updated);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    if (!store) return;
+    try {
+      setSaving(true);
+      const updated = await settingsService.updateStoreSettings({
+        name: store.name,
+        address: store.address,
+        currency: store.currency,
+        timezone: store.timezone,
+        bbdAlertDays: bbdDays,
+        countSchedule: countFreq.toLowerCase() as any,
+        defaultUnits: units.toLowerCase() as any,
+      });
+      setStore(updated);
+      await refreshUser();
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 2500);
+    } catch (err: any) {
+      Alert.alert('Save Failed', err?.message || 'Failed to update store settings');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading && !store) {
+    return (
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.brand.primary} />
+        <Text style={[{ marginTop: 12 }, Typography.body]}>
+          {t('common.loading')}
+        </Text>
+      </View>
+    );
+  }
+
+  if (error && !store) {
+    return (
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
+        <TopBar title={t('settings.items.storeConfig')} showBack />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <VectorIcon name="AlertCircle" size={48} color={Colors.critical.main} />
+          <Text style={[Typography.cardTitle, { fontSize: 18, marginTop: 16 }]}>
+            Failed to Load Store Settings
+          </Text>
+          <Text style={[Typography.bodySecondary, { textAlign: 'center', marginTop: 8 }]}>
+            {error}
+          </Text>
+          <Pressable
+            onPress={loadStoreData}
+            style={{
+              marginTop: 20,
+              backgroundColor: Colors.brand.primary,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: Radius.md,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Retry</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (!store) return null;
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>

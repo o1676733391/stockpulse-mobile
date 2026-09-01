@@ -6,9 +6,11 @@ import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
+import { expirationService } from '@/services/expirationService';
+import { notificationService } from '@/services/notificationService';
 import { Permission, UserRole } from '@/types/rbac';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -38,10 +40,33 @@ interface MenuSection {
 export default function MoreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, role, switchRole, logout, hasPermission } = useAuth();
+  const { user, role, logout, hasPermission } = useAuth();
   const { t } = useI18n();
 
-  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+  const [expiringCount, setExpiringCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBadges() {
+      try {
+        const [notifCount, expiringItems] = await Promise.all([
+          notificationService.getUnreadCount(),
+          expirationService.getExpiringItems(),
+        ]);
+        if (isMounted) {
+          setUnreadNotifCount(notifCount);
+          setExpiringCount(expiringItems.length);
+        }
+      } catch {
+        // Safe silent fallback
+      }
+    }
+    loadBadges();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const rawSections: MenuSection[] = useMemo(
     () => [
@@ -52,7 +77,7 @@ export default function MoreScreen() {
             icon: 'Users',
             label: t('team.title'),
             sub: t('team.rolesDesc'),
-            route: '/team/index',
+            route: '/team',
             iconBg: '#ede9fe',
             iconColor: '#6d28d9',
             permission: 'team:view',
@@ -110,7 +135,7 @@ export default function MoreScreen() {
             route: '/expiration',
             iconBg: '#fee2e2',
             iconColor: '#dc2626',
-            badge: '2',
+            badge: expiringCount > 0 ? String(expiringCount) : undefined,
             permission: 'bbd:view',
           },
           {
@@ -143,7 +168,7 @@ export default function MoreScreen() {
             route: '/notifications',
             iconBg: '#dbeafe',
             iconColor: '#1d4ed8',
-            badge: '4',
+            badge: unreadNotifCount > 0 ? String(unreadNotifCount) : undefined,
           },
         ],
       },
@@ -178,7 +203,7 @@ export default function MoreScreen() {
         ],
       },
     ],
-    [t]
+    [t, unreadNotifCount, expiringCount]
   );
 
   // Filter sections by permissions
@@ -223,21 +248,6 @@ export default function MoreScreen() {
             <Text style={styles.profileStore}>{user.storeName}</Text>
           </View>
           <VectorIcon name="ChevronRight" size={20} color="rgba(255, 255, 255, 0.7)" />
-        </Pressable>
-
-        {/* ── Demo RBAC Role Switcher Banner ── */}
-        <Pressable
-          onPress={() => setShowRoleModal(true)}
-          style={styles.roleSwitcherBanner}
-        >
-          <View style={styles.roleSwitcherIconBox}>
-            <VectorIcon name="Shield" size={16} color={Colors.brand.primary} />
-          </View>
-          <View style={styles.roleSwitcherInfo}>
-            <Text style={styles.roleSwitcherTitle}>Active Role: {activeRoleDef.label}</Text>
-            <Text style={styles.roleSwitcherSub}>Tap to switch role & test RBAC permissions live</Text>
-          </View>
-          <VectorIcon name="ArrowRightLeft" size={14} color={Colors.brand.dark} />
         </Pressable>
 
         {/* ── Menu Sections ── */}
@@ -294,69 +304,6 @@ export default function MoreScreen() {
           StockPulse v2.4.1 · {user.storeName}
         </Text>
       </ScrollView>
-
-      {/* ── Role Switcher Modal ── */}
-      <Modal
-        visible={showRoleModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowRoleModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.roleModalCard}>
-            <View style={styles.modalGrabber} />
-
-            <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Select Demo User Role</Text>
-              <Pressable
-                onPress={() => setShowRoleModal(false)}
-                style={styles.closeBtn}
-              >
-                <VectorIcon name="X" size={18} color={Colors.neutral.textTertiary} />
-              </Pressable>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Instantly simulate different kitchen & management access levels.
-            </Text>
-
-            <View style={styles.rolesStack}>
-              {(Object.keys(ROLES) as UserRole[]).map((r) => {
-                const def = ROLES[r];
-                const isActive = r === role;
-
-                return (
-                  <Pressable
-                    key={r}
-                    onPress={async () => {
-                      await switchRole(r);
-                      setShowRoleModal(false);
-                    }}
-                    style={[
-                      styles.roleOptionCard,
-                      isActive && styles.roleOptionCardActive,
-                    ]}
-                  >
-                    <View style={styles.roleOptionInfo}>
-                      <View style={styles.roleOptionTitleRow}>
-                        <Text style={styles.roleOptionLabel}>{def.label}</Text>
-                        <Badge variant={def.badgeVariant}>{r.toUpperCase()}</Badge>
-                      </View>
-                      <Text style={styles.roleOptionDesc}>{def.description}</Text>
-                    </View>
-
-                    {isActive && (
-                      <View style={styles.activeCheckCircle}>
-                        <VectorIcon name="Check" size={14} color="#ffffff" strokeWidth={3} />
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -415,38 +362,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
   },
-  roleSwitcherBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.brand.subtle,
-    borderColor: Colors.brand.light,
-    borderWidth: 1,
-    borderRadius: Radius.xl,
-    padding: Spacing.md,
-  },
-  roleSwitcherIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roleSwitcherInfo: {
-    flex: 1,
-    gap: 1,
-  },
-  roleSwitcherTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.brand.dark,
-  },
-  roleSwitcherSub: {
-    fontSize: 11,
-    color: Colors.brand.dark,
-    opacity: 0.8,
-  },
   sectionContainer: {
     gap: Spacing.xs,
   },
@@ -500,90 +415,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.neutral.textTertiary,
     marginTop: Spacing.sm,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    justifyContent: 'flex-end',
-  },
-  roleModalCard: {
-    backgroundColor: Colors.neutral.card,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    gap: Spacing.md,
-    maxHeight: '85%',
-  },
-  modalGrabber: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.neutral.borderLight,
-    alignSelf: 'center',
-  },
-  modalHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: {
-    ...Typography.cardTitle,
-    fontSize: 16,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: Colors.neutral.textTertiary,
-    marginTop: -Spacing.xs,
-  },
-  closeBtn: {
-    padding: 4,
-  },
-  rolesStack: {
-    gap: Spacing.sm,
-  },
-  roleOptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.md,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.neutral.surface,
-    borderColor: Colors.neutral.border,
-    borderWidth: 1,
-  },
-  roleOptionCardActive: {
-    borderColor: Colors.brand.primary,
-    backgroundColor: Colors.brand.subtle,
-  },
-  roleOptionInfo: {
-    flex: 1,
-    gap: 3,
-    paddingRight: Spacing.sm,
-  },
-  roleOptionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  roleOptionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.neutral.textPrimary,
-  },
-  roleOptionDesc: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
-    lineHeight: 15,
-  },
-  activeCheckCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   signOutBtn: {
     flexDirection: 'row',

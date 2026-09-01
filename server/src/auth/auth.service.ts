@@ -70,25 +70,25 @@ export class AuthService implements IAuthService {
       return this.buildMockAuthResponse(dto.email, 'superadmin');
     }
 
-    // 1. Create user in Supabase Auth GoTrue
-    const { data: authData, error: authError } = await client.auth.signUp({
-      email: dto.email,
+    // 1. Create user in Supabase Auth GoTrue via Admin API
+    let userId: string;
+    const { data: authData, error: authError } = await client.auth.admin.createUser({
+      email: dto.email.trim().toLowerCase(),
       password: dto.password,
-      options: {
-        data: {
-          name: dto.name,
-          organization_name: dto.organizationName,
-          role: 'superadmin',
-        },
+      email_confirm: true,
+      user_metadata: {
+        name: dto.name,
+        organization_name: dto.organizationName,
+        role: 'admin',
       },
     });
 
-    if (authError || !authData.user) {
-      this.logger.error(`Supabase Auth signup failed: ${authError?.message}`);
+    if (authError || !authData?.user) {
+      this.logger.error(`Supabase Auth admin createUser failed: ${authError?.message}`);
       throw new BadRequestException(authError?.message || 'Failed to create user account');
     }
 
-    const userId = authData.user.id;
+    userId = authData.user.id;
     const orgSlug =
       dto.organizationSlug ||
       dto.organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
@@ -100,7 +100,6 @@ export class AuthService implements IAuthService {
         name: dto.organizationName,
         slug: `${orgSlug}-${Date.now().toString(36)}`,
         plan_tier: 'trial',
-        created_by: userId,
       })
       .select('id, name')
       .single();
@@ -110,16 +109,17 @@ export class AuthService implements IAuthService {
       throw new InternalServerErrorException('Failed to initialize organization workspace');
     }
 
-    // 3. Create Default Store for Organization
+    // 3. Create Store for Organization
+    const countryCode = (dto.country && dto.country.length === 2) ? dto.country : 'DE';
     const { data: storeData, error: storeError } = await client
       .from('stores')
       .insert({
         organization_id: orgData.id,
-        store_code: 'MAIN-01',
-        name: `${dto.organizationName} Main Branch`,
-        currency: 'EUR',
-        timezone: 'Europe/Berlin',
-        created_by: userId,
+        store_code: `STR-${Date.now().toString(36).toUpperCase().slice(-4)}`,
+        name: dto.organizationName,
+        country: countryCode,
+        currency: dto.currency || 'EUR',
+        timezone: dto.timezone || 'Europe/Berlin',
       })
       .select('id')
       .single();
@@ -129,22 +129,15 @@ export class AuthService implements IAuthService {
       throw new InternalServerErrorException('Failed to initialize default store location');
     }
 
-    // 4. Create Store Settings
-    await client.from('store_settings').insert({
-      store_id: storeData.id,
-      created_by: userId,
-    });
-
-    // 5. Synchronize User into public.users table
+    // 4. Synchronize Admin User into public.users table
     const { error: userSyncError } = await client.from('users').upsert({
       id: userId,
       organization_id: orgData.id,
       email: dto.email,
       name: dto.name,
-      phone: dto.phone,
+      phone: dto.phone || null,
       default_store_id: storeData.id,
       is_active: true,
-      created_by: userId,
     });
 
     if (userSyncError) {
@@ -152,23 +145,64 @@ export class AuthService implements IAuthService {
       throw new InternalServerErrorException('Failed to complete user profile synchronization');
     }
 
-    // 6. Assign SuperAdmin role to user for this store
+    // 5. Assign Admin / SuperAdmin role to user for this store
     const { data: roleData } = await client
       .from('roles')
       .select('id')
-      .eq('name', 'superadmin')
+      .eq('name', 'admin')
       .single();
 
-    if (roleData) {
-      await client.from('user_store_assignments').insert({
-        user_id: userId,
-        store_id: storeData.id,
-        role_id: roleData.id,
-        assigned_by: userId,
-      });
+    const adminRoleId = roleData?.id || '01915dfa-9012-7000-8000-000000000001';
+
+    await client.from('user_store_assignments').insert({
+      user_id: userId,
+      store_id: storeData.id,
+      role_id: adminRoleId,
+    });
+
+    // 6. Process Invited Team Members
+    if (dto.invitedMembers && Array.isArray(dto.invitedMembers) && dto.invitedMembers.length > 0) {
+      for (const member of dto.invitedMembers) {
+        if (!member.email || !member.name) continue;
+
+        const targetRoleName = member.role || 'staff';
+        const { data: mRole } = await client
+          .from('roles')
+          .select('id')
+          .eq('name', targetRoleName)
+          .single();
+
+        const memberRoleId = mRole?.id || '01915dfa-9012-7000-8000-000000000005';
+
+        const { data: mUser, error: mUserError } = await client
+          .from('users')
+          .insert({
+            organization_id: orgData.id,
+            email: member.email.trim().toLowerCase(),
+            name: member.name.trim(),
+            default_store_id: storeData.id,
+            is_active: true,
+          })
+          .select('id')
+          .single();
+
+        if (!mUserError && mUser?.id) {
+          await client.from('user_store_assignments').insert({
+            user_id: mUser.id,
+            store_id: storeData.id,
+            role_id: memberRoleId,
+          });
+        }
+      }
     }
 
-    const session = authData.session;
+    // 7. Sign in with password to obtain active JWT session tokens
+    const { data: signInData } = await client.auth.signInWithPassword({
+      email: dto.email.trim().toLowerCase(),
+      password: dto.password,
+    });
+
+    const session = signInData?.session;
 
     return {
       accessToken: session?.access_token || 'initial-signup-token',
@@ -179,7 +213,7 @@ export class AuthService implements IAuthService {
         id: userId,
         email: dto.email,
         name: dto.name,
-        role: 'superadmin',
+        role: 'admin',
         organizationId: orgData.id,
         organizationName: orgData.name,
         defaultStoreId: storeData.id,
@@ -437,6 +471,54 @@ export class AuthService implements IAuthService {
       assignedStoreIds = authUser.user_metadata.assigned_store_ids;
     }
 
+    const ROLE_PERMISSIONS: Record<string, string[]> = {
+      superadmin: ['*'],
+      admin: ['*'],
+      manager: [
+        'inventory:create',
+        'inventory:view',
+        'inventory:adjust',
+        'inventory:archive',
+        'stock_count:conduct',
+        'stock_count:approve',
+        'ocr:scan',
+        'ocr:view',
+        'ocr:review',
+        'procurement:create',
+        'procurement:view',
+        'procurement:approve',
+        'procurement:receive',
+        'notifications:send',
+        'audit:read',
+      ],
+      supervisor: [
+        'inventory:view',
+        'inventory:adjust',
+        'stock_count:conduct',
+        'ocr:scan',
+        'ocr:view',
+        'ocr:review',
+        'procurement:create',
+        'procurement:view',
+        'procurement:receive',
+      ],
+      staff: [
+        'inventory:view',
+        'stock_count:conduct',
+        'ocr:scan',
+        'ocr:view',
+        'procurement:view',
+        'procurement:receive',
+      ],
+      auditor: [
+        'inventory:view',
+        'stock_count:conduct',
+        'ocr:view',
+        'procurement:view',
+        'audit:read',
+      ],
+    };
+
     return {
       id: authUser.id,
       email: authUser.email || '',
@@ -446,7 +528,7 @@ export class AuthService implements IAuthService {
       organizationName,
       defaultStoreId: userProfile?.default_store_id,
       assignedStoreIds,
-      permissions: role === 'superadmin' ? ['*'] : [],
+      permissions: authUser.user_metadata?.permissions || ROLE_PERMISSIONS[role] || (role === 'superadmin' || role === 'admin' ? ['*'] : []),
     };
   }
 

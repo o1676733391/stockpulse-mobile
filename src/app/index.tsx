@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function SplashScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, user } = useAuth();
+  const { authState, isAuthenticated, user } = useAuth();
 
   // Animation values
   const logoScale = useRef(new Animated.Value(0.8)).current;
@@ -71,15 +71,29 @@ export default function SplashScreen() {
   }, [logoScale, logoOpacity, contentFade, pulseAnim]);
 
   const handleGetStarted = () => {
-    if (isAuthenticated) {
-      router.replace('/(tabs)' as any);
+    if (authState === 'EMAIL_VERIFICATION_REQUIRED') {
+      router.replace('/verify-email' as any);
+    } else if (authState === 'ACCOUNT_DISABLED') {
+      router.replace('/account-disabled' as any);
+    } else if (isAuthenticated) {
+      if (user?.storeId && user.storeId !== 'unassigned') {
+        router.replace('/(tabs)' as any);
+      } else {
+        router.replace('/onboarding' as any);
+      }
     } else {
       router.push('/login' as any);
     }
   };
 
   const handleSignIn = () => {
-    router.push('/login' as any);
+    if (authState === 'EMAIL_VERIFICATION_REQUIRED') {
+      router.replace('/verify-email' as any);
+    } else if (authState === 'ACCOUNT_DISABLED') {
+      router.replace('/account-disabled' as any);
+    } else {
+      router.push('/login' as any);
+    }
   };
 
   return (
@@ -167,12 +181,22 @@ export default function SplashScreen() {
           rightIcon={<VectorIcon name="ChevronRight" size={18} color="#FFFFFF" />}
         />
 
+        {!isAuthenticated && (
+          <Pressable
+            onPress={() => router.push({ pathname: '/login', params: { mode: 'staff' } } as any)}
+            style={({ pressed }) => [styles.staffJoinBtn, pressed && styles.pressed]}
+          >
+            <VectorIcon name="KeyRound" size={14} color="#a7f3d0" />
+            <Text style={styles.staffJoinBtnText}>Have an invite code? Join as Staff</Text>
+          </Pressable>
+        )}
+
         <Pressable
           onPress={handleSignIn}
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
         >
           <Text style={styles.secondaryBtnText}>
-            {isAuthenticated ? 'Switch Account or Role' : 'Sign in with existing credentials'}
+            {isAuthenticated ? 'Switch Account or Role' : 'Sign in with email & password'}
           </Text>
         </Pressable>
       </Animated.View>
@@ -300,18 +324,34 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
+  staffJoinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(5, 150, 105, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.4)',
+    borderRadius: Radius.xl,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  staffJoinBtnText: {
+    color: '#a7f3d0',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   secondaryBtn: {
     paddingVertical: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryBtnText: {
+    ...Typography.body,
     fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.75)',
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.85)',
-    textDecorationLine: 'underline',
   },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.8,
   },
 });

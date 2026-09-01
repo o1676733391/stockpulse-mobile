@@ -6,6 +6,7 @@ import { TopBar } from '@/components/ui/top-bar';
 import { MODULE_PERMISSIONS_MATRIX, ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { authService } from '@/services/authService';
 import { AuthUser, UserRole } from '@/types/rbac';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -26,6 +27,7 @@ export default function TeamMemberDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { role: currentUserRole } = useAuth();
+  const { t } = useI18n();
 
   const [member, setMember] = useState<AuthUser | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -49,11 +51,48 @@ export default function TeamMemberDetailScreen() {
 
   const roleDef = ROLES[member.role] ?? ROLES.staff;
 
+  const [isMutating, setIsMutating] = useState(false);
+
   const handleRoleChange = async (newRole: UserRole) => {
-    const updated = await authService.updateMemberRole(member.id, newRole);
-    setMember(updated);
-    setShowRoleModal(false);
-    Alert.alert('Role Updated', `${member.name}'s role is now ${ROLES[newRole].label}.`);
+    if (isMutating) return;
+    try {
+      setIsMutating(true);
+      const updated = await authService.updateMemberRole(member.id, newRole);
+      setMember(updated);
+      setShowRoleModal(false);
+      Alert.alert('Role Updated', `${member.name}'s role is now ${ROLES[newRole].label}.`);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to update role');
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleDeleteMember = () => {
+    if (isMutating) return;
+    Alert.alert(
+      'Deactivate Member',
+      `Are you sure you want to deactivate ${member.name}? They will lose access to the store.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Deactivate',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsMutating(true);
+              await authService.removeMember(member.id);
+              Alert.alert('Member Deactivated', `${member.name} has been deactivated.`);
+              router.back();
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to deactivate member');
+            } finally {
+              setIsMutating(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const allowedModules = MODULE_PERMISSIONS_MATRIX.filter(
@@ -66,7 +105,7 @@ export default function TeamMemberDetailScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       <TopBar
-        title="Member Details"
+        title={t('team.title')}
         showBack
         right={
           currentUserRole === 'admin' && member.role !== 'admin' ? (
@@ -74,7 +113,7 @@ export default function TeamMemberDetailScreen() {
               onPress={() => setShowRoleModal(true)}
               style={({ pressed }) => [styles.editRoleBtn, pressed && styles.pressed]}
             >
-              <Text style={styles.editRoleBtnText}>Change Role</Text>
+              <Text style={styles.editRoleBtnText}>{t('common.edit')}</Text>
             </Pressable>
           ) : undefined
         }
@@ -180,6 +219,17 @@ export default function TeamMemberDetailScreen() {
               ))}
             </View>
           </Card>
+        )}
+
+        {/* ── Deactivate Member Action ── */}
+        {currentUserRole === 'admin' && member.role !== 'admin' && (
+          <Pressable
+            onPress={handleDeleteMember}
+            style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+          >
+            <VectorIcon name="Trash2" size={16} color={Colors.critical.main} />
+            <Text style={styles.deleteBtnText}>Deactivate Team Member</Text>
+          </Pressable>
         )}
       </ScrollView>
 
@@ -476,6 +526,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
+    borderWidth: 1,
+    paddingVertical: 14,
+    borderRadius: Radius.lg,
+    marginTop: Spacing.md,
+  },
+  deleteBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.critical.main,
   },
   pressed: {
     opacity: 0.8,

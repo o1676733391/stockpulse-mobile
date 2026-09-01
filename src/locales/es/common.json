@@ -48,7 +48,13 @@
     "savedSuccess": "Guardado correctamente",
     "changesSaved": "Cambios guardados con éxito",
     "offlineMode": "Modo sin conexión — Se sincronizará al volver a conectar",
-    "onlineMode": "De nuevo en línea — Sincronizado"
+    "onlineMode": "De nuevo en línea — Sincronizado",
+    "add": "Añadir",
+    "inProgress": "En curso",
+    "accessDenied": "Acceso denegado",
+    "accessDeniedMessage": "No tiene permiso para acceder a este módulo.",
+    "requiredPermission": "Permiso requerido: {{permission}}",
+    "returnToDashboard": "Volver al panel principal"
   },
   "navigation": {
     "home": "Inicio",
@@ -99,7 +105,23 @@
     "loginFailed": "Error al iniciar sesión. Verifique sus credenciales.",
     "registerFailed": "Error en el registro. Inténtelo de nuevo.",
     "fillAllFields": "Por favor, complete todos los campos obligatorios.",
-    "passwordMinLength": "La contraseña debe tener al menos 6 caracteres."
+    "passwordMinLength": "La contraseña debe tener al menos 6 caracteres.",
+    "nameLabel": "Nombre completo",
+    "creatingStore": "Creando cuenta de cocina...",
+    "createStoreButton": "Crear cuenta de establecimiento",
+    "signInLink": "Iniciar sesión aquí",
+    "staffLogin": "Acceso de Personal",
+    "staffLoginSub": "Únase o inicie sesión con su cuenta de equipo",
+    "joinWithCode": "Unirse con código de invitación",
+    "joinWithCodeSub": "¿Tiene un código de invitación proporcionado por su gerente? Introdúzcalo a continuación.",
+    "loginTabs": {
+      "account": "Iniciar con correo",
+      "invitationCode": "Código de personal"
+    },
+    "staffPrompt": "¿Es miembro del equipo con código?",
+    "claimInvite": "Unirse con código",
+    "quickRoleSelect": "Acceso rápido por rol",
+    "quickRoleSelectSub": "Toque un rol para rellenar credenciales"
   },
   "dashboard": {
     "welcome": "Bienvenido, {{name}}",
@@ -133,7 +155,8 @@
       "scan": "Escanear ticket / Cierre Z",
       "order": "Nuevo pedido",
       "expiry": "Triaje caducidades"
-    }
+    },
+    "noTasks": "Todas las tareas de inventario están completadas por hoy."
   },
   "inventory": {
     "title": "Gestión de inventario",
@@ -179,7 +202,13 @@
     "manualCorrection": "Corrección manual de recuento",
     "deltaQuantity": "Variación de cantidad (+/-)",
     "emptyState": "No se encontraron artículos",
-    "emptyStateDesc": "Pruebe a modificar su búsqueda o los filtros."
+    "emptyStateDesc": "Pruebe a modificar su búsqueda o los filtros.",
+    "noBatches": "No hay lotes activos registrados.",
+    "daysRemaining": "{{days}} días restantes",
+    "itemCount": "{{count}} Artículos",
+    "variance": "Desviación",
+    "parLevel": "Stock objetivo",
+    "reorderPoint": "Punto de pedido"
   },
   "stockCount": {
     "title": "Recuento y Auditoría de stock",
@@ -203,7 +232,12 @@
     "netVariance": "Diferencia neta (€ / %)",
     "approveVariance": "Aprobar y cuadrar libro mayor",
     "approving": "Sincronizando libro mayor...",
-    "discrepanciesFound": "{{count}} descuadres detectados que requieren aprobación del supervisor."
+    "discrepanciesFound": "{{count}} descuadres detectados que requieren aprobación del supervisor.",
+    "itemsToCount": "Artículos a contar",
+    "countSummaryTitle": "Resumen de inventario y auditoría",
+    "status": {
+      "completed": "Completado"
+    }
   },
   "ocr": {
     "title": "IA Documental y Escáner de tickets",
@@ -248,7 +282,13 @@
     "goodsReceiptTitle": "Recepción de mercancía",
     "goodsReceiptSub": "Verifique albaranes de entrega, revise números de lote y registre lotes FEFO.",
     "receiveGoods": "Registrar entrada",
-    "receiving": "Procesando entrada..."
+    "receiving": "Procesando entrada...",
+    "status": {
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "confirmed": "Confirmado",
+      "received": "Recibido"
+    }
   },
   "expiration": {
     "title": "Control de Caducidades",
@@ -261,7 +301,12 @@
       "cook": "Cocinar y congelar lote",
       "discard": "Registrar como merma"
     },
-    "potentialLoss": "Pérdida potencial estimada: {{value}}"
+    "potentialLoss": "Pérdida potencial estimada: {{value}}",
+    "urgentAction": "Acción urgente requerida",
+    "actions": {
+      "reduceWaste": "Estrategia contra el desperdicio",
+      "triageBbd": "Gestionar lotes próximos a caducar"
+    }
   },
   "analytics": {
     "title": "Informes y Análisis de existencias",
@@ -271,22 +316,106 @@
     "wasteLoss": "Coste por desperdicio y rotura",
     "supplierLeadTimes": "Plazos de entrega y fiabilidad de proveedores",
     "exportPdf": "Exportar informe financiero (PDF)",
-    "exportCsv": "Exportar valoración (CSV)"
+    "exportCsv": "Exportar valoración (CSV)",
+    "trends": "Tendencias históricas",
+    "reports": "Informes de valoración y auditoría",
+    "suppliers": "Rendimiento de proveedores"
   },
   "team": {
     "title": "Equipo y Permisos de acceso",
     "subtitle": "Gestione roles de personal y asignaciones de local",
     "inviteMember": "Invitar miembro al equipo",
     "membersList": "Miembros activos ({{count}})",
+    "tabs": {
+      "members": "Miembros",
+      "invitations": "Invitaciones",
+      "roles": "Roles y Acceso"
+    },
+    "activeMembers": "Miembros activos del equipo",
+    "pendingInvitations": "Invitaciones pendientes",
+    "noMembersFound": "No se encontraron miembros",
+    "noPendingInvitations": "No hay invitaciones pendientes",
+    "noPendingDesc": "Genere un código de invitación para incorporar personal de cocina o barra.",
+    "copyCode": "Copiar código",
+    "codeCopied": "Código copiado al portapapeles",
+    "share": "Compartir",
+    "resend": "Reenviar código",
+    "resending": "Actualizando...",
+    "revoke": "Revocar",
+    "revoking": "Revocando...",
+    "revokeConfirmTitle": "Revocar invitación",
+    "revokeConfirmMsg": "¿Está seguro de que desea revocar la invitación para {{email}}? El código quedará invalidado de inmediato.",
+    "changeRole": "Cambiar rol",
+    "removeFromStore": "Eliminar del local",
+    "removeMemberTitle": "Eliminar miembro",
+    "removeMemberConfirm": "¿Está seguro de que desea eliminar a {{name}} de este local? Perderá el acceso de inmediato.",
+    "roleUpdatedSuccess": "El rol de {{name}} se actualizó a {{role}}.",
+    "memberRemovedSuccess": "{{name}} fue eliminado del local.",
+    "invitationSentSuccess": "¡Invitación creada! Código: {{code}}",
+    "inviteDetails": "Detalles del miembro",
+    "expiresIn": "Expira en {{days}} días",
+    "sendInvitation": "Enviar invitación",
+    "sendingInvitation": "Generando invitación...",
+    "invitedBy": "Invitado por {{name}}",
     "roles": {
       "superadmin": "Propietario de la organización",
+      "admin": "Administrador de local",
       "manager": "Gerente de local",
       "supervisor": "Jefe de turno",
       "staff": "Personal de cocina",
       "auditor": "Auditor externo"
     },
     "permissionsMatrix": "Matriz de permisos por rol",
-    "roleAssigned": "Rol: {{role}}"
+    "roleAssigned": "Rol: {{role}}",
+    "rolesDesc": "Gestionar roles y permisos de establecimientos"
+  },
+  "onboarding": {
+    "getStarted": "¿Cómo desea empezar?",
+    "getStartedSub": "Únase a una cocina existente o cree su propio local.",
+    "joinStore": "Unirse a un local existente",
+    "joinStoreDesc": "Introduzca el código de invitación proporcionado por su gerente para unirse al equipo.",
+    "createStore": "Crear un nuevo local",
+    "createStoreDesc": "Configure una nueva sucursal o cocina como administrador.",
+    "skipForNow": "Omitir por ahora",
+    "skipForNowDesc": "Explorar la aplicación. Puede unirse o crear un local en cualquier momento en Ajustes.",
+    "joinTitle": "Unirse a su local",
+    "joinDesc": "Introduzca el código de invitación de 6 caracteres proporcionado por su administrador.",
+    "codeLabel": "Código de invitación",
+    "codePlaceholder": "ej. A9B8C7 o INV-A9B8C7",
+    "joinBtn": "Unirse al local",
+    "validateBtn": "Validar y Previsualizar",
+    "validating": "Validando código de invitación...",
+    "accepting": "Uniéndose al local...",
+    "previewTitle": "Ha recibido una invitación",
+    "storeLabel": "Local",
+    "roleLabel": "Rol asignado",
+    "emailLabel": "Correo invitado",
+    "expiresLabel": "Válido hasta",
+    "acceptBtn": "Aceptar invitación",
+    "cancelBtn": "Cancelar",
+    "changeCode": "Introducir otro código",
+    "createTitle": "Crear su local",
+    "createSub": "Registre los datos de su restaurante.",
+    "storeName": "Nombre del local",
+    "storeCode": "Código de local (Opcional)",
+    "storeCity": "Ciudad",
+    "createBtn": "Crear local",
+    "creatingStore": "Creando local...",
+    "noStoreSelected": "Ningún local seleccionado",
+    "noStoreDesc": "Únase a un local o cree uno nuevo para acceder a inventario, recetas, pedidos y escaneo TPV.",
+    "noStoreBannerTitle": "Sin local conectado",
+    "noStoreBannerSub": "Actualmente se encuentra en modo sin asignación."
+  },
+  "invitationErrors": {
+    "invalidCode": "Ese código de invitación no es válido.",
+    "expired": "Esta invitación ha expirado. Solicite una nueva a su administrador.",
+    "revoked": "Esta invitación ya no está disponible.",
+    "alreadyClaimed": "Esta invitación ya ha sido utilizada.",
+    "emailMismatch": "Esta invitación está asociada a otra dirección de correo. Inicie sesión con la cuenta invitada.",
+    "rateLimited": "Demasiados intentos. Por favor, espere unos momentos.",
+    "networkError": "No se pudo conectar con el servidor. Compruebe su conexión a internet.",
+    "generic": "Error al aceptar la invitación. Inténtelo de nuevo.",
+    "tryAgain": "Reintentar"
   },
   "notifications": {
     "title": "Notificaciones y Avisos",
@@ -302,7 +431,10 @@
       "system": "Aviso del sistema"
     },
     "emptyState": "No hay notificaciones",
-    "emptyStateDesc": "¡Todo al día! Los avisos y alertas de stock aparecerán aquí."
+    "emptyStateDesc": "¡Todo al día! Los avisos y alertas de stock aparecerán aquí.",
+    "filterUnread": "No leídas",
+    "filterUrgent": "Urgentes",
+    "unreadCount": "{{count}} notificaciones sin leer"
   },
   "settings": {
     "title": "Ajustes",
@@ -311,7 +443,8 @@
       "notificationsAlerts": "Notificaciones y Alertas",
       "preferencesDisplay": "Visualización e Idioma",
       "accountSecurity": "Cuenta y Seguridad",
-      "supportLegal": "Soporte y Legal"
+      "supportLegal": "Soporte y Legal",
+      "generalSettings": "Ajustes generales"
     },
     "items": {
       "storeConfig": "Configuración del local",
@@ -321,7 +454,8 @@
       "language": "Idioma y Región",
       "profile": "Perfil y Credenciales",
       "about": "Acerca de la app y Licencias",
-      "signOut": "Cerrar sesión"
+      "signOut": "Cerrar sesión",
+      "userProfile": "Perfil de usuario y cuenta"
     },
     "language": {
       "title": "Idioma y Región",
@@ -369,7 +503,13 @@
     "signOutConfirm": {
       "title": "Cerrar sesión",
       "message": "¿Está seguro de que desea cerrar sesión en StockPulse?"
-    }
+    },
+    "permissionDeniedTitle": "Permiso restringido",
+    "permissionDeniedMessage": "El rol de usuario '{{role}}' carece del rol requerido: [admin, superadmin, manager] para modificar la configuración de la tienda.",
+    "readOnlyBannerTitle": "Acceso de solo lectura ({{role}})",
+    "readOnlyBannerSub": "Su rol le permite inspeccionar los parámetros de la tienda. Guardar cambios requiere privilegios de gerente o administrador.",
+    "restrictedSave": "Restringido (Solo lectura)",
+    "understood": "Entendido"
   },
   "errors": {
     "networkError": "Error de conexión. Compruebe su conexión a internet.",
@@ -381,5 +521,39 @@
     "invalidInput": "Compruebe los datos introducidos.",
     "itemNotFound": "Artículo de inventario no encontrado.",
     "insufficientStock": "Stock insuficiente para realizar esta operación."
+  },
+  "scan": {
+    "title": "Escáner de ticket y cierre de caja",
+    "instructions": "Alinee el informe Z o el ticket de caja dentro del marco",
+    "galleryButton": "Elegir de la galería",
+    "tip": "Asegúrese de que el ticket esté bien iluminado y enfocado",
+    "processingTitle": "Procesando ticket de caja",
+    "processingSubtitle": "Analizando líneas con Google Gemini Vision",
+    "processingSteps": {
+      "uploading": "Subiendo imagen...",
+      "reading": "Leyendo caracteres y texto...",
+      "detecting": "Extrayendo platos, precios y cantidades...",
+      "calculating": "Calculando consumo de recetas...",
+      "mapping": "Sincronizando con el catálogo de existencias..."
+    },
+    "reviewTitle": "Revisar líneas del ticket",
+    "reviewStats": {
+      "detected": "Artículos detectados",
+      "confidence": "Confianza general",
+      "reviewNeeded": "Requiere revisión"
+    },
+    "lowConfidenceBanner": "Algunos artículos tienen baja confianza de lectura. Verifique las cantidades antes de confirmar.",
+    "tableHeaders": {
+      "item": "Plato / Artículo",
+      "qty": "Cant.",
+      "confidence": "Confianza"
+    },
+    "confirmAndDeduct": "Confirmar y descontar stock",
+    "resultTitle": "Descuento completado",
+    "totalPortionsSold": "Total de raciones vendidas",
+    "ingredientsDeductedTitle": "Ingredientes descontados del inventario",
+    "theoreticalUpdatedTitle": "Saldos teóricos actualizados",
+    "theoreticalDeductionNotice": "Los niveles de stock teórico se han actualizado automáticamente según los escandallos.",
+    "retakeButton": "Escanear otro ticket"
   }
 }

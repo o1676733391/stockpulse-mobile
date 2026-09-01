@@ -48,7 +48,13 @@
     "savedSuccess": "Saved successfully",
     "changesSaved": "Changes saved successfully",
     "offlineMode": "Offline Mode — Changes will sync when reconnected",
-    "onlineMode": "Back Online — Synchronized"
+    "onlineMode": "Back Online — Synchronized",
+    "add": "Add",
+    "inProgress": "In Progress",
+    "accessDenied": "Access Restricted",
+    "accessDeniedMessage": "You do not have permission to access this module.",
+    "requiredPermission": "Required Permission: {{permission}}",
+    "returnToDashboard": "Return to Dashboard"
   },
   "navigation": {
     "home": "Home",
@@ -99,7 +105,23 @@
     "loginFailed": "Login failed. Please verify credentials.",
     "registerFailed": "Registration failed. Please try again.",
     "fillAllFields": "Please fill in all required fields.",
-    "passwordMinLength": "Password must be at least 6 characters."
+    "passwordMinLength": "Password must be at least 6 characters.",
+    "nameLabel": "Full Name",
+    "creatingStore": "Creating your kitchen store...",
+    "createStoreButton": "Create Store Account",
+    "signInLink": "Sign in here",
+    "staffLogin": "Staff Sign In",
+    "staffLoginSub": "Join or sign in with your kitchen staff account",
+    "joinWithCode": "Join with Staff Code",
+    "joinWithCodeSub": "Received an invitation code from your manager? Enter it below.",
+    "loginTabs": {
+      "account": "Email Sign In",
+      "invitationCode": "Staff Code Join"
+    },
+    "staffPrompt": "Staff member with an invite code?",
+    "claimInvite": "Join with Staff Code",
+    "quickRoleSelect": "Quick Staff Role Sign In",
+    "quickRoleSelectSub": "Tap a staff role below to populate credentials"
   },
   "dashboard": {
     "welcome": "Welcome, {{name}}",
@@ -133,7 +155,8 @@
       "scan": "Scan Receipt / Z-Report",
       "order": "Draft PO Order",
       "expiry": "BBD Triage"
-    }
+    },
+    "noTasks": "All stock tasks are completed for today."
   },
   "inventory": {
     "title": "Inventory Management",
@@ -178,8 +201,14 @@
     "supplierCorrection": "Supplier Discrepancy",
     "manualCorrection": "Manual Count Correction",
     "deltaQuantity": "Quantity Change (+/-)",
-    "emptyState": "No inventory items found",
-    "emptyStateDesc": "Try adjusting your search query or filters."
+    "emptyState": "No Items Found",
+    "emptyStateDesc": "Try adjusting your search query or filters.",
+    "noBatches": "No active batches recorded.",
+    "daysRemaining": "{{days}} days remaining",
+    "itemCount": "{{count}} Items",
+    "variance": "Variance",
+    "parLevel": "Par Level",
+    "reorderPoint": "Reorder Point"
   },
   "stockCount": {
     "title": "Stock Audit & Count",
@@ -203,7 +232,12 @@
     "netVariance": "Net Variance ($ / %)",
     "approveVariance": "Approve & Synchronize Ledger",
     "approving": "Synchronizing Ledger...",
-    "discrepanciesFound": "{{count}} discrepancies detected requiring supervisor approval."
+    "discrepanciesFound": "{{count}} discrepancies detected requiring supervisor approval.",
+    "itemsToCount": "Items to Count",
+    "countSummaryTitle": "Count Summary & Audit",
+    "status": {
+      "completed": "Completed"
+    }
   },
   "ocr": {
     "title": "Document AI & OCR Scanner",
@@ -248,7 +282,13 @@
     "goodsReceiptTitle": "Goods Receipt & Intake",
     "goodsReceiptSub": "Verify supplier deliveries, check batch numbers, and register FEFO lots.",
     "receiveGoods": "Check-in Delivery",
-    "receiving": "Processing Intake..."
+    "receiving": "Processing Intake...",
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "confirmed": "Confirmed",
+      "received": "Received"
+    }
   },
   "expiration": {
     "title": "BBD & Expiry Intelligence",
@@ -261,7 +301,12 @@
       "cook": "Prep & Freeze Batch",
       "discard": "Log Spoilage Waste"
     },
-    "potentialLoss": "Potential Spoilage Loss: {{value}}"
+    "potentialLoss": "Potential Spoilage Loss: {{value}}",
+    "urgentAction": "Urgent Action Needed",
+    "actions": {
+      "reduceWaste": "Waste Reduction Strategy",
+      "triageBbd": "Action Expiring Batches"
+    }
   },
   "analytics": {
     "title": "Inventory Analytics & Reports",
@@ -271,22 +316,106 @@
     "wasteLoss": "Waste & Spoilage Cost",
     "supplierLeadTimes": "Supplier Lead Times & Reliability",
     "exportPdf": "Export Financial Report (PDF)",
-    "exportCsv": "Export Valuation (CSV)"
+    "exportCsv": "Export Valuation (CSV)",
+    "trends": "Historical Trends",
+    "reports": "Audit & Valuation Reports",
+    "suppliers": "Supplier Performance"
   },
   "team": {
     "title": "Team & Access Permissions",
     "subtitle": "Manage staff roles and store assignments",
     "inviteMember": "Invite Team Member",
     "membersList": "Active Team Members ({{count}})",
+    "tabs": {
+      "members": "Members",
+      "invitations": "Invitations",
+      "roles": "Roles & Access"
+    },
+    "activeMembers": "Active Team Members",
+    "pendingInvitations": "Pending Invitations",
+    "noMembersFound": "No team members found",
+    "noPendingInvitations": "No pending invitations",
+    "noPendingDesc": "Generate an invitation code to onboard new kitchen or bar staff.",
+    "copyCode": "Copy Code",
+    "codeCopied": "Code copied to clipboard",
+    "share": "Share",
+    "resend": "Resend Code",
+    "resending": "Refreshing...",
+    "revoke": "Revoke",
+    "revoking": "Revoking...",
+    "revokeConfirmTitle": "Revoke Invitation",
+    "revokeConfirmMsg": "Are you sure you want to revoke the invitation for {{email}}? The code will become invalid immediately.",
+    "changeRole": "Change Role",
+    "removeFromStore": "Remove from Store",
+    "removeMemberTitle": "Remove Team Member",
+    "removeMemberConfirm": "Are you sure you want to remove {{name}} from this store? They will lose access immediately.",
+    "roleUpdatedSuccess": "{{name}}'s role was updated to {{role}}.",
+    "memberRemovedSuccess": "{{name}} was removed from the store.",
+    "invitationSentSuccess": "Invitation sent! Code: {{code}}",
+    "inviteDetails": "Member Details",
+    "expiresIn": "Expires in {{days}} days",
+    "sendInvitation": "Send Invitation",
+    "sendingInvitation": "Generating Invitation...",
+    "invitedBy": "Invited by {{name}}",
     "roles": {
       "superadmin": "Organization Owner",
+      "admin": "Store Admin",
       "manager": "Store Manager",
       "supervisor": "Shift Supervisor",
       "staff": "Kitchen Staff",
       "auditor": "External Auditor"
     },
     "permissionsMatrix": "Role Permissions Matrix",
-    "roleAssigned": "Role: {{role}}"
+    "roleAssigned": "Role: {{role}}",
+    "rolesDesc": "Manage staff roles and store assignment permissions"
+  },
+  "onboarding": {
+    "getStarted": "How do you want to get started?",
+    "getStartedSub": "Connect to an existing restaurant kitchen or set up your own branch.",
+    "joinStore": "Join an existing store",
+    "joinStoreDesc": "Enter an invitation code from your store manager to join the kitchen team.",
+    "createStore": "Create a new store",
+    "createStoreDesc": "Set up a new restaurant or kitchen branch as an administrator.",
+    "skipForNow": "Skip for now",
+    "skipForNowDesc": "Explore the app. You can join or create a store anytime in Settings.",
+    "joinTitle": "Join your store",
+    "joinDesc": "Enter the 6-character invitation code provided by your store administrator.",
+    "codeLabel": "Invitation Code",
+    "codePlaceholder": "e.g. A9B8C7 or INV-A9B8C7",
+    "joinBtn": "Join Store",
+    "validateBtn": "Validate & Preview",
+    "validating": "Validating invitation code...",
+    "accepting": "Joining store...",
+    "previewTitle": "You're invited to join",
+    "storeLabel": "Store",
+    "roleLabel": "Assigned Role",
+    "emailLabel": "Invited Email",
+    "expiresLabel": "Valid Until",
+    "acceptBtn": "Accept Invitation",
+    "cancelBtn": "Cancel",
+    "changeCode": "Enter different code",
+    "createTitle": "Create your store",
+    "createSub": "Register your restaurant location details.",
+    "storeName": "Store / Restaurant Name",
+    "storeCode": "Store Code (Optional)",
+    "storeCity": "City",
+    "createBtn": "Create Store",
+    "creatingStore": "Creating store...",
+    "noStoreSelected": "No store selected",
+    "noStoreDesc": "Join an existing store or create a new store to access inventory, recipes, orders, and POS scanning.",
+    "noStoreBannerTitle": "No Store Connected",
+    "noStoreBannerSub": "You are currently viewing in unassigned mode."
+  },
+  "invitationErrors": {
+    "invalidCode": "That invitation code isn't valid.",
+    "expired": "This invitation has expired. Ask your store administrator for a new invitation.",
+    "revoked": "This invitation is no longer available.",
+    "alreadyClaimed": "This invitation has already been claimed.",
+    "emailMismatch": "This invitation is associated with a different email address. Please sign in with the invited email.",
+    "rateLimited": "Too many attempts. Please wait a few moments before trying again.",
+    "networkError": "We couldn't connect to the server. Please try again.",
+    "generic": "Failed to accept invitation. Please try again.",
+    "tryAgain": "Try Again"
   },
   "notifications": {
     "title": "Notifications & Alerts",
@@ -302,7 +431,10 @@
       "system": "System Alert"
     },
     "emptyState": "No notifications yet",
-    "emptyStateDesc": "You're all caught up! Alerts and inventory notices will appear here."
+    "emptyStateDesc": "You're all caught up! Alerts and inventory notices will appear here.",
+    "filterUnread": "Unread",
+    "filterUrgent": "Urgent",
+    "unreadCount": "{{count}} unread notifications"
   },
   "settings": {
     "title": "Settings",
@@ -311,7 +443,8 @@
       "notificationsAlerts": "Notifications & Alerts",
       "preferencesDisplay": "Preferences & Display",
       "accountSecurity": "Account & Security",
-      "supportLegal": "Support & Legal"
+      "supportLegal": "Support & Legal",
+      "generalSettings": "General Settings"
     },
     "items": {
       "storeConfig": "Store Configuration",
@@ -321,7 +454,8 @@
       "language": "Language & Localization",
       "profile": "Profile & Credentials",
       "about": "About & Licenses",
-      "signOut": "Sign Out"
+      "signOut": "Sign Out",
+      "userProfile": "User Profile & Account"
     },
     "language": {
       "title": "Language & Localization",
@@ -369,7 +503,13 @@
     "signOutConfirm": {
       "title": "Sign Out",
       "message": "Are you sure you want to sign out of StockPulse?"
-    }
+    },
+    "permissionDeniedTitle": "Permission Restricted",
+    "permissionDeniedMessage": "User role '{{role}}' lacks the required role: [admin, superadmin, manager] to modify store settings.",
+    "readOnlyBannerTitle": "Read-Only Access ({{role}})",
+    "readOnlyBannerSub": "Your role permits inspection of store parameters. Saving updates requires Manager or Admin privileges.",
+    "restrictedSave": "Restricted (Read-Only)",
+    "understood": "Understood"
   },
   "errors": {
     "networkError": "Network connection error. Please check your internet connection.",
@@ -381,5 +521,39 @@
     "invalidInput": "Please check your input and correct any errors.",
     "itemNotFound": "Inventory item not found.",
     "insufficientStock": "Insufficient stock available for this operation."
+  },
+  "scan": {
+    "title": "POS Receipt Scanner",
+    "instructions": "Align the daily POS Z-report or register receipt within the frame",
+    "galleryButton": "Choose from Gallery",
+    "tip": "Ensure receipt numbers, line items, and quantities are clearly lit and visible",
+    "processingTitle": "Processing POS Receipt",
+    "processingSubtitle": "Analyzing line items with Google Gemini Vision",
+    "processingSteps": {
+      "uploading": "Uploading high-resolution image...",
+      "reading": "Scanning optical characters and text...",
+      "detecting": "Extracting dishes, prices, and quantities...",
+      "calculating": "Exploding BOM ingredient ratios...",
+      "mapping": "Synchronizing with inventory catalog..."
+    },
+    "reviewTitle": "Review POS Line Items",
+    "reviewStats": {
+      "detected": "Detected Items",
+      "confidence": "Overall Confidence",
+      "reviewNeeded": "Needs Review"
+    },
+    "lowConfidenceBanner": "Some items have low recognition confidence. Please verify quantities before confirming.",
+    "tableHeaders": {
+      "item": "Menu Item",
+      "qty": "Qty",
+      "confidence": "Confidence"
+    },
+    "confirmAndDeduct": "Confirm & Deduct Stock",
+    "resultTitle": "Deduction Completed",
+    "totalPortionsSold": "Total Portions Sold",
+    "ingredientsDeductedTitle": "Ingredients Deducted from Stock",
+    "theoreticalUpdatedTitle": "Theoretical Balances Updated",
+    "theoreticalDeductionNotice": "Theoretical stock levels have been automatically updated via BOM recipes.",
+    "retakeButton": "Scan Another Receipt"
   }
 }

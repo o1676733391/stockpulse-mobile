@@ -5,6 +5,7 @@ export const Colors = {
     primary: '#059669', // Emerald 600
     subtle: '#ecfdf5',  // Emerald 50
     light: '#d1fae5',   // Emerald 100
+    primaryLight: '#d1fae5', // Emerald 100 alias
     dark: '#047857',    // Emerald 700
   },
   warning: {
@@ -41,12 +42,14 @@ export const Colors = {
     textPrimary: '#0f172a',   // Slate 900
     textSecondary: '#64748b', // Slate 500
     textTertiary: '#94a3b8',  // Slate 400
+    textMuted: '#94a3b8',     // Slate 400 alias
     border: '#e2e8f0',        // Slate 200
     borderLight: '#f1f5f9',   // Slate 100
     surface: '#f8fafc',       // Slate 50
     card: '#ffffff',          // White
     darkCard: '#1e293b',      // Slate 800
     darkSurface: '#0f172a',   // Slate 900
+    background: '#f8fafc',    // Slate 50
   },
   // Backward compatibility for basic theme hooks
   light: {
@@ -88,19 +91,39 @@ export const Fonts = Platform.select({
   },
 });
 
-export type BadgeVariant = 'green' | 'amber' | 'red' | 'blue' | 'gray' | 'purple' | 'orange';
+export type BadgeVariant =
+  | 'green'
+  | 'amber'
+  | 'red'
+  | 'blue'
+  | 'gray'
+  | 'purple'
+  | 'orange'
+  | 'critical'
+  | 'warning'
+  | 'info'
+  | 'success'
+  | 'neutral'
+  | 'default';
 
 export const BadgeStyles: Record<BadgeVariant, { bg: string; text: string; border: string }> = {
-  green:  { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
-  amber:  { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
-  red:    { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
-  blue:   { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
-  gray:   { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' },
-  purple: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
-  orange: { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+  green:    { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
+  amber:    { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+  red:      { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
+  blue:     { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+  gray:     { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' },
+  purple:   { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
+  orange:   { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+  critical: { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
+  warning:  { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+  info:     { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+  success:  { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
+  neutral:  { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' },
+  default:  { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' },
 };
 
 export const Spacing = {
+  xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
@@ -108,6 +131,8 @@ export const Spacing = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
+  '2xl': 24,
+  '3xl': 32,
   // Legacy numeric aliases
   half: 2,
   one: 4,
@@ -254,6 +279,18 @@ export const Shadows = {
     },
     android: {
       elevation: 6,
+    },
+    default: {},
+  }),
+  modal: Platform.select({
+    ios: {
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+    },
+    android: {
+      elevation: 8,
     },
     default: {},
   }),
