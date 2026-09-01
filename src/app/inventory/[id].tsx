@@ -197,7 +197,7 @@ export default function InventoryDetailScreen() {
         showBack
         right={
           <Pressable
-            onPress={() => {}}
+            onPress={() => setShowEditModal(true)}
             style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Pencil" size={18} color={Colors.neutral.textPrimary} />
