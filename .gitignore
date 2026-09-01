@@ -52,4 +52,5 @@ scripts/
 server/test-vertex.js
 server/test-all-models.ts
 server/test/test-models.js
-
+docs/
+supabase/
