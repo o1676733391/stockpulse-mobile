@@ -418,17 +418,22 @@ export default function DashboardScreen() {
         {/* Urgent Critical Alerts Banner */}
         {!alertDismissed && !loading && criticalExpiry.length > 0 && (
           <View style={styles.criticalAlertBanner}>
-            <View style={styles.criticalAlertIconBox}>
-              <VectorIcon name="AlertTriangle" size={18} color="#FFFFFF" strokeWidth={2.4} />
-            </View>
-            <View style={styles.criticalAlertContent}>
-              <Text style={styles.criticalAlertTitle}>
-                {criticalExpiry.length} {criticalExpiry.length === 1 ? 'Batch Expiring Tomorrow' : 'Batches Expiring Soon'}
-              </Text>
-              <Text style={styles.criticalAlertSub}>
-                {formatCurrency(totalValueAtRisk)} potential loss. Promo discount recommended.
-              </Text>
-            </View>
+            <Pressable
+              onPress={() => router.push('/expiration' as any)}
+              style={({ pressed }) => [styles.criticalAlertPressable, pressed && styles.pressed]}
+            >
+              <View style={styles.criticalAlertIconBox}>
+                <VectorIcon name="AlertTriangle" size={18} color="#FFFFFF" strokeWidth={2.4} />
+              </View>
+              <View style={styles.criticalAlertContent}>
+                <Text style={styles.criticalAlertTitle}>
+                  {criticalExpiry.length} {criticalExpiry.length === 1 ? 'Batch Expiring Tomorrow' : 'Batches Expiring Soon'}
+                </Text>
+                <Text style={styles.criticalAlertSub}>
+                  {formatCurrency(totalValueAtRisk)} potential loss. Promo discount recommended.
+                </Text>
+              </View>
+            </Pressable>
             <Pressable onPress={() => setAlertDismissed(true)} hitSlop={8} style={styles.dismissBtn}>
               <VectorIcon name="X" size={16} color="rgba(255,255,255,0.7)" />
             </Pressable>
@@ -512,7 +517,11 @@ export default function DashboardScreen() {
 
         {/* ── Today's Tasks ── */}
         <View style={styles.section}>
-          <SectionHeader title={t('dashboard.urgentTasksTitle')} action={t('common.viewAll')} />
+          <SectionHeader
+            title={t('dashboard.urgentTasksTitle')}
+            action={t('common.viewAll')}
+            onAction={() => router.push('/notifications' as any)}
+          />
           <View style={styles.taskStack}>
             {tasks.map((task) => (
               <Card
@@ -726,11 +735,13 @@ export default function DashboardScreen() {
             )}
 
             {recentActivities.map((item, index) => (
-              <View
+              <Pressable
                 key={item.id}
-                style={[
+                onPress={() => router.push(`/notifications/${item.id}` as any)}
+                style={({ pressed }) => [
                   styles.activityRow,
                   index < recentActivities.length - 1 && styles.activityBorder,
+                  pressed && styles.pressed,
                 ]}
               >
                 <View style={styles.activityIconWrapper}>
@@ -746,7 +757,7 @@ export default function DashboardScreen() {
                 </View>
 
                 <Text style={styles.activityTime}>{item.time}</Text>
-              </View>
+              </Pressable>
             ))}
           </Card>
         </View>
@@ -877,6 +888,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.85)',
     marginTop: 1,
+  },
+  criticalAlertPressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
   },
   dismissBtn: {
     padding: 4,
