@@ -4,12 +4,15 @@ import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import {
+  expirationService,
   INITIAL_EXPIRY_ITEMS,
   INITIAL_SUGGESTIONS,
 } from '@/services/expirationService';
+import { ExpiryItem } from '@/types/expiration';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,7 +22,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function daysLabel(days: number) {
-  if (days <= 0) return 'Expired';
+  if (days < 0) return 'Expired';
+  if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `${days}d left`;
 }
@@ -29,19 +33,63 @@ export default function ExpirationItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const item = useMemo(() => {
-    return INITIAL_EXPIRY_ITEMS.find((i) => i.id === id) ?? INITIAL_EXPIRY_ITEMS[0];
+  const [item, setItem] = useState<ExpiryItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [adjustQty, setAdjustQty] = useState(0);
+  const [markedUsed, setMarkedUsed] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadItem() {
+      try {
+        setLoading(true);
+        const list = await expirationService.getExpiringItems();
+        const found = list.find((i) => i.id === id);
+        if (mounted) {
+          const finalItem = found || INITIAL_EXPIRY_ITEMS.find((i) => i.id === id) || {
+            id: id || 'exp-01',
+            name: 'Inventory Batch',
+            batch: 'N/A',
+            qty: 1,
+            unit: 'units',
+            days: 0,
+            value: 0,
+            costPerUnit: 0,
+            status: 'critical',
+            category: 'General',
+            expiryDate: '',
+          };
+          setItem(finalItem);
+          setAdjustQty(finalItem.qty);
+        }
+      } catch {
+        if (mounted) {
+          const fallback = INITIAL_EXPIRY_ITEMS.find((i) => i.id === id) || INITIAL_EXPIRY_ITEMS[0];
+          setItem(fallback);
+          setAdjustQty(fallback.qty);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    loadItem();
+    return () => { mounted = false; };
   }, [id]);
 
   const suggestion = useMemo(() => {
-    if (item.suggestionId === undefined || item.suggestionId < 0) return null;
+    if (!item || item.suggestionId === undefined || item.suggestionId < 0) return null;
     return INITIAL_SUGGESTIONS.find((s) => s.id === item.suggestionId) ?? null;
   }, [item]);
 
-  const [adjustQty, setAdjustQty] = useState(item.qty);
-  const [markedUsed, setMarkedUsed] = useState(false);
+  if (loading || !item) {
+    return (
+      <View style={[styles.screen, { backgroundColor: Colors.neutral.surface, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.brand.primary} />
+      </View>
+    );
+  }
 
-  const isCritical = item.status === 'critical';
+  const isCritical = item.status === 'critical' || item.days <= 2;
   const daysBarWidth = item.days > 0 ? Math.min(100, (item.days / 7) * 100) : 0;
   const wasteSavedValue = adjustQty * item.costPerUnit;
 
@@ -118,7 +166,13 @@ export default function ExpirationItemDetailScreen() {
                 isCritical ? { color: Colors.critical.dark } : { color: Colors.warning.dark },
               ]}
             >
-              {item.days === 1 ? 'Expires Tomorrow' : `Expires in ${item.days} days`}
+              {item.days < 0
+                ? 'Expired'
+                : item.days === 0
+                ? 'Expires Today'
+                : item.days === 1
+                ? 'Expires Tomorrow'
+                : `Expires in ${item.days} days`}
             </Text>
           </View>
 

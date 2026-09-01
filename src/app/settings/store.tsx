@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
+import { PermissionRestrictedModal } from '@/components/ui/permission-restricted-modal';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TopBar } from '@/components/ui/top-bar';
@@ -24,8 +25,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function StoreSettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { refreshUser } = useAuth();
+  const { user, role, refreshUser } = useAuth();
   const { t, metadata } = useI18n();
+
+  const canEditStore =
+    (role as string) === 'admin' ||
+    (role as string) === 'superadmin' ||
+    (role as string) === 'manager';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,6 +45,8 @@ export default function StoreSettingsScreen() {
   const [units, setUnits] = useState<'Metric' | 'Imperial'>('Metric');
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [permissionErrorMessage, setPermissionErrorMessage] = useState<string | null>(null);
 
   const loadStoreData = async () => {
     try {
@@ -95,6 +103,18 @@ export default function StoreSettingsScreen() {
 
   const handleSave = async () => {
     if (!store) return;
+
+    if (!canEditStore) {
+      setPermissionErrorMessage(
+        t('settings.permissionDeniedMessage', {
+          role: role || 'auditor',
+          defaultValue: `User role '${role || 'auditor'}' lacks the required role: [admin, superadmin, manager] to modify store settings.`,
+        })
+      );
+      setShowPermissionModal(true);
+      return;
+    }
+
     try {
       setSaving(true);
       const updated = await settingsService.updateStoreSettings({
@@ -111,7 +131,17 @@ export default function StoreSettingsScreen() {
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2500);
     } catch (err: any) {
-      Alert.alert('Save Failed', err?.message || 'Failed to update store settings');
+      const msg = err?.message || 'Failed to update store settings';
+      if (
+        msg.toLowerCase().includes('lacks the required role') ||
+        msg.toLowerCase().includes('forbidden') ||
+        err?.status === 403
+      ) {
+        setPermissionErrorMessage(msg);
+        setShowPermissionModal(true);
+      } else {
+        Alert.alert('Save Failed', msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -191,6 +221,29 @@ export default function StoreSettingsScreen() {
             <Text style={styles.switchStoreBtnText}>Switch Active Location</Text>
           </Pressable>
         </Card>
+
+        {/* ── Read-Only Warning Banner for Restricted Roles ── */}
+        {!canEditStore && (
+          <View style={styles.readOnlyBanner}>
+            <View style={styles.readOnlyIconBox}>
+              <VectorIcon name="ShieldAlert" size={18} color={Colors.warning.dark} />
+            </View>
+            <View style={styles.readOnlyTextCol}>
+              <Text style={styles.readOnlyTitle}>
+                {t('settings.readOnlyBannerTitle', {
+                  role: (role || 'auditor').toUpperCase(),
+                  defaultValue: `Read-Only Access (${(role || 'auditor').toUpperCase()})`,
+                })}
+              </Text>
+              <Text style={styles.readOnlySub}>
+                {t('settings.readOnlyBannerSub', {
+                  defaultValue:
+                    'Your role permits inspection of store parameters. Saving updates requires Manager or Admin privileges.',
+                })}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* ── Localization & Regional Card ── */}
         <Card style={styles.formCard}>
@@ -284,9 +337,22 @@ export default function StoreSettingsScreen() {
 
         <Pressable
           onPress={handleSave}
-          style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.saveBtn,
+            !canEditStore && styles.saveBtnRestricted,
+            pressed && styles.pressed,
+          ]}
         >
-          <Text style={styles.saveBtnText}>{t('common.save')}</Text>
+          {!canEditStore && (
+            <View style={{ marginRight: 6 }}>
+              <VectorIcon name="Lock" size={14} color="#ffffff" />
+            </View>
+          )}
+          <Text style={styles.saveBtnText}>
+            {!canEditStore
+              ? t('settings.restrictedSave', { defaultValue: 'Restricted (Read-Only)' })
+              : t('common.save')}
+          </Text>
         </Pressable>
       </View>
 
@@ -341,6 +407,15 @@ export default function StoreSettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Permission Restricted Modal Popup ── */}
+      <PermissionRestrictedModal
+        visible={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
+        currentRole={role}
+        requiredRoles={['admin', 'superadmin', 'manager']}
+        message={permissionErrorMessage || undefined}
+      />
     </View>
   );
 }
@@ -507,10 +582,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...Shadows.card,
   },
+  saveBtnRestricted: {
+    backgroundColor: Colors.neutral.textTertiary,
+    flexDirection: 'row',
+  },
   saveBtnText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  readOnlyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.warning.subtle,
+    borderColor: Colors.warning.light,
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+  },
+  readOnlyIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.md,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  readOnlyTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  readOnlyTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.warning.dark,
+  },
+  readOnlySub: {
+    fontSize: 11,
+    color: Colors.neutral.textSecondary,
+    lineHeight: 15,
   },
   modalOverlay: {
     flex: 1,

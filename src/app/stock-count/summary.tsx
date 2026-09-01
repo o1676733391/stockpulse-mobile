@@ -26,7 +26,7 @@ export default function CountSummaryScreen() {
   const insets = useSafeAreaInsets();
   const { t, formatCurrency } = useI18n();
   const params = useLocalSearchParams<{ sessionId?: string }>();
-  const sessionId = params.sessionId || 'sess-demo-01';
+  const sessionId = params.sessionId || (stockCountService as any).activeSessionId || '';
 
   const [items, setItems] = useState<CountSummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,11 @@ export default function CountSummaryScreen() {
   const [approved, setApproved] = useState(false);
 
   const loadData = React.useCallback(async () => {
+    if (!sessionId) {
+      setLoading(false);
+      setErrorMsg('No active count audit session found');
+      return;
+    }
     try {
       setLoading(true);
       setErrorMsg(null);

@@ -98,7 +98,7 @@ export class InventoryController {
   }
 
   @Post()
-  @Roles('superadmin', 'manager')
+  @Roles('admin', 'superadmin', 'manager')
   @RequirePermissions('inventory:manage_skus')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new inventory SKU definition in the store' })
@@ -118,7 +118,7 @@ export class InventoryController {
   }
 
   @Patch(':id')
-  @Roles('superadmin', 'manager')
+  @Roles('admin', 'superadmin', 'manager')
   @RequirePermissions('inventory:manage_skus')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -142,7 +142,7 @@ export class InventoryController {
   }
 
   @Delete(':id')
-  @Roles('superadmin', 'manager')
+  @Roles('admin', 'superadmin', 'manager')
   @RequirePermissions('inventory:manage_skus')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Archive (soft-delete) an inventory SKU' })
@@ -162,7 +162,7 @@ export class InventoryController {
   }
 
   @Post(':id/adjustments')
-  @Roles('superadmin', 'manager', 'supervisor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
   @RequirePermissions('inventory:adjust')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Execute manual stock adjustment with ledger sync' })

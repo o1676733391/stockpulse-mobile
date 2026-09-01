@@ -48,7 +48,7 @@ export class StockCountController {
   constructor(private readonly stockCountService: StockCountService) {}
 
   @Get('active-items')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('stock_count:conduct')
   @ApiOperation({ summary: 'Get active inventory items ready for stock count' })
   @ApiResponse({
@@ -62,7 +62,7 @@ export class StockCountController {
   }
 
   @Post('sessions')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('stock_count:conduct')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Instantiate a new stocktaking audit session' })
@@ -80,7 +80,7 @@ export class StockCountController {
   }
 
   @Post('sessions/:sessionId/cancel')
-  @Roles('superadmin', 'manager', 'supervisor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
   @RequirePermissions('stock_count:conduct')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel active stock count session' })
@@ -98,7 +98,7 @@ export class StockCountController {
   }
 
   @Put('sessions/:sessionId/items/:itemId')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('stock_count:conduct')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Record counted quantity for SKU in active session' })
@@ -120,7 +120,7 @@ export class StockCountController {
   }
 
   @Post('sessions/:sessionId/items')
-  @Roles('superadmin', 'manager', 'supervisor', 'staff')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('stock_count:conduct')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Bulk record multiple counted SKUs' })
@@ -134,7 +134,7 @@ export class StockCountController {
   }
 
   @Post('sessions/:sessionId/submit')
-  @Roles('superadmin', 'manager', 'supervisor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
   @RequirePermissions('stock_count:conduct')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -156,7 +156,7 @@ export class StockCountController {
   }
 
   @Get('sessions/:sessionId/variance')
-  @Roles('superadmin', 'manager', 'supervisor', 'auditor')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'auditor')
   @RequirePermissions('stock_count:conduct')
   @ApiOperation({ summary: 'Get variance breakdown for count session' })
   @ApiParam({ name: 'sessionId', description: 'Stock count session UUID' })
@@ -173,7 +173,7 @@ export class StockCountController {
   }
 
   @Post('sessions/:sessionId/variance/approve')
-  @Roles('superadmin', 'manager')
+  @Roles('admin', 'superadmin', 'manager')
   @RequirePermissions('stock_count:approve')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

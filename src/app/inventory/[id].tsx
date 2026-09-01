@@ -1,3 +1,4 @@
+import { AddEditInventoryModal } from '@/components/inventory/add-edit-item-modal';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { LineChart } from '@/components/ui/charts';
@@ -39,13 +40,13 @@ export default function InventoryDetailScreen() {
       label: 'POS Deduction',
     },
     manual_count: {
-      icon: 'CheckCircle',
+      icon: 'ClipboardCheck',
       bg: Colors.brand.subtle,
       color: Colors.brand.primary,
-      label: t('navigation.stockCount'),
+      label: 'Stock Count',
     },
-    goods_receipt: {
-      icon: 'Plus',
+    ocr_invoice: {
+      icon: 'FileText',
       bg: Colors.purple.subtle,
       color: Colors.purple.main,
       label: t('scan.title'),
@@ -62,6 +63,7 @@ export default function InventoryDetailScreen() {
   const [item, setItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -399,9 +401,10 @@ export default function InventoryDetailScreen() {
             {(item.batches && item.batches.length > 0) ? (
               (item.batches || []).map((batch) => {
                 const days = batch.daysRemaining ?? 99;
+                const isExpired = days < 0;
                 const isCritical = days <= 2;
                 const isWarning = days <= 7 && !isCritical;
-                const variant = isCritical ? 'red' : isWarning ? 'amber' : 'green';
+                const variant = isExpired ? 'red' : isCritical ? 'red' : isWarning ? 'amber' : 'green';
 
                 return (
                   <View key={batch.id} style={styles.batchItem}>
@@ -413,20 +416,26 @@ export default function InventoryDetailScreen() {
                         </Text>
                       </View>
                       <Badge variant={variant}>
-                        {days === 1
-                          ? t('common.today')
-                          : t('inventory.daysRemaining', { count: days })}
+                        {isExpired
+                          ? 'Expired'
+                          : days === 0
+                          ? 'Today'
+                          : days === 1
+                          ? 'Tomorrow'
+                          : `${days}d left`}
                       </Badge>
                     </View>
 
                     <View style={styles.batchProgressRow}>
                       <ProgressBar
-                        value={Math.max(0, 30 - days)}
+                        value={isExpired ? 0 : Math.max(1, Math.min(30, days))}
                         max={30}
                         variant={variant}
                         height={4}
                       />
-                      <Text style={styles.batchProgressText}>{days}d</Text>
+                      <Text style={styles.batchProgressText}>
+                        {isExpired ? 'Expired' : days === 0 ? 'Today' : `${days}d`}
+                      </Text>
                     </View>
                   </View>
                 );
@@ -496,7 +505,7 @@ export default function InventoryDetailScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => {}}
+            onPress={() => setShowEditModal(true)}
             style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Pencil" size={18} color={Colors.neutral.textPrimary} />
@@ -522,6 +531,16 @@ export default function InventoryDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* ── Edit Item Modal ── */}
+      <AddEditInventoryModal
+        visible={showEditModal}
+        initialItem={item}
+        onClose={() => setShowEditModal(false)}
+        onSuccess={(updatedItem) => {
+          setItem((prev) => (prev ? { ...prev, ...updatedItem } : updatedItem));
+        }}
+      />
     </View>
   );
 }

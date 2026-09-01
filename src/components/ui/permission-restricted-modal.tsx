@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   backdropPressable: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   card: {
     width: '100%',

@@ -36,6 +36,9 @@ export interface InventoryItem {
   status: StockStatus;
   batches: Batch[];
   transactions: Transaction[];
+  storageArea?: string;
+  shelfLifeDays?: number;
+  barcode?: string;
 }
 
 export interface DashboardTask {

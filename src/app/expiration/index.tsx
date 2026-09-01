@@ -24,8 +24,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const TABS = ['Critical', 'Soon', 'All'] as const;
 type TabType = (typeof TABS)[number];
 
+function formatDateStr(dateStr?: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
 function daysLabel(days: number) {
-  if (days <= 0) return 'Expired';
+  if (days < 0) return 'Expired';
+  if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `${days}d left`;
 }
@@ -226,11 +238,15 @@ export default function ExpirationScreen() {
                       color={isCritical ? Colors.critical.main : Colors.warning.dark}
                     />
                     <Text style={styles.bbdDateText}>
-                      {item.days <= 0
+                      {item.days < 0
                         ? 'Expired'
-                        : `Expires ${item.days === 1 ? 'tomorrow' : `in ${item.days} days`}`}
+                        : item.days === 0
+                        ? 'Expires today'
+                        : item.days === 1
+                        ? 'Expires tomorrow'
+                        : `Expires in ${item.days} days`}
                       {' · '}
-                      <Text style={styles.bbdDateBold}>{item.expiryDate}</Text>
+                      <Text style={styles.bbdDateBold}>{formatDateStr(item.expiryDate)}</Text>
                     </Text>
                   </View>
 

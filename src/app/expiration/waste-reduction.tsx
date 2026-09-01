@@ -4,7 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n/I18nContext';
-import { INITIAL_SUGGESTIONS } from '@/services/expirationService';
+import { expirationService, INITIAL_SUGGESTIONS } from '@/services/expirationService';
 import { WasteSuggestion } from '@/types/expiration';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -18,7 +18,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function daysLabel(days: number) {
-  if (days <= 0) return 'Expired';
+  if (days < 0) return 'Expired';
+  if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `${days}d left`;
 }
@@ -36,6 +37,17 @@ export default function WasteReductionScreen() {
   );
   const [usedIds, setUsedIds] = useState<Set<number>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
+
+  React.useEffect(() => {
+    expirationService
+      .getWasteSuggestions()
+      .then((res) => {
+        if (res && res.length > 0) {
+          setSuggestions(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const visibleSuggestions = suggestions.filter((s) => !dismissedIds.has(s.id));
 

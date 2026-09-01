@@ -111,10 +111,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   leftIcon: {
-    marginRight: Spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rightIcon: {
-    marginLeft: Spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Sizes
   size_sm: {
@@ -168,6 +170,8 @@ const styles = StyleSheet.create({
   textBase: {
     fontWeight: '700',
     textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   textSize_sm: {
     fontSize: 13,

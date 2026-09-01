@@ -167,7 +167,33 @@ export class RealExpirationService implements IExpirationService {
   async getExpiringItems(): Promise<ExpiryItem[]> {
     try {
       const res = await apiClient.get<any>('/inventory/expiring-batches');
-      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+      const rawList: any[] = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+      return rawList.map((b: any) => {
+        const rawExpiry = b.expiryDate || b.expiry_date || '';
+        let days = b.days;
+        if (days === undefined && rawExpiry) {
+          days = Math.ceil((new Date(rawExpiry).getTime() - Date.now()) / 86400000);
+        }
+        days = typeof days === 'number' ? days : 0;
+        const qty = Number(b.qty ?? b.quantity ?? 0);
+        const costPerUnit = Number(b.costPerUnit ?? b.cost_per_unit ?? 0);
+        const value = Number(b.value ?? (qty * costPerUnit));
+
+        return {
+          id: b.id,
+          name: b.name || b.inventory_items?.name || 'Ingredient',
+          batch: b.batch || b.batch_number || 'N/A',
+          qty,
+          unit: b.unit || b.inventory_items?.unit || 'units',
+          days,
+          value: parseFloat(value.toFixed(2)),
+          costPerUnit,
+          status: b.status || (days <= 2 ? 'critical' : 'soon'),
+          category: b.category || (b.inventory_items?.categories as any)?.name || 'General',
+          expiryDate: rawExpiry,
+          suggestionId: b.suggestionId ?? b.suggestion_id,
+        };
+      });
     } catch (err) {
       logDebugFallback('ExpirationService', '/inventory/expiring-batches', err);
       throw err;
@@ -177,7 +203,15 @@ export class RealExpirationService implements IExpirationService {
   async getExpiredItems(): Promise<ExpiredItem[]> {
     try {
       const res = await apiClient.get<any>('/inventory/expired-batches');
-      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+      const rawList: any[] = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
+      return rawList.map((b: any) => ({
+        id: b.id,
+        name: b.name || b.inventory_items?.name || 'Expired Item',
+        batch: b.batch || b.batch_number || 'N/A',
+        qty: typeof b.qty === 'string' ? b.qty : `${b.qty ?? b.quantity ?? 0} ${b.unit ?? b.inventory_items?.unit ?? 'units'}`,
+        value: typeof b.value === 'string' ? b.value : `€${Number(b.lossValue ?? b.value ?? 0).toFixed(2)}`,
+        expiryDate: b.expiryDate || b.expiredDate || b.expiry_date || 'Past',
+      }));
     } catch (err) {
       logDebugFallback('ExpirationService', '/inventory/expired-batches', err);
       throw err;

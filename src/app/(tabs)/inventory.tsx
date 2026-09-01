@@ -1,3 +1,4 @@
+import { AddEditInventoryModal } from '@/components/inventory/add-edit-item-modal';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ChipRow } from '@/components/ui/chip-row';
@@ -66,6 +67,7 @@ export default function InventoryListScreen() {
   const [statusFilter, setStatusFilter] = useState(STATUS_FILTERS[0]);
   const [sort, setSort] = useState<'Name' | 'Physical' | 'Expiry'>('Name');
   const [showSortModal, setShowSortModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchItems = useCallback(async () => {
     if (hasNoStore) {
@@ -149,7 +151,7 @@ export default function InventoryListScreen() {
         large
         right={
           <Pressable
-            onPress={() => {}}
+            onPress={() => setShowAddModal(true)}
             style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Plus" size={22} color={Colors.neutral.textPrimary} strokeWidth={2.2} />
@@ -367,6 +369,16 @@ export default function InventoryListScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* ── Add Item Modal ── */}
+      <AddEditInventoryModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={(newItem) => {
+          setItems((prev) => [newItem, ...prev]);
+          fetchItems();
+        }}
+      />
     </View>
   );
 }

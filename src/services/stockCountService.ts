@@ -147,22 +147,28 @@ export class RealStockCountService implements IStockCountService {
 
   async submitCount(
     counts: Record<string, number>,
-    sessionId: string = this.activeSessionId
+    sessionId?: string
   ): Promise<{ success: boolean; summary: CountSummaryItem[]; sessionId?: string }> {
+    let activeId = sessionId || this.activeSessionId;
+    if (!activeId || activeId.trim() === '') {
+      const newSession = await this.startSession('Daily Closing Count', 'blind');
+      activeId = newSession.id;
+    }
+
     try {
       const itemsPayload = Object.entries(counts).map(([itemId, countedQuantity]) => ({
         itemId,
         countedQuantity,
       }));
 
-      await apiClient.post(`/stock-counts/sessions/${sessionId}/submit`, {
+      await apiClient.post(`/stock-counts/sessions/${activeId}/submit`, {
         items: itemsPayload,
       });
 
-      const variances = await this.getVariances(sessionId);
-      return { success: true, summary: variances.items, sessionId };
+      const variances = await this.getVariances(activeId);
+      return { success: true, summary: variances.items, sessionId: activeId };
     } catch (err) {
-      logDebugFallback('StockCountService', `/stock-counts/sessions/${sessionId}/submit [POST]`, err);
+      logDebugFallback('StockCountService', `/stock-counts/sessions/${activeId}/submit [POST]`, err);
       throw err;
     }
   }

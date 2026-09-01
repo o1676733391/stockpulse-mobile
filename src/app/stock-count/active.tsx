@@ -4,7 +4,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { stockCountService } from '@/services/stockCountService';
 import { StockCountItem } from '@/types/inventory';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,7 +23,9 @@ export default function ActiveStockCountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isIOS = Platform.OS === 'ios';
+  const params = useLocalSearchParams<{ sessionId?: string }>();
 
+  const [sessionId, setSessionId] = useState<string>(params.sessionId || '');
   const [items, setItems] = useState<StockCountItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -36,6 +38,17 @@ export default function ActiveStockCountScreen() {
     try {
       setLoading(true);
       setErrorMsg(null);
+      let currentSessionId = sessionId;
+      if (!currentSessionId) {
+        try {
+          const session = await stockCountService.startSession('Daily Closing Count', 'blind');
+          currentSessionId = session.id;
+          setSessionId(session.id);
+        } catch {
+          // If startSession fails, fallback to active items
+        }
+      }
+
       const res = await stockCountService.getActiveItems();
       setItems(res);
     } catch (err: any) {
@@ -43,7 +56,7 @@ export default function ActiveStockCountScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     loadItems();
@@ -116,10 +129,10 @@ export default function ActiveStockCountScreen() {
             formattedCounts[it.id] = parseFloat(val);
           }
         });
-        const result = await stockCountService.submitCount(formattedCounts);
+        const result = await stockCountService.submitCount(formattedCounts, sessionId);
         router.replace({
           pathname: '/stock-count/summary',
-          params: { sessionId: result.sessionId || 'sess-demo-01' },
+          params: { sessionId: result.sessionId || sessionId },
         } as any);
       } catch (err: any) {
         Alert.alert('Count Submission Error', err?.message || 'Failed to submit inventory counts');
@@ -693,6 +706,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   skipBtn: {
     flexDirection: 'row',
@@ -707,6 +722,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: Colors.neutral.textSecondary,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   primarySaveBtn: {
     flex: 1,
@@ -728,6 +745,8 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   btnDisabled: {
     opacity: 0.35,

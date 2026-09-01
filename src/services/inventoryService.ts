@@ -19,10 +19,11 @@ export function normalizeInventoryItem(raw: any): InventoryItem {
         quantity: Number(b.quantity || 0),
         expiryDate: b.expiryDate || b.expiry_date || '',
         daysRemaining:
-          b.daysRemaining ??
-          (b.expiry_date
-            ? Math.max(0, Math.ceil((new Date(b.expiry_date).getTime() - Date.now()) / 86400000))
-            : 99),
+          b.daysRemaining !== undefined
+            ? Number(b.daysRemaining)
+            : b.expiry_date || b.expiryDate
+            ? Math.ceil((new Date(b.expiry_date || b.expiryDate).getTime() - Date.now()) / 86400000)
+            : 99,
       }))
     : [];
 
