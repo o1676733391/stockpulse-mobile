@@ -8,11 +8,13 @@ import {
 import { PaginatedResponseDto } from '../common/dto/pagination.dto';
 import {
   ConfirmOcrDeductionDto,
+  CreateOcrItemDto,
   OcrDocumentDetailResponseDto,
   OcrDocumentResponseDto,
   PresignedUploadRequestDto,
   QueryOcrDocumentsDto,
   RejectOcrDocumentDto,
+  RevertOcrDocumentDto,
   TriggerScanRequestDto,
   UpdateOcrItemDto,
 } from './dto/ocr.dto';
@@ -134,7 +136,7 @@ export class OcrService {
       }
     }
 
-    await this.processBuffer(doc.id, sampleBuffer, 'image/jpeg', storeId);
+    await this.processBuffer(doc.id, sampleBuffer, 'image/jpeg', storeId, documentType);
 
     const docDetail = await this.getDocumentById(doc.id, storeId);
 
@@ -146,19 +148,22 @@ export class OcrService {
   }
 
   /**
-   * Core processing engine invoking Gemini Multimodal Vision.
+   * Core processing engine invoking Gemini Multimodal Vision with invoice-type prompt.
    */
   async processBuffer(
     documentId: string,
     buffer: Buffer,
     mimeType: string,
     storeId: string,
+    documentType?: string,
   ): Promise<void> {
     try {
       const provider = this.ocrProviderFactory.getProvider();
-      this.logger.log(`Executing OCR via provider: ${provider.providerName} (${provider.providerId})`);
+      this.logger.log(
+        `Executing OCR via provider: ${provider.providerName} (${provider.providerId}) with docType=${documentType}`,
+      );
 
-      const extraction = await provider.processDocument(buffer, mimeType);
+      const extraction = await provider.processDocument(buffer, mimeType, { documentType });
       await this.ocrRepository.saveExtractionResults(documentId, storeId, extraction);
     } catch (err: any) {
       this.logger.error(`OCR processing failed: ${err.message}`, err.stack);
@@ -212,7 +217,44 @@ export class OcrService {
   }
 
   /**
-   * Confirm document review and apply automatic BOM recipe deductions to inventory.
+   * Add manual line item to document during review.
+   */
+  async addDocumentItem(
+    documentId: string,
+    dto: CreateOcrItemDto,
+    storeId: string,
+  ): Promise<any> {
+    const doc = await this.getDocumentById(documentId, storeId);
+    if (doc.status !== 'review_pending' && doc.status !== 'processing') {
+      throw new BadRequestException(
+        `Cannot add item for document with status '${doc.status}' (must be 'review_pending')`,
+      );
+    }
+
+    return this.ocrRepository.addDocumentItem(documentId, dto, storeId);
+  }
+
+  /**
+   * Delete an extracted line item during review.
+   */
+  async deleteDocumentItem(
+    documentId: string,
+    itemId: string,
+    storeId: string,
+  ): Promise<{ success: boolean }> {
+    const doc = await this.getDocumentById(documentId, storeId);
+    if (doc.status !== 'review_pending' && doc.status !== 'processing') {
+      throw new BadRequestException(
+        `Cannot delete item for document with status '${doc.status}' (must be 'review_pending')`,
+      );
+    }
+
+    await this.ocrRepository.deleteDocumentItem(documentId, itemId, storeId);
+    return { success: true };
+  }
+
+  /**
+   * Confirm document review and apply inventory updates (deductions for order invoices, additions for goods receipts).
    */
   async confirmReview(
     documentId: string,
@@ -256,8 +298,25 @@ export class OcrService {
       theoreticalAfter: number;
     }> = [];
 
-    // Execute BOM deductions if requested and preview deductions exist
-    if (dto.applyDeductions !== false && doc.bomPreview.length > 0) {
+    const isGoodsReceipt =
+      doc.documentType === 'goods_receipt' ||
+      doc.documentType === 'supplier_invoice';
+
+    if (isGoodsReceipt) {
+      // Execute Goods Receipt inbound stock additions
+      appliedDeductions = await this.ocrRepository.applyGoodsReceiptStock(
+        storeId,
+        documentId,
+        actorId,
+        doc.extractedLines.map((l) => ({
+          description: l.description,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+          matchedItemId: l.matchedRecipeId,
+        })),
+      );
+    } else if (dto.applyDeductions !== false && doc.bomPreview.length > 0) {
+      // Execute Order Invoice BOM Deductions
       const deductions = doc.bomPreview.map((b) => ({
         ocrItemId: b.ocrItemId,
         itemId: b.ingredientId,
@@ -280,8 +339,76 @@ export class OcrService {
     return {
       success: true,
       documentId,
-      message: 'OCR document confirmed and inventory deductions synchronized in PostgreSQL ledger',
+      message: isGoodsReceipt
+        ? 'Goods receipt confirmed and warehouse inventory stock updated'
+        : 'OCR order invoice confirmed and BOM recipe deductions synchronized',
       deductions: appliedDeductions,
+    };
+  }
+
+  /**
+   * Revert and rollback warehouse stock for an already confirmed document (e.g. duplicate scan).
+   */
+  async revertReview(
+    documentId: string,
+    dto: RevertOcrDocumentDto,
+    storeId: string,
+    actorId: string,
+  ): Promise<{ success: boolean; revertedItemsCount: number; message: string }> {
+    this.logger.log(`OcrService.revertReview: doc=${documentId} by actor=${actorId}`);
+    const doc = await this.getDocumentById(documentId, storeId);
+    if (doc.status !== 'confirmed') {
+      throw new BadRequestException(
+        `Cannot revert document with status '${doc.status}' (must be 'confirmed')`,
+      );
+    }
+
+    return this.ocrRepository.revertWarehouseStock(storeId, documentId, actorId, dto?.reason);
+  }
+
+  /**
+   * Delete OCR document record with optional warehouse rollback if confirmed.
+   */
+  async deleteDocument(
+    documentId: string,
+    storeId: string,
+    actorId?: string,
+    revertWarehouse: boolean = false,
+  ): Promise<{ success: boolean }> {
+    const doc = await this.getDocumentById(documentId, storeId);
+    if (doc.status === 'confirmed' && revertWarehouse && actorId) {
+      await this.ocrRepository.revertWarehouseStock(
+        storeId,
+        documentId,
+        actorId,
+        'Auto-rollback upon document deletion',
+      );
+    }
+
+    await this.ocrRepository.deleteDocument(documentId, storeId);
+    return { success: true };
+  }
+
+  /**
+   * Check if an identical document number was already confirmed in the store.
+   */
+  async checkDuplicate(
+    documentId: string,
+    storeId: string,
+  ): Promise<{ isDuplicate: boolean; duplicateDoc?: OcrDocumentResponseDto | null }> {
+    const doc = await this.getDocumentById(documentId, storeId);
+    const docNum = doc.metadata?.documentNumber;
+    if (!docNum || !docNum.trim()) return { isDuplicate: false };
+
+    const duplicate = await this.ocrRepository.findDuplicateConfirmedDocument(
+      storeId,
+      docNum,
+      documentId,
+    );
+
+    return {
+      isDuplicate: !!duplicate,
+      duplicateDoc: duplicate,
     };
   }
 

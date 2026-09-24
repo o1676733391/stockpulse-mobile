@@ -300,7 +300,7 @@ export class StockCountRepository implements IStockCountRepository {
         total_items: totalTargetItems,
         total_counted: 0,
         started_at: new Date().toISOString(),
-        notes: data.notes,
+        notes: data.notes || data.name,
         created_by: actorId,
         updated_by: actorId,
       })
@@ -360,7 +360,7 @@ export class StockCountRepository implements IStockCountRepository {
         {
           stock_count_id: sessionId,
           item_id: dto.itemId,
-          counted_quantity: dto.countedQty,
+          counted_quantity: dto.countedQty ?? dto.countedQuantity ?? 0,
           unit: dto.unit,
           notes: dto.notes,
           recorded_at: new Date().toISOString(),
@@ -428,7 +428,7 @@ export class StockCountRepository implements IStockCountRepository {
     const payload = items.map((i) => ({
       stock_count_id: sessionId,
       item_id: i.itemId,
-      counted_quantity: i.countedQty,
+      counted_quantity: i.countedQty ?? i.countedQuantity ?? 0,
       unit: i.unit,
       notes: i.notes,
       recorded_at: new Date().toISOString(),

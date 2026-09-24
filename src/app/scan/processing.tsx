@@ -3,6 +3,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n/I18nContext';
 import { ocrService } from '@/services/ocrService';
+import { OcrDocumentType } from '@/types/ocr';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,19 +17,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function OCRProcessingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ imageUri?: string }>();
+  const params = useLocalSearchParams<{ imageUri?: string; documentType?: string }>();
   const { t } = useI18n();
   const [currentStep, setCurrentStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
 
-  const STEPS = [
-    t('scan.processingSteps.uploading'),
-    t('scan.processingSteps.reading'),
-    t('scan.processingSteps.detecting'),
-    t('scan.processingSteps.calculating'),
-    t('scan.processingSteps.mapping'),
-  ];
+  const documentType: OcrDocumentType =
+    params.documentType === 'goods_receipt' ? 'goods_receipt' : 'order_invoice';
+
+  const STEPS =
+    documentType === 'goods_receipt'
+      ? [
+          t('scan.processingSteps.uploading'),
+          t('scan.processingSteps.reading'),
+          t('scan.processingSteps.detecting'),
+          'Verifying delivery items & purchase costs...',
+          'Matching raw materials with warehouse catalog...',
+        ]
+      : [
+          t('scan.processingSteps.uploading'),
+          t('scan.processingSteps.reading'),
+          t('scan.processingSteps.detecting'),
+          t('scan.processingSteps.calculating'),
+          t('scan.processingSteps.mapping'),
+        ];
 
   const executeOcr = async () => {
     setErrorMsg(null);
@@ -40,7 +53,7 @@ export default function OCRProcessingScreen() {
     }, 600);
 
     try {
-      const result = await ocrService.processImage(params.imageUri);
+      const result = await ocrService.processImage(params.imageUri, documentType);
       clearInterval(stepInterval);
       setCurrentStep(STEPS.length - 1);
       setIsProcessing(false);
@@ -51,6 +64,7 @@ export default function OCRProcessingScreen() {
           params: {
             reportId: result.report.id,
             reportData: JSON.stringify(result.report),
+            documentType,
           },
         } as any);
       }, 400);
@@ -63,7 +77,7 @@ export default function OCRProcessingScreen() {
 
   useEffect(() => {
     executeOcr();
-  }, [params.imageUri]);
+  }, [params.imageUri, params.documentType]);
 
   return (
     <View
@@ -93,7 +107,11 @@ export default function OCRProcessingScreen() {
           {errorMsg ? 'Extraction Failed' : t('scan.processingTitle')}
         </Text>
         <Text style={[styles.subText, errorMsg ? styles.subTextError : null]}>
-          {errorMsg ? errorMsg : t('scan.processingSubtitle')}
+          {errorMsg
+            ? errorMsg
+            : documentType === 'goods_receipt'
+            ? 'Gemini AI Agent is extracting delivery lines, quantities, and vendor details...'
+            : t('scan.processingSubtitle')}
         </Text>
       </View>
 
@@ -148,8 +166,8 @@ export default function OCRProcessingScreen() {
             style={{ marginBottom: Spacing.sm }}
           />
           <Button
-            label="Back to Camera"
-            variant="outline"
+            label="Cancel"
+            variant="ghost"
             size="md"
             fullWidth
             onPress={() => router.replace('/(tabs)/scan' as any)}
@@ -157,12 +175,10 @@ export default function OCRProcessingScreen() {
         </View>
       )}
 
-      {/* ── Bottom Secure Notice ── */}
-      <View style={styles.bottomNotice}>
-        <VectorIcon name="Shield" size={14} color="#64748b" />
-        <Text style={styles.noticeText}>
-          Receipt processing with Vertex AI Gemini 2.5 Flash
-        </Text>
+      {/* ── Security / Compliance Badge ── */}
+      <View style={styles.securityBadge}>
+        <VectorIcon name="ShieldCheck" size={14} color="#10b981" />
+        <Text style={styles.securityText}>Gemini Document AI · Confidential & Encrypted</Text>
       </View>
     </View>
   );
@@ -179,16 +195,16 @@ const styles = StyleSheet.create({
   orbContainer: {
     width: 120,
     height: 120,
-    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.lg,
+    alignItems: 'center',
+    marginTop: Spacing.xxl,
   },
   outerGlow: {
     position: 'absolute',
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(217, 119, 6, 0.15)',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
   },
   outerGlowError: {
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
@@ -197,99 +213,109 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#064e3b',
     borderWidth: 2,
-    borderColor: Colors.brand.primary,
-    alignItems: 'center',
+    borderColor: '#059669',
     justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.elevated,
   },
   innerOrbError: {
-    borderColor: '#ef4444',
+    backgroundColor: '#450a0a',
+    borderColor: '#dc2626',
   },
   orbText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.brand.primary,
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#34d399',
+    letterSpacing: 1,
   },
   titleBox: {
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
   },
   titleText: {
+    ...Typography.pageTitle,
+    color: '#ffffff',
     fontSize: 22,
-    fontWeight: '700',
-    color: '#f8fafc',
-    marginBottom: Spacing.xs,
     textAlign: 'center',
+    marginBottom: Spacing.xs,
   },
   subText: {
-    fontSize: 14,
+    ...Typography.body,
     color: '#94a3b8',
     textAlign: 'center',
+    fontSize: 14,
     lineHeight: 20,
   },
   subTextError: {
-    color: '#fca5a5',
+    color: '#f87171',
   },
   stepsContainer: {
     width: '100%',
-    backgroundColor: '#1e293b',
-    borderRadius: Radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: Radius.xl,
     padding: Spacing.lg,
+    gap: Spacing.md,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.xs + 2,
+    gap: Spacing.md,
   },
   stepIndicator: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#334155',
-    alignItems: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
-    marginRight: Spacing.md,
+    alignItems: 'center',
   },
   stepIndicatorDone: {
     backgroundColor: '#10b981',
   },
   stepIndicatorActive: {
-    backgroundColor: 'rgba(217, 119, 6, 0.2)',
-    borderWidth: 1,
-    borderColor: Colors.brand.primary,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   stepDotPending: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#64748b',
   },
   stepLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748b',
+    flex: 1,
   },
   stepLabelDone: {
-    color: '#f8fafc',
+    color: '#e2e8f0',
     fontWeight: '500',
   },
   stepLabelActive: {
-    color: Colors.brand.primary,
-    fontWeight: '600',
+    color: '#ffffff',
+    fontWeight: '700',
   },
   errorActionBox: {
     width: '100%',
     paddingHorizontal: Spacing.md,
   },
-  bottomNotice: {
+  securityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
   },
-  noticeText: {
-    fontSize: 12,
+  securityText: {
+    fontSize: 11,
     color: '#64748b',
+    fontWeight: '500',
   },
 });

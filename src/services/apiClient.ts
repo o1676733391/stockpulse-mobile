@@ -42,7 +42,7 @@ function resolveApiBaseUrl(): string {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
-const ENABLE_MOCK_FALLBACK = false;
+const ENABLE_MOCK_FALLBACK = process.env.EXPO_PUBLIC_ENABLE_MOCK_FALLBACK === 'true';
 const DEBUG_API = process.env.EXPO_PUBLIC_DEBUG_API !== 'false';
 
 let authToken: string | null = null;
@@ -83,7 +83,11 @@ export function logApiError(
 }
 
 export function logDebugFallback(serviceName: string, endpoint: string, error: any): void {
-  logApiError(serviceName, endpoint, 'UNKNOWN', 'ERROR', error);
+  const methodMatch = endpoint.match(/\[([A-Z]+)\]/);
+  const method = methodMatch ? methodMatch[1] : (error?.method || 'UNKNOWN');
+  const cleanEndpoint = endpoint.replace(/\s*\[[A-Z]+\]\s*/, '');
+  const status = error?.status ? String(error.status) : 'ERROR';
+  logApiError(serviceName, cleanEndpoint, method, status, error);
 }
 
 export interface ApiRequestOptions extends RequestInit {
@@ -181,7 +185,12 @@ async function request<T>(endpoint: string, options: ApiRequestOptions = {}): Pr
       } catch {
         parsedError = { error: errorBody || `HTTP error ${response.status}` };
       }
-      const message = parsedError.message || parsedError.detail || parsedError.error || `HTTP error ${response.status}`;
+      let message = parsedError.message || parsedError.detail || parsedError.error || `HTTP error ${response.status}`;
+      if (Array.isArray(parsedError.invalidParams) && parsedError.invalidParams.length > 0) {
+        message = `${message} (${parsedError.invalidParams.join(', ')})`;
+      } else if (Array.isArray(parsedError.message)) {
+        message = parsedError.message.join(', ');
+      }
       const err: any = new Error(message);
       err.status = response.status;
       err.responseBody = parsedError;
@@ -230,6 +239,10 @@ export const apiClient = {
   },
 
   del<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
+    return request<T>(endpoint, { ...options, method: 'DELETE' });
+  },
+
+  delete<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
     return request<T>(endpoint, { ...options, method: 'DELETE' });
   },
 

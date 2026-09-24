@@ -4,6 +4,7 @@ import { NoStoreState } from '@/components/ui/no-store-state';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
+import { OcrDocumentType } from '@/types/ocr';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -27,6 +28,7 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [flash, setFlash] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [selectedInvoiceType, setSelectedInvoiceType] = useState<OcrDocumentType>('order_invoice');
   const cameraRef = useRef<any>(null);
   const isIOS = Platform.OS === 'ios';
 
@@ -44,7 +46,10 @@ export default function ScanScreen() {
         if (photo?.uri) {
           router.push({
             pathname: '/scan/processing',
-            params: { imageUri: photo.uri },
+            params: {
+              imageUri: photo.uri,
+              documentType: selectedInvoiceType,
+            },
           } as any);
           return;
         }
@@ -69,7 +74,10 @@ export default function ScanScreen() {
         const selectedUri = result.assets[0].uri;
         router.push({
           pathname: '/scan/processing',
-          params: { imageUri: selectedUri },
+          params: {
+            imageUri: selectedUri,
+            documentType: selectedInvoiceType,
+          },
         } as any);
       }
     } catch (err: any) {
@@ -132,7 +140,7 @@ export default function ScanScreen() {
             </View>
             <Text style={styles.permissionHeading}>Camera Access Needed</Text>
             <Text style={styles.permissionSub}>
-              StockPulse uses the camera to scan POS daily register receipts and parse line items using Gemini Vision.
+              StockPulse uses the camera to scan POS daily register receipts and supplier goods receipts with Gemini Vision.
             </Text>
             <Button
               label="Enable Camera"
@@ -175,20 +183,100 @@ export default function ScanScreen() {
 
         <Text style={styles.topTitle}>{t('scan.title')}</Text>
 
-        <Pressable
-          onPress={() => setFlash(!flash)}
-          style={({ pressed }) => [
-            styles.flashBtn,
-            flash && styles.flashBtnActive,
-            pressed && styles.pressed,
-          ]}
-        >
-          <VectorIcon
-            name="Zap"
-            size={18}
-            color={flash ? '#0f172a' : '#ffffff'}
-          />
-        </Pressable>
+        <View style={styles.topRightActions}>
+          <Pressable
+            onPress={() => router.push('/scan/history' as any)}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && styles.pressed,
+            ]}
+          >
+            <VectorIcon
+              name="History"
+              size={18}
+              color="#ffffff"
+            />
+          </Pressable>
+
+          <Pressable
+            onPress={() => setFlash(!flash)}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              flash && styles.flashBtnActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            <VectorIcon
+              name="Zap"
+              size={18}
+              color={flash ? '#0f172a' : '#ffffff'}
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* ── Floating Invoice Type Selector Bar ── */}
+      <View
+        style={[
+          styles.typeSelectorContainer,
+          { top: (insets.top > 0 ? insets.top : 20) + 54 },
+        ]}
+      >
+        <View style={styles.typeSelectorPill}>
+          <Pressable
+            onPress={() => setSelectedInvoiceType('order_invoice')}
+            style={[
+              styles.typeTab,
+              selectedInvoiceType === 'order_invoice' && styles.typeTabActive,
+            ]}
+          >
+            <VectorIcon
+              name="FileText"
+              size={14}
+              color={selectedInvoiceType === 'order_invoice' ? '#ffffff' : '#94a3b8'}
+            />
+            <Text
+              style={[
+                styles.typeTabText,
+                selectedInvoiceType === 'order_invoice' && styles.typeTabTextActive,
+              ]}
+              numberOfLines={1}
+            >
+              {t('scan.invoiceTypes.orderInvoice')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setSelectedInvoiceType('goods_receipt')}
+            style={[
+              styles.typeTab,
+              selectedInvoiceType === 'goods_receipt' && styles.typeTabActive,
+            ]}
+          >
+            <VectorIcon
+              name="Truck"
+              size={14}
+              color={selectedInvoiceType === 'goods_receipt' ? '#ffffff' : '#94a3b8'}
+            />
+            <Text
+              style={[
+                styles.typeTabText,
+                selectedInvoiceType === 'goods_receipt' && styles.typeTabTextActive,
+              ]}
+              numberOfLines={1}
+            >
+              {t('scan.invoiceTypes.goodsReceipt')}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.typeHintBadge}>
+          <Text style={styles.typeHintText}>
+            {selectedInvoiceType === 'order_invoice'
+              ? t('scan.invoiceTypes.orderInvoiceDesc')
+              : t('scan.invoiceTypes.goodsReceiptDesc')}
+          </Text>
+        </View>
       </View>
 
       {/* ── Bottom Controls Bar ── */}
@@ -248,9 +336,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.xl,
+    paddingTop: 60,
   },
   permissionFallback: {
     backgroundColor: '#0f172a',
+    paddingTop: 0,
   },
   permissionCard: {
     backgroundColor: Colors.neutral.card,
@@ -284,7 +374,7 @@ const styles = StyleSheet.create({
   },
   frameWrapper: {
     width: 280,
-    height: 380,
+    height: 360,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -348,7 +438,7 @@ const styles = StyleSheet.create({
   guidanceText: {
     ...Typography.caption,
     color: '#e2e8f0',
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
     textAlign: 'center',
     paddingHorizontal: Spacing.lg,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -366,6 +456,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
     backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 10,
   },
   cancelBtn: {
     flexDirection: 'row',
@@ -383,7 +474,12 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 17,
   },
-  flashBtn: {
+  topRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -394,6 +490,59 @@ const styles = StyleSheet.create({
   flashBtnActive: {
     backgroundColor: '#fbbf24',
   },
+  typeSelectorContainer: {
+    position: 'absolute',
+    left: Spacing.md,
+    right: Spacing.md,
+    zIndex: 9,
+    alignItems: 'center',
+  },
+  typeSelectorPill: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: Radius.full,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    width: '100%',
+    maxWidth: 380,
+  },
+  typeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: Radius.full,
+    gap: 6,
+  },
+  typeTabActive: {
+    backgroundColor: Colors.brand.primary,
+    ...Shadows.sm,
+  },
+  typeTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  typeTabTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  typeHintBadge: {
+    marginTop: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    maxWidth: '92%',
+  },
+  typeHintText: {
+    fontSize: 11,
+    color: '#cbd5e1',
+    textAlign: 'center',
+  },
   bottomControls: {
     position: 'absolute',
     bottom: 0,
@@ -403,6 +552,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
     gap: Spacing.md,
+    zIndex: 10,
   },
   controlRow: {
     flexDirection: 'row',

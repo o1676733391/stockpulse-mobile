@@ -24,12 +24,14 @@ export default function OCRResultScreen() {
     deductionsJson?: string;
     reportNumber?: string;
     date?: string;
+    documentType?: string;
   }>();
   const { t, formatCurrency } = useI18n();
 
+  const isGoodsReceipt = params.documentType === 'goods_receipt';
   const portionsSold = params.totalPortions || '0';
   const menuCount = params.menuItemCount || '0';
-  const reportNumber = params.reportNumber || 'POS-REPORT';
+  const reportNumber = params.reportNumber || (isGoodsReceipt ? 'GR-RECEIPT' : 'POS-REPORT');
   const reportDate = params.date || new Date().toISOString().slice(0, 10);
 
   const deductions = useMemo(() => {
@@ -64,10 +66,12 @@ export default function OCRResultScreen() {
           <View style={styles.headerTitleBox}>
             <View style={styles.titleWithIcon}>
               <VectorIcon name="CheckCircle2" size={22} color={Colors.brand.primary} />
-              <Text style={styles.headerTitle}>{t('scan.resultTitle')}</Text>
+              <Text style={styles.headerTitle}>
+                {isGoodsReceipt ? t('scan.goodsReceivedTitle') : t('scan.resultTitle')}
+              </Text>
             </View>
             <Text style={styles.headerSub}>
-              {reportDate} · Report #{reportNumber} · Stock Ledger Updated
+              {reportDate} · #{reportNumber} · Stock Ledger Updated
             </Text>
           </View>
           <Badge variant="green">{t('stockCount.status.completed')}</Badge>
@@ -77,16 +81,20 @@ export default function OCRResultScreen() {
         <View style={styles.statGrid}>
           <View style={styles.statBoxGreen}>
             <Text style={styles.statValueGreen}>{menuCount}</Text>
-            <Text style={styles.statLabelGreen}>{t('scan.reviewStats.detected')}</Text>
+            <Text style={styles.statLabelGreen}>
+              {isGoodsReceipt ? 'Received Items' : t('scan.reviewStats.detected')}
+            </Text>
           </View>
           <View style={styles.statBoxBlue}>
             <Text style={styles.statValueBlue}>{portionsSold}</Text>
-            <Text style={styles.statLabelBlue}>{t('scan.totalPortionsSold')}</Text>
+            <Text style={styles.statLabelBlue}>
+              {isGoodsReceipt ? 'Total Inbound Units' : t('scan.totalPortionsSold')}
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* ── Scrollable Body with Deductions List ── */}
+      {/* ── Scrollable Body with Ledger Impact ── */}
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -94,28 +102,52 @@ export default function OCRResultScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <SectionHeader title={t('scan.ingredientsDeductedTitle')} />
+        <SectionHeader
+          title={
+            isGoodsReceipt
+              ? 'Raw Materials Received into Stock'
+              : t('scan.ingredientsDeductedTitle')
+          }
+        />
 
         {deductions.length > 0 ? (
           <View style={styles.deductionList}>
             {deductions.map((d, idx) => (
               <Card key={`${d.name}-${idx}`} style={styles.deductionCard}>
                 <View style={styles.deductionRow}>
-                  {/* Downward Icon Box */}
-                  <View style={styles.downIconBox}>
-                    <VectorIcon name="TrendingDown" size={16} color={Colors.critical.main} />
+                  {/* Delta Direction Icon Box */}
+                  <View
+                    style={[
+                      styles.deltaIconBox,
+                      isGoodsReceipt ? styles.upIconBox : styles.downIconBox,
+                    ]}
+                  >
+                    <VectorIcon
+                      name={isGoodsReceipt ? 'TrendingUp' : 'TrendingDown'}
+                      size={16}
+                      color={isGoodsReceipt ? '#059669' : Colors.critical.main}
+                    />
                   </View>
 
                   {/* Name & Subtitle */}
                   <View style={styles.deductionInfo}>
                     <Text style={styles.deductionName}>{d.name}</Text>
-                    <Text style={styles.deductionSub}>PostgreSQL Ledger BOM deduction</Text>
+                    <Text style={styles.deductionSub}>
+                      {isGoodsReceipt
+                        ? 'Warehouse inbound delivery lot receipt'
+                        : 'PostgreSQL Ledger BOM deduction'}
+                    </Text>
                   </View>
 
                   {/* Delta & Cost */}
                   <View style={styles.deductionValues}>
-                    <Text style={styles.deductionDelta}>
-                      {d.delta} {d.unit}
+                    <Text
+                      style={[
+                        styles.deductionDelta,
+                        isGoodsReceipt && { color: '#059669' },
+                      ]}
+                    >
+                      {isGoodsReceipt ? `+${Math.abs(d.delta)}` : d.delta} {d.unit}
                     </Text>
                     <Text style={styles.deductionCost}>{d.cost}</Text>
                   </View>
@@ -126,9 +158,13 @@ export default function OCRResultScreen() {
         ) : (
           <Card style={styles.emptyCard}>
             <VectorIcon name="Check" size={24} color="#10b981" />
-            <Text style={styles.emptyTitle}>No Raw BOM Deductions</Text>
+            <Text style={styles.emptyTitle}>
+              {isGoodsReceipt ? 'Inventory Stock Updated' : 'No Raw BOM Deductions'}
+            </Text>
             <Text style={styles.emptySub}>
-              All items were processed. No recipe ingredient reductions were required.
+              {isGoodsReceipt
+                ? 'Delivery items have been processed and added to active warehouse inventory.'
+                : 'All items were processed. No recipe ingredient reductions were required.'}
             </Text>
           </Card>
         )}
@@ -137,10 +173,14 @@ export default function OCRResultScreen() {
         <View style={styles.theoreticalNotice}>
           <View style={styles.noticeHeaderRow}>
             <VectorIcon name="CheckCircle2" size={16} color={Colors.brand.dark} />
-            <Text style={styles.noticeTitle}>{t('scan.theoreticalUpdatedTitle')}</Text>
+            <Text style={styles.noticeTitle}>
+              {isGoodsReceipt ? 'Warehouse Stock Synchronized' : t('scan.theoreticalUpdatedTitle')}
+            </Text>
           </View>
           <Text style={styles.noticeText}>
-            {t('scan.theoreticalDeductionNotice')}
+            {isGoodsReceipt
+              ? t('scan.goodsReceivedNotice')
+              : t('scan.theoreticalDeductionNotice')}
           </Text>
         </View>
       </ScrollView>
@@ -198,16 +238,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    marginBottom: Spacing.xxs,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: Colors.neutral.textPrimary,
   },
   headerSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.neutral.textSecondary,
+    marginTop: 2,
   },
   statGrid: {
     flexDirection: 'row',
@@ -215,43 +255,45 @@ const styles = StyleSheet.create({
   },
   statBoxGreen: {
     flex: 1,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    backgroundColor: Colors.brand.light,
     borderRadius: Radius.md,
     padding: Spacing.sm,
     alignItems: 'center',
   },
   statValueGreen: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#059669',
+    fontWeight: '800',
+    color: Colors.brand.dark,
   },
   statLabelGreen: {
     fontSize: 11,
-    color: '#059669',
+    fontWeight: '600',
+    color: Colors.brand.dark,
     marginTop: 2,
   },
   statBoxBlue: {
     flex: 1,
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: '#eff6ff',
     borderRadius: Radius.md,
     padding: Spacing.sm,
     alignItems: 'center',
   },
   statValueBlue: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#2563eb',
+    fontWeight: '800',
+    color: '#1e40af',
   },
   statLabelBlue: {
     fontSize: 11,
-    color: '#2563eb',
+    fontWeight: '600',
+    color: '#1e40af',
     marginTop: 2,
   },
   content: {
     padding: Spacing.md,
   },
   deductionList: {
-    gap: Spacing.xs,
+    gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
   deductionCard: {
@@ -261,26 +303,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  downIconBox: {
+  deltaIconBox: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
+  },
+  downIconBox: {
+    backgroundColor: '#fee2e2',
+  },
+  upIconBox: {
+    backgroundColor: '#d1fae5',
   },
   deductionInfo: {
     flex: 1,
   },
   deductionName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.neutral.textPrimary,
   },
   deductionSub: {
     fontSize: 11,
-    color: Colors.neutral.textTertiary,
+    color: Colors.neutral.textSecondary,
     marginTop: 1,
   },
   deductionValues: {
@@ -288,7 +335,7 @@ const styles = StyleSheet.create({
   },
   deductionDelta: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.critical.main,
   },
   deductionCost: {
@@ -297,7 +344,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   emptyCard: {
-    padding: Spacing.lg,
+    padding: Spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.md,
@@ -306,26 +353,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.sm,
   },
   emptySub: {
     fontSize: 12,
     color: Colors.neutral.textSecondary,
     textAlign: 'center',
-    marginTop: Spacing.xxs,
+    marginTop: 4,
   },
   theoreticalNotice: {
-    backgroundColor: 'rgba(217, 119, 6, 0.08)',
-    borderRadius: Radius.md,
+    backgroundColor: Colors.brand.light,
+    borderRadius: Radius.lg,
     padding: Spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.brand.primary,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
   },
   noticeHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.xs,
+    gap: 6,
+    marginBottom: 4,
   },
   noticeTitle: {
     fontSize: 13,
@@ -334,7 +381,7 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     fontSize: 12,
-    color: Colors.neutral.textSecondary,
+    color: Colors.brand.dark,
     lineHeight: 18,
   },
   fixedBottom: {
@@ -342,19 +389,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.neutral.surface,
-    padding: Spacing.md,
+    backgroundColor: Colors.neutral.card,
     borderTopWidth: 1,
     borderTopColor: Colors.neutral.border,
-    ...Shadows.card,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    gap: Spacing.xs,
+    ...Shadows.elevated,
   },
   primaryBtn: {
     backgroundColor: Colors.brand.primary,
+    paddingVertical: 14,
     borderRadius: Radius.md,
-    paddingVertical: Spacing.sm + 4,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xs,
   },
   primaryBtnText: {
     color: '#ffffff',
@@ -362,18 +410,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryBtn: {
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.neutral.surface,
+    borderWidth: 1,
+    borderColor: Colors.neutral.border,
+    paddingVertical: 12,
     borderRadius: Radius.md,
-    paddingVertical: Spacing.sm + 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryBtnText: {
-    color: Colors.neutral.textSecondary,
+    color: Colors.neutral.textPrimary,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.75,
   },
 });

@@ -34,11 +34,11 @@ export class PresignedUploadRequestDto {
   fileSizeBytes!: number;
 
   @ApiProperty({
-    example: 'pos_z_report',
-    enum: ['pos_z_report', 'supplier_invoice', 'generic_receipt'],
+    example: 'order_invoice',
+    enum: ['pos_z_report', 'supplier_invoice', 'generic_receipt', 'order_invoice', 'goods_receipt'],
     description: 'Document classification type',
   })
-  @IsEnum(['pos_z_report', 'supplier_invoice', 'generic_receipt'])
+  @IsEnum(['pos_z_report', 'supplier_invoice', 'generic_receipt', 'order_invoice', 'goods_receipt'])
   documentType!: string;
 }
 
@@ -52,11 +52,11 @@ export class TriggerScanRequestDto {
   storagePath?: string;
 
   @ApiPropertyOptional({
-    example: 'pos_z_report',
-    enum: ['pos_z_report', 'supplier_invoice', 'generic_receipt'],
+    example: 'order_invoice',
+    enum: ['pos_z_report', 'supplier_invoice', 'generic_receipt', 'order_invoice', 'goods_receipt'],
   })
   @IsOptional()
-  @IsEnum(['pos_z_report', 'supplier_invoice', 'generic_receipt'])
+  @IsEnum(['pos_z_report', 'supplier_invoice', 'generic_receipt', 'order_invoice', 'goods_receipt'])
   documentType?: string;
 
   @ApiPropertyOptional({ description: 'Optional base64 image representation' })
@@ -119,12 +119,50 @@ export class ConfirmOcrDeductionDto {
   reportId?: string;
 }
 
+export class CreateOcrItemDto {
+  @ApiProperty({ example: 'Espresso Double Shot', description: 'Item description' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  description!: string;
+
+  @ApiProperty({ example: 1, description: 'Quantity' })
+  @IsNumber()
+  @Min(0.0001)
+  quantity!: number;
+
+  @ApiPropertyOptional({ example: 3.5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
+
+  @ApiPropertyOptional({ example: 3.5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  totalPrice?: number;
+
+  @ApiPropertyOptional({ example: '01915dfa-b1c4-7221-9988-51b72e04e077', description: 'Matched BOM recipe or inventory item UUID' })
+  @IsOptional()
+  @IsUUID('all')
+  matchedRecipeId?: string | null;
+}
+
 export class RejectOcrDocumentDto {
   @ApiProperty({ example: 'Image is unreadable or blurry', description: 'Mandatory rejection reason' })
   @IsString()
   @IsNotEmpty({ message: 'A rejection reason is required' })
   @MaxLength(500)
   reason!: string;
+}
+
+export class RevertOcrDocumentDto {
+  @ApiPropertyOptional({ example: 'Scanned identical duplicate invoice', description: 'Reason for voiding and reverting warehouse stock' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }
 
 export class QueryOcrDocumentsDto extends PaginationQueryDto {

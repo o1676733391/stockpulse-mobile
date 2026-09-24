@@ -245,7 +245,7 @@ export class RealAuthService implements IAuthService {
       // Fetch authoritative profile from backend /api/v1/auth/me
       let userProfile: AuthUser;
       try {
-        const backendProfile = await apiClient.get<any>('/auth/me');
+        const backendProfile = await apiClient.get<any>('/auth/me', { skipStoreHeader: true });
         userProfile = {
           id: backendProfile.id || authData.user.id,
           name: backendProfile.name || authData.user.user_metadata?.name || email.split('@')[0],
@@ -510,7 +510,7 @@ export class RealAuthService implements IAuthService {
 
       // Fetch fresh profile from backend
       try {
-        const backendProfile = await apiClient.get<any>('/auth/me');
+        const backendProfile = await apiClient.get<any>('/auth/me', { skipStoreHeader: true });
         const user: AuthUser = {
           id: backendProfile.id || sessionData.session.user.id,
           name: backendProfile.name || sessionData.session.user.user_metadata?.name || 'User',

@@ -15,6 +15,7 @@ import { InventoryItem } from '@/types/inventory';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -188,6 +189,32 @@ export default function InventoryDetailScreen() {
     };
   }, [item.physicalStock, item.theoreticalStock, range]);
 
+  const handleDelete = () => {
+    if (!item) return;
+    Alert.alert(
+      t('inventory.deleteConfirmTitle', { defaultValue: 'Delete Raw Material' }),
+      t('inventory.deleteConfirmMessage', {
+        name: item.name,
+        defaultValue: `Are you sure you want to delete '${item.name}'? This will archive it from active inventory.`,
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await inventoryService.deleteItem(item.id);
+              router.replace('/(tabs)/inventory' as any);
+            } catch (err: any) {
+              Alert.alert('Delete Failed', err?.message || 'Unable to delete item');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       {/* ── TopBar ── */}
@@ -196,12 +223,20 @@ export default function InventoryDetailScreen() {
         subtitle={`${t('inventory.sku', { sku: item.sku })} · ${item.category}`}
         showBack
         right={
-          <Pressable
-            onPress={() => setShowEditModal(true)}
-            style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
-          >
-            <VectorIcon name="Pencil" size={18} color={Colors.neutral.textPrimary} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={() => setShowEditModal(true)}
+              style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+            >
+              <VectorIcon name="Pencil" size={18} color={Colors.neutral.textPrimary} />
+            </Pressable>
+            <Pressable
+              onPress={handleDelete}
+              style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+            >
+              <VectorIcon name="Trash2" size={18} color={Colors.critical.main} />
+            </Pressable>
+          </View>
         }
       />
 
@@ -510,6 +545,14 @@ export default function InventoryDetailScreen() {
           >
             <VectorIcon name="Pencil" size={18} color={Colors.neutral.textPrimary} />
             <Text style={styles.secondaryActionText}>{t('common.edit')}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleDelete}
+            style={({ pressed }) => [styles.dangerActionBtn, pressed && styles.pressed]}
+          >
+            <VectorIcon name="Trash2" size={18} color={Colors.critical.main} />
+            <Text style={styles.dangerActionText}>{t('common.delete')}</Text>
           </Pressable>
 
           {item.status === 'low' || item.status === 'critical' ? (
@@ -948,6 +991,23 @@ const styles = StyleSheet.create({
   },
   warningActionText: {
     color: Colors.warning.dark,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  dangerActionBtn: {
+    flex: 1,
+    backgroundColor: Colors.critical.subtle,
+    borderColor: Colors.critical.light,
+    borderWidth: 1,
+    borderRadius: Radius.xl,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    ...Shadows.card,
+  },
+  dangerActionText: {
+    color: Colors.critical.main,
     fontSize: 12,
     fontWeight: '700',
   },

@@ -120,6 +120,24 @@ export default function MoreScreen() {
         title: t('settings.groups.storeOperations'),
         items: [
           {
+            icon: 'History',
+            label: t('scan.scanHistory'),
+            sub: t('scan.history.subtitle'),
+            route: '/scan/history',
+            iconBg: '#e0e7ff',
+            iconColor: '#4338ca',
+            permission: 'ocr:scan',
+          },
+          {
+            icon: 'BookOpen',
+            label: t('recipes.title'),
+            sub: t('recipes.subtitle'),
+            route: '/recipes',
+            iconBg: '#fef3c7',
+            iconColor: '#b45309',
+            permission: 'inventory:view',
+          },
+          {
             icon: 'Truck',
             label: t('analytics.suppliers'),
             sub: t('analytics.suppliers'),

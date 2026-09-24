@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ConfidenceBar } from '@/components/ui/confidence-bar';
@@ -6,16 +7,17 @@ import { PermissionGate } from '@/components/ui/permission-gate';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n/I18nContext';
+import { inventoryService } from '@/services/inventoryService';
 import { ocrService } from '@/services/ocrService';
 import { Recipe, recipeService } from '@/services/recipeService';
-import { OcrItem, OcrReport } from '@/types/ocr';
+import { InventoryItem } from '@/types/inventory';
+import { OcrDuplicateCheckResult, OcrItem, OcrReport } from '@/types/ocr';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,8 +30,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function OCRReviewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ reportId?: string; reportData?: string }>();
-  const { t, formatNumber } = useI18n();
+  const params = useLocalSearchParams<{
+    reportId?: string;
+    reportData?: string;
+    documentType?: string;
+  }>();
+  const { t, formatCurrency, formatDate } = useI18n();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,29 +48,45 @@ export default function OCRReviewScreen() {
     return null;
   });
 
+  const isGoodsReceipt =
+    (report?.documentType || params.documentType) === 'goods_receipt';
+
   const [items, setItems] = useState<OcrItem[]>(() => report?.items || []);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [duplicateCheck, setDuplicateCheck] = useState<OcrDuplicateCheckResult | null>(null);
 
-  // Modals for editing mapping or adding new items
+  // Edit Line Item Modal State
   const [editingItem, setEditingItem] = useState<OcrItem | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedNewRecipeId, setSelectedNewRecipeId] = useState<string>('');
-  const [newQty, setNewQty] = useState('1');
+  const [editItemName, setEditItemName] = useState('');
+  const [editItemQty, setEditItemQty] = useState('1');
+  const [editItemUnitPrice, setEditItemUnitPrice] = useState('');
+  const [editItemLinkedId, setEditItemLinkedId] = useState<string>('');
 
-  // Load recipes and document on mount
+  // Add Line Item Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQty, setNewItemQty] = useState('1');
+  const [newItemUnitPrice, setNewItemUnitPrice] = useState('');
+  const [newItemLinkedId, setNewItemLinkedId] = useState<string>('');
+
+  // Load recipes, inventory, document and duplicate status on mount
   useEffect(() => {
     async function loadData() {
       try {
         setIsLoading(true);
-        const [fetchedRecipes, docResult] = await Promise.all([
+        const docId = params.reportId || report?.id;
+
+        const [fetchedRecipes, fetchedInv, docResult, dupResult] = await Promise.all([
           recipeService.getRecipes().catch(() => []),
-          params.reportId ? ocrService.getDocument(params.reportId).catch(() => null) : Promise.resolve(null),
+          inventoryService.getItems().catch(() => []),
+          docId ? ocrService.getDocument(docId).catch(() => null) : Promise.resolve(null),
+          docId ? ocrService.checkDuplicate(docId).catch(() => ({ isDuplicate: false })) : Promise.resolve({ isDuplicate: false }),
         ]);
 
         setRecipes(fetchedRecipes);
-        if (fetchedRecipes.length > 0) {
-          setSelectedNewRecipeId(fetchedRecipes[0].id);
-        }
+        setInventoryItems(fetchedInv);
+        setDuplicateCheck(dupResult);
 
         if (docResult?.report) {
           setReport(docResult.report);
@@ -95,63 +117,127 @@ export default function OCRReviewScreen() {
   };
 
   const handleRemoveItem = (id: string) => {
-    setItems((prev) => prev.filter((it) => it.id !== id));
+    Alert.alert(
+      'Remove Line Item',
+      'Are you sure you want to remove this item from the invoice?',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            const docId = params.reportId || report?.id;
+            setItems((prev) => prev.filter((it) => it.id !== id));
+            if (docId) {
+              try {
+                await ocrService.deleteItem(docId, id);
+              } catch {
+                // Non-blocking sync error
+              }
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const handleConfirmMapping = (recipeId: string) => {
+  const openEditModal = (item: OcrItem) => {
+    setEditingItem(item);
+    setEditItemName(item.item);
+    setEditItemQty(String(item.qty || 1));
+    setEditItemUnitPrice(item.unitPrice !== undefined ? String(item.unitPrice) : '');
+    setEditItemLinkedId(item.recipeId || '');
+  };
+
+  const handleSaveEditItem = async () => {
     if (!editingItem) return;
-    const targetRecipe = recipes.find((r) => r.id === recipeId);
-    if (!targetRecipe) return;
+    const qty = parseFloat(editItemQty) || 1;
+    const unitPrice = editItemUnitPrice ? parseFloat(editItemUnitPrice) : undefined;
 
-    setItems((prev) =>
-      prev.map((it) =>
-        it.id === editingItem.id
-          ? {
-              ...it,
-              recipeId: targetRecipe.id,
-              item: targetRecipe.name,
-              confidence: 100, // Manual correction confirms mapping
-            }
-          : it
-      )
-    );
+    const updatedItem: OcrItem = {
+      ...editingItem,
+      item: editItemName.trim() || editingItem.item,
+      qty,
+      unitPrice,
+      recipeId: editItemLinkedId || undefined,
+      confidence: 100, // Manual review confirmed
+    };
 
-    // Synchronize to backend if document ID is available
+    setItems((prev) => prev.map((it) => (it.id === editingItem.id ? updatedItem : it)));
+
     const docId = params.reportId || report?.id;
     if (docId) {
-      ocrService
-        .updateItem(docId, editingItem.id, {
-          item: targetRecipe.name,
-          recipeId: targetRecipe.id,
-        })
-        .catch(() => {});
+      try {
+        await ocrService.updateItem(docId, editingItem.id, updatedItem);
+      } catch {
+        // Non-blocking
+      }
     }
 
     setEditingItem(null);
   };
 
-  const handleAddNewItem = () => {
-    const targetRecipe = recipes.find((r) => r.id === selectedNewRecipeId);
-    if (!targetRecipe) return;
+  const handleAddNewItem = async () => {
+    if (!newItemName.trim()) {
+      Alert.alert('Required Field', 'Please enter an item name.');
+      return;
+    }
 
-    const qty = parseInt(newQty, 10) || 1;
-    const newItem: OcrItem = {
-      id: `ocr-manual-${Date.now()}`,
-      artNr: targetRecipe.code || `ART-${items.length + 1}`,
-      item: targetRecipe.name,
-      recipeId: targetRecipe.id,
+    const qty = parseFloat(newItemQty) || 1;
+    const unitPrice = newItemUnitPrice ? parseFloat(newItemUnitPrice) : undefined;
+    const docId = params.reportId || report?.id;
+
+    const partialItem: Partial<OcrItem> = {
+      item: newItemName.trim(),
       qty,
+      unitPrice,
+      recipeId: newItemLinkedId || undefined,
       confidence: 100,
+      artNr: `ITEM-${items.length + 1}`,
     };
 
-    setItems((prev) => [...prev, newItem]);
+    try {
+      if (docId) {
+        const created = await ocrService.addItem(docId, partialItem);
+        setItems((prev) => [...prev, created]);
+      } else {
+        const localItem: OcrItem = {
+          id: `ocr-manual-${Date.now()}`,
+          artNr: partialItem.artNr || `ART-${items.length + 1}`,
+          item: partialItem.item || '',
+          recipeId: partialItem.recipeId,
+          qty: partialItem.qty || 1,
+          confidence: 100,
+          unitPrice: partialItem.unitPrice,
+        };
+        setItems((prev) => [...prev, localItem]);
+      }
+    } catch {
+      const fallbackItem: OcrItem = {
+        id: `ocr-manual-${Date.now()}`,
+        artNr: partialItem.artNr || `ART-${items.length + 1}`,
+        item: partialItem.item || '',
+        recipeId: partialItem.recipeId,
+        qty: partialItem.qty || 1,
+        confidence: 100,
+        unitPrice: partialItem.unitPrice,
+      };
+      setItems((prev) => [...prev, fallbackItem]);
+    }
+
     setShowAddModal(false);
-    setNewQty('1');
+    setNewItemName('');
+    setNewItemQty('1');
+    setNewItemUnitPrice('');
+    setNewItemLinkedId('');
   };
 
   // Calculations
   const activeItems = useMemo(() => items.filter((i) => i.qty > 0), [items]);
-  const lowConfCount = useMemo(() => activeItems.filter((i) => i.confidence < 90 || !i.recipeId).length, [activeItems]);
+  const lowConfCount = useMemo(
+    () => activeItems.filter((i) => i.confidence < 90 || (!isGoodsReceipt && !i.recipeId)).length,
+    [activeItems, isGoodsReceipt]
+  );
   const avgConfidence = useMemo(() => {
     if (activeItems.length === 0) return 0;
     return Math.round(activeItems.reduce((sum, i) => sum + i.confidence, 0) / activeItems.length);
@@ -159,8 +245,8 @@ export default function OCRReviewScreen() {
 
   const totalPortions = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items]);
 
-  // Confirm and Deduct
-  const handleConfirmDeduct = async () => {
+  // Confirmation Action
+  const handleConfirmAction = async () => {
     const reportId = params.reportId || report?.id;
     if (!reportId) {
       Alert.alert('Error', 'Missing OCR Document ID.');
@@ -177,33 +263,43 @@ export default function OCRReviewScreen() {
           totalPortions: String(totalPortions),
           menuItemCount: String(activeItems.length),
           deductionsJson: JSON.stringify(res.deductions || []),
-          reportNumber: report?.reportNumber || 'POS-REPORT',
+          reportNumber: report?.reportNumber || (isGoodsReceipt ? 'GR-REPORT' : 'POS-REPORT'),
           date: report?.date || new Date().toISOString().slice(0, 10),
+          documentType: isGoodsReceipt ? 'goods_receipt' : 'order_invoice',
         },
       } as any);
     } catch (err: any) {
-      Alert.alert('Deduction Error', err.message || 'Failed to process inventory deduction');
+      Alert.alert('Confirmation Error', err.message || 'Failed to process inventory update');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Reject / Discard Scan Action with Rollback Option
   const handleReject = () => {
+    const reportId = params.reportId || report?.id;
+    const isDup = duplicateCheck?.isDuplicate || report?.isDuplicate;
+
     Alert.alert(
-      'Discard POS Extraction?',
-      'Are you sure you want to discard this document? Deductions will not be applied.',
+      isDup ? 'Duplicate Scan Detected' : 'Discard Scan Extraction?',
+      isDup
+        ? 'This invoice appears to be a duplicate of an earlier confirmed scan. Would you like to discard it or delete with warehouse reversal?'
+        : 'Are you sure you want to discard this document? Inventory will not be updated.',
       [
         { text: 'Keep Reviewing', style: 'cancel' },
         {
-          text: 'Discard',
+          text: isDup ? 'Revert & Delete' : 'Discard',
           style: 'destructive',
           onPress: async () => {
-            const reportId = params.reportId || report?.id;
             if (reportId) {
               try {
-                await ocrService.rejectDocument(reportId, 'Rejected during manual review');
+                if (isDup) {
+                  await ocrService.deleteDocument(reportId, true);
+                } else {
+                  await ocrService.rejectDocument(reportId, 'Rejected during manual review');
+                }
               } catch (err: any) {
-                console.warn('Document rejection note error:', err);
+                console.warn('Document discard error:', err);
               }
             }
             router.replace('/(tabs)/scan' as any);
@@ -219,7 +315,7 @@ export default function OCRReviewScreen() {
         {/* ── TopBar ── */}
         <TopBar
           title={t('scan.reviewTitle')}
-          subtitle={`${report?.date || 'Today'} · Report #${report?.reportNumber || '0000'}`}
+          subtitle={`${report?.date || 'Today'} · ${isGoodsReceipt ? 'Delivery #' : 'Report #'}${report?.reportNumber || '0000'}`}
           showBack
         />
 
@@ -236,6 +332,29 @@ export default function OCRReviewScreen() {
             ]}
             showsVerticalScrollIndicator={false}
           >
+            {/* ── Duplicate Alert Banner ── */}
+            {(duplicateCheck?.isDuplicate || report?.isDuplicate) && (
+              <View style={styles.duplicateBanner}>
+                <View style={styles.duplicateIconBox}>
+                  <VectorIcon name="AlertTriangle" size={20} color="#b45309" />
+                </View>
+                <View style={styles.duplicateContent}>
+                  <View style={styles.duplicateHeaderRow}>
+                    <Text style={styles.duplicateTitle}>{t('scan.duplicateWarningTitle')}</Text>
+                    <Badge variant="amber">{t('scan.duplicateBadge')}</Badge>
+                  </View>
+                  <Text style={styles.duplicateText}>
+                    {t('scan.duplicateWarningMessage', {
+                      number: duplicateCheck?.duplicateOf?.documentNumber || report?.reportNumber || '',
+                      date: duplicateCheck?.duplicateOf?.date
+                        ? formatDate(duplicateCheck.duplicateOf.date)
+                        : 'an earlier session',
+                    })}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {/* ── Summary Stats Header Card ── */}
             <Card style={styles.summaryCard}>
               <View style={styles.statsGrid}>
@@ -253,23 +372,33 @@ export default function OCRReviewScreen() {
                 </View>
               </View>
 
-              {/* Receipt Metadata Banner */}
+              {/* Document Metadata Banner */}
               <View style={styles.receiptMetaRow}>
                 <View style={styles.receiptThumb}>
-                  <View style={[styles.thumbLine, { width: '80%' }]} />
-                  <View style={[styles.thumbLine, { width: '100%' }]} />
-                  <View style={[styles.thumbLine, { width: '70%' }]} />
-                  <View style={[styles.thumbLine, { width: '90%' }]} />
+                  <VectorIcon
+                    name={isGoodsReceipt ? 'Truck' : 'FileText'}
+                    size={22}
+                    color={Colors.brand.primary}
+                  />
                 </View>
                 <View style={styles.receiptMetaInfo}>
+                  <View style={styles.typeRow}>
+                    <Badge variant={isGoodsReceipt ? 'purple' : 'blue'}>
+                      {isGoodsReceipt
+                        ? t('scan.invoiceTypes.goodsReceipt')
+                        : t('scan.invoiceTypes.orderInvoice')}
+                    </Badge>
+                  </View>
                   <Text style={styles.receiptMetaTitle}>
-                    {report?.storeName || 'POS Register Report'}
+                    {report?.storeName || (isGoodsReceipt ? 'Vendor Delivery' : 'POS Register Report')}
                   </Text>
                   <Text style={styles.receiptMetaSub}>
-                    {report?.date || new Date().toISOString().slice(0, 10)} · Report #{report?.reportNumber || 'POS'}
+                    {report?.date || new Date().toISOString().slice(0, 10)} · #{report?.reportNumber || 'SCAN'}
                   </Text>
                   <Text style={styles.receiptMetaPortions}>
-                    {totalPortions} total portion units detected
+                    {isGoodsReceipt
+                      ? `${totalPortions} inbound units to receive into warehouse`
+                      : `${totalPortions} total portion units detected`}
                   </Text>
                 </View>
               </View>
@@ -278,26 +407,27 @@ export default function OCRReviewScreen() {
             {/* ── Low Confidence Alert Banner ── */}
             {lowConfCount > 0 && (
               <View style={styles.lowConfBanner}>
-                <VectorIcon name="AlertTriangle" size={16} color={Colors.warning.dark} />
+                <VectorIcon name="AlertCircle" size={16} color={Colors.warning.dark} />
                 <Text style={styles.lowConfBannerText}>
-                  {lowConfCount} items have unconfirmed recipe links or low confidence. Tap to link recipe.
+                  {lowConfCount} items have unconfirmed recipe links or low confidence. Tap to edit or link.
                 </Text>
               </View>
             )}
 
             {/* ── Table Column Headers ── */}
             <View style={styles.tableHeaderRow}>
-              <Text style={[styles.thText, { width: 36 }]}>#</Text>
+              <Text style={[styles.thText, { width: 32 }]}>#</Text>
               <Text style={[styles.thText, { flex: 1 }]}>{t('scan.tableHeaders.item')}</Text>
               <Text style={[styles.thText, { width: 70, textAlign: 'center' }]}>{t('scan.tableHeaders.qty')}</Text>
-              <Text style={[styles.thText, { width: 66, textAlign: 'right' }]}>{t('scan.tableHeaders.confidence')}</Text>
-              <Text style={[styles.thText, { width: 26 }]} />
+              <Text style={[styles.thText, { width: 56, textAlign: 'right' }]}>{t('scan.tableHeaders.confidence')}</Text>
+              <Text style={[styles.thText, { width: 52 }]} />
             </View>
 
             {/* ── Extracted Item Rows ── */}
             <View style={styles.itemList}>
               {items.map((item, idx) => {
-                const isLowConf = item.confidence < 90 || !item.recipeId;
+                const isLowConf =
+                  item.confidence < 90 || (!isGoodsReceipt && !item.recipeId);
 
                 return (
                   <Card
@@ -309,25 +439,35 @@ export default function OCRReviewScreen() {
                       {/* Article # */}
                       <Text style={styles.artNrText}>{item.artNr || idx + 1}</Text>
 
-                      {/* Name & Recipe Mapping Pill */}
+                      {/* Name & Recipe Mapping */}
                       <Pressable
-                        onPress={() => setEditingItem(item)}
+                        onPress={() => openEditModal(item)}
                         style={styles.nameContainer}
                       >
                         <View style={styles.nameRow}>
-                          <Text style={styles.itemNameText}>{item.item}</Text>
+                          <Text style={styles.itemNameText} numberOfLines={2}>
+                            {item.item}
+                          </Text>
                           <VectorIcon name="Pencil" size={11} color={Colors.neutral.textTertiary} />
                         </View>
-                        {item.recipeId ? (
-                          <View style={styles.matchedBadge}>
-                            <VectorIcon name="Check" size={10} color="#10b981" />
-                            <Text style={styles.matchedBadgeText}>Recipe Linked</Text>
-                          </View>
-                        ) : (
-                          <View style={styles.unmatchedBadge}>
-                            <VectorIcon name="AlertCircle" size={10} color={Colors.warning.dark} />
-                            <Text style={styles.unmatchedBadgeText}>Tap to Link Recipe</Text>
-                          </View>
+                        {item.unitPrice ? (
+                          <Text style={styles.unitPriceText}>
+                            {formatCurrency(item.unitPrice)}
+                            {item.unit ? ` / ${item.unit}` : ''}
+                          </Text>
+                        ) : null}
+                        {!isGoodsReceipt && (
+                          item.recipeId ? (
+                            <View style={styles.matchedBadge}>
+                              <VectorIcon name="Check" size={10} color="#10b981" />
+                              <Text style={styles.matchedBadgeText}>Recipe Linked</Text>
+                            </View>
+                          ) : (
+                            <View style={styles.unmatchedBadge}>
+                              <VectorIcon name="AlertCircle" size={10} color={Colors.warning.dark} />
+                              <Text style={styles.unmatchedBadgeText}>Tap to Link Recipe</Text>
+                            </View>
+                          )
                         )}
                       </Pressable>
 
@@ -360,13 +500,21 @@ export default function OCRReviewScreen() {
                         <ConfidenceBar value={item.confidence} />
                       </View>
 
-                      {/* Remove item button */}
-                      <Pressable
-                        onPress={() => handleRemoveItem(item.id)}
-                        style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
-                      >
-                        <VectorIcon name="Trash2" size={14} color={Colors.critical.main} />
-                      </Pressable>
+                      {/* Item Row Actions */}
+                      <View style={styles.rowActions}>
+                        <Pressable
+                          onPress={() => openEditModal(item)}
+                          style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+                        >
+                          <VectorIcon name="Pencil" size={14} color={Colors.brand.primary} />
+                        </Pressable>
+                        <Pressable
+                          onPress={() => handleRemoveItem(item.id)}
+                          style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
+                        >
+                          <VectorIcon name="Trash2" size={14} color={Colors.critical.main} />
+                        </Pressable>
+                      </View>
                     </View>
                   </Card>
                 );
@@ -375,7 +523,7 @@ export default function OCRReviewScreen() {
 
             {/* ── Add Manual Item CTA ── */}
             <Button
-              label={t('scan.addItem')}
+              label={t('scan.addItemTitle')}
               variant="outline"
               size="md"
               fullWidth
@@ -396,14 +544,20 @@ export default function OCRReviewScreen() {
           ]}
         >
           <Button
-            label={isSubmitting ? 'Deducting Stock...' : t('scan.confirmDeductButton')}
+            label={
+              isSubmitting
+                ? 'Synchronizing Ledger...'
+                : isGoodsReceipt
+                ? t('scan.confirmAndReceive')
+                : t('scan.confirmDeductButton')
+            }
             variant="primary"
             size="lg"
             fullWidth
             loading={isSubmitting}
             disabled={isSubmitting || activeItems.length === 0}
             icon={<VectorIcon name="CheckCircle2" size={18} color="#ffffff" />}
-            onPress={handleConfirmDeduct}
+            onPress={handleConfirmAction}
             style={{ marginBottom: Spacing.sm }}
           />
 
@@ -417,7 +571,7 @@ export default function OCRReviewScreen() {
           />
         </View>
 
-        {/* ── Recipe Mapping Modal ── */}
+        {/* ── Edit Line Item Modal ── */}
         <Modal
           visible={!!editingItem}
           transparent
@@ -426,42 +580,85 @@ export default function OCRReviewScreen() {
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Link to Recipe</Text>
-              <Text style={styles.modalSub}>
-                Select the recipe to deduct raw BOM ingredients for:
-              </Text>
-              <Text style={styles.modalItemName}>{editingItem?.item}</Text>
+              <Text style={styles.modalTitle}>{t('scan.editItemTitle')}</Text>
 
-              <ScrollView style={styles.modalRecipeList}>
-                {recipes.map((r) => (
-                  <Pressable
-                    key={r.id}
-                    onPress={() => handleConfirmMapping(r.id)}
-                    style={({ pressed }) => [
-                      styles.recipeChoiceRow,
-                      r.id === editingItem?.recipeId && styles.recipeChoiceSelected,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View>
-                      <Text style={styles.recipeChoiceName}>{r.name}</Text>
-                      <Text style={styles.recipeChoiceCode}>{r.code} · Yield: {r.portionYield}</Text>
-                    </View>
-                    {r.id === editingItem?.recipeId && (
-                      <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
-
-              <Button
-                label="Cancel"
-                variant="outline"
-                size="md"
-                fullWidth
-                onPress={() => setEditingItem(null)}
-                style={{ marginTop: Spacing.md }}
+              <Text style={styles.inputLabel}>{t('inventory.itemName')}</Text>
+              <TextInput
+                value={editItemName}
+                onChangeText={setEditItemName}
+                style={styles.textInput}
+                placeholder="Item name"
               />
+
+              <View style={styles.modalRowInputs}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>{t('stockCount.countedQty')}</Text>
+                  <TextInput
+                    value={editItemQty}
+                    onChangeText={setEditItemQty}
+                    keyboardType="numeric"
+                    style={styles.textInput}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                  <Text style={styles.inputLabel}>{t('inventory.costPerUnit')}</Text>
+                  <TextInput
+                    value={editItemUnitPrice}
+                    onChangeText={setEditItemUnitPrice}
+                    keyboardType="numeric"
+                    style={styles.textInput}
+                    placeholder="0.00"
+                  />
+                </View>
+              </View>
+
+              {!isGoodsReceipt && (
+                <>
+                  <Text style={styles.inputLabel}>{t('scan.matchedItem')}</Text>
+                  <ScrollView style={styles.modalSelectionList} nestedScrollEnabled>
+                    {recipes.map((r) => (
+                      <Pressable
+                        key={r.id}
+                        onPress={() => setEditItemLinkedId(r.id)}
+                        style={[
+                          styles.selectionRow,
+                          editItemLinkedId === r.id && styles.selectionRowActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.selectionName,
+                            editItemLinkedId === r.id && styles.selectionNameActive,
+                          ]}
+                        >
+                          {r.name}
+                        </Text>
+                        {editItemLinkedId === r.id && (
+                          <VectorIcon name="Check" size={14} color={Colors.brand.primary} />
+                        )}
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+
+              <View style={styles.modalButtonsRow}>
+                <Button
+                  label={t('common.save')}
+                  variant="primary"
+                  size="md"
+                  fullWidth
+                  onPress={handleSaveEditItem}
+                  style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}
+                />
+                <Button
+                  label={t('common.cancel')}
+                  variant="outline"
+                  size="md"
+                  fullWidth
+                  onPress={() => setEditingItem(null)}
+                />
+              </View>
             </View>
           </View>
         </Modal>
@@ -475,56 +672,88 @@ export default function OCRReviewScreen() {
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Add Sold Menu Item</Text>
-              <Text style={styles.modalSub}>Select a recipe from inventory:</Text>
+              <Text style={styles.modalTitle}>{t('scan.addItemTitle')}</Text>
 
-              <ScrollView style={styles.modalRecipeList}>
-                {recipes.map((r) => (
-                  <Pressable
-                    key={r.id}
-                    onPress={() => setSelectedNewRecipeId(r.id)}
-                    style={({ pressed }) => [
-                      styles.recipeChoiceRow,
-                      r.id === selectedNewRecipeId && styles.recipeChoiceSelected,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View>
-                      <Text style={styles.recipeChoiceName}>{r.name}</Text>
-                      <Text style={styles.recipeChoiceCode}>{r.code}</Text>
-                    </View>
-                    {r.id === selectedNewRecipeId && (
-                      <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
+              <Text style={styles.inputLabel}>{t('inventory.itemName')}</Text>
+              <TextInput
+                value={newItemName}
+                onChangeText={setNewItemName}
+                style={styles.textInput}
+                placeholder="e.g. Olive Oil, Margherita Pizza"
+              />
 
-              <View style={styles.modalQtyRow}>
-                <Text style={styles.modalQtyLabel}>Portions Sold:</Text>
-                <TextInput
-                  value={newQty}
-                  onChangeText={setNewQty}
-                  keyboardType="number-pad"
-                  style={styles.modalQtyInput}
-                />
+              <View style={styles.modalRowInputs}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>{t('stockCount.countedQty')}</Text>
+                  <TextInput
+                    value={newItemQty}
+                    onChangeText={setNewItemQty}
+                    keyboardType="numeric"
+                    style={styles.textInput}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                  <Text style={styles.inputLabel}>{t('inventory.costPerUnit')}</Text>
+                  <TextInput
+                    value={newItemUnitPrice}
+                    onChangeText={setNewItemUnitPrice}
+                    keyboardType="numeric"
+                    style={styles.textInput}
+                    placeholder="0.00"
+                  />
+                </View>
               </View>
 
-              <Button
-                label="Add Item"
-                variant="primary"
-                size="md"
-                fullWidth
-                onPress={handleAddNewItem}
-                style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}
-              />
-              <Button
-                label="Cancel"
-                variant="outline"
-                size="md"
-                fullWidth
-                onPress={() => setShowAddModal(false)}
-              />
+              {!isGoodsReceipt && (
+                <>
+                  <Text style={styles.inputLabel}>{t('scan.selectMatchedItem')}</Text>
+                  <ScrollView style={styles.modalSelectionList} nestedScrollEnabled>
+                    {recipes.map((r) => (
+                      <Pressable
+                        key={r.id}
+                        onPress={() => {
+                          setNewItemLinkedId(r.id);
+                          if (!newItemName) setNewItemName(r.name);
+                        }}
+                        style={[
+                          styles.selectionRow,
+                          newItemLinkedId === r.id && styles.selectionRowActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.selectionName,
+                            newItemLinkedId === r.id && styles.selectionNameActive,
+                          ]}
+                        >
+                          {r.name}
+                        </Text>
+                        {newItemLinkedId === r.id && (
+                          <VectorIcon name="Check" size={14} color={Colors.brand.primary} />
+                        )}
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+
+              <View style={styles.modalButtonsRow}>
+                <Button
+                  label={t('common.add')}
+                  variant="primary"
+                  size="md"
+                  fullWidth
+                  onPress={handleAddNewItem}
+                  style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}
+                />
+                <Button
+                  label={t('common.cancel')}
+                  variant="outline"
+                  size="md"
+                  fullWidth
+                  onPress={() => setShowAddModal(false)}
+                />
+              </View>
             </View>
           </View>
         </Modal>
@@ -548,12 +777,50 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: Spacing.md,
-    fontSize: 14,
+    ...Typography.body,
     color: Colors.neutral.textSecondary,
   },
-  summaryCard: {
+  duplicateBanner: {
+    flexDirection: 'row',
+    backgroundColor: '#fffbeb',
+    borderRadius: Radius.lg,
     padding: Spacing.md,
     marginBottom: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: '#fde68a',
+    ...Shadows.sm,
+  },
+  duplicateIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#fef3c7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
+  duplicateContent: {
+    flex: 1,
+  },
+  duplicateHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  duplicateTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400e',
+  },
+  duplicateText: {
+    fontSize: 12,
+    color: '#78350f',
+    lineHeight: 18,
+  },
+  summaryCard: {
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -562,80 +829,83 @@ const styles = StyleSheet.create({
   },
   statBoxGreen: {
     flex: 1,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: Colors.brand.light,
     borderRadius: Radius.md,
     padding: Spacing.sm,
     alignItems: 'center',
   },
   statValueGreen: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#059669',
+    fontWeight: '800',
+    color: Colors.brand.dark,
   },
   statLabelGreen: {
     fontSize: 11,
-    color: '#059669',
+    color: Colors.brand.dark,
+    fontWeight: '600',
     marginTop: 2,
+    textAlign: 'center',
   },
   statBoxBlue: {
     flex: 1,
-    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    backgroundColor: '#eff6ff',
     borderRadius: Radius.md,
     padding: Spacing.sm,
     alignItems: 'center',
   },
   statValueBlue: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#2563eb',
+    fontWeight: '800',
+    color: '#1e40af',
   },
   statLabelBlue: {
     fontSize: 11,
-    color: '#2563eb',
+    color: '#1e40af',
+    fontWeight: '600',
     marginTop: 2,
+    textAlign: 'center',
   },
   statBoxAmber: {
     flex: 1,
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    backgroundColor: '#fffbeb',
     borderRadius: Radius.md,
     padding: Spacing.sm,
     alignItems: 'center',
   },
   statValueAmber: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#d97706',
+    fontWeight: '800',
+    color: '#b45309',
   },
   statLabelAmber: {
     fontSize: 11,
-    color: '#d97706',
+    color: '#b45309',
+    fontWeight: '600',
     marginTop: 2,
+    textAlign: 'center',
   },
   receiptMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.neutral.border,
+    backgroundColor: Colors.neutral.background,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    gap: Spacing.sm,
   },
   receiptThumb: {
-    width: 38,
-    height: 48,
-    backgroundColor: Colors.neutral.surface,
+    width: 44,
+    height: 44,
+    backgroundColor: Colors.brand.light,
     borderRadius: Radius.sm,
-    padding: 6,
-    justifyContent: 'space-around',
-    marginRight: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.neutral.border,
-  },
-  thumbLine: {
-    height: 3,
-    backgroundColor: Colors.neutral.textTertiary,
-    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   receiptMetaInfo: {
     flex: 1,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    marginBottom: 2,
   },
   receiptMetaTitle: {
     fontSize: 13,
@@ -650,25 +920,24 @@ const styles = StyleSheet.create({
   receiptMetaPortions: {
     fontSize: 11,
     color: Colors.brand.primary,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 2,
   },
   lowConfBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(217, 119, 6, 0.12)',
+    backgroundColor: '#fffbeb',
     borderRadius: Radius.md,
     padding: Spacing.sm,
-    marginBottom: Spacing.md,
     gap: Spacing.xs,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.warning.main,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#fde68a',
   },
   lowConfBannerText: {
     fontSize: 12,
-    color: Colors.warning.dark,
+    color: '#92400e',
     flex: 1,
-    lineHeight: 16,
   },
   tableHeaderRow: {
     flexDirection: 'row',
@@ -678,9 +947,10 @@ const styles = StyleSheet.create({
   },
   thText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.neutral.textTertiary,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   itemList: {
     gap: Spacing.xs,
@@ -688,16 +958,19 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     padding: Spacing.sm,
+    backgroundColor: Colors.neutral.card,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.xs,
   },
   artNrText: {
-    width: 36,
+    width: 28,
     fontSize: 11,
+    fontWeight: '700',
     color: Colors.neutral.textTertiary,
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    textAlign: 'center',
   },
   nameContainer: {
     flex: 1,
@@ -710,159 +983,163 @@ const styles = StyleSheet.create({
   },
   itemNameText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: Colors.neutral.textPrimary,
+  },
+  unitPriceText: {
+    fontSize: 11,
+    color: Colors.neutral.textTertiary,
+    marginTop: 1,
   },
   matchedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: 2,
+    marginTop: 3,
   },
   matchedBadgeText: {
     fontSize: 10,
-    color: '#059669',
-    fontWeight: '500',
+    color: '#10b981',
+    fontWeight: '600',
   },
   unmatchedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: 2,
+    marginTop: 3,
   },
   unmatchedBadgeText: {
     fontSize: 10,
-    color: Colors.warning.dark,
-    fontWeight: '500',
+    color: '#b45309',
+    fontWeight: '600',
   },
   qtyContainer: {
-    width: 70,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.neutral.surface,
+    backgroundColor: Colors.neutral.background,
     borderRadius: Radius.sm,
-    paddingHorizontal: 2,
+    borderWidth: 1,
+    borderColor: Colors.neutral.border,
   },
   qtyBtn: {
-    padding: 4,
+    width: 22,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   qtyInput: {
-    width: 24,
+    width: 26,
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
-    paddingVertical: 2,
+    padding: 0,
   },
   confContainer: {
-    width: 66,
-    paddingLeft: Spacing.xs,
+    width: 50,
+    alignItems: 'flex-end',
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    width: 50,
+    justifyContent: 'flex-end',
+  },
+  editBtn: {
+    padding: 5,
   },
   removeBtn: {
-    width: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 5,
   },
   addItemBtn: {
-    marginTop: Spacing.xs,
+    marginBottom: Spacing.lg,
   },
   fixedBottom: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.neutral.surface,
-    padding: Spacing.md,
+    backgroundColor: Colors.neutral.card,
     borderTopWidth: 1,
     borderTopColor: Colors.neutral.border,
-    ...Shadows.card,
-  },
-  pressed: {
-    opacity: 0.7,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    ...Shadows.elevated,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: Spacing.lg,
   },
   modalCard: {
-    backgroundColor: Colors.neutral.surface,
-    borderRadius: Radius.lg,
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: Colors.neutral.card,
+    borderRadius: Radius.xl,
     padding: Spacing.lg,
-    maxHeight: '80%',
-    ...Shadows.modal,
+    ...Shadows.elevated,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.neutral.textPrimary,
-    marginBottom: Spacing.xxs,
-  },
-  modalSub: {
-    fontSize: 13,
-    color: Colors.neutral.textSecondary,
-    marginBottom: Spacing.xs,
-  },
-  modalItemName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.brand.primary,
-    backgroundColor: 'rgba(217, 119, 6, 0.08)',
-    padding: Spacing.xs,
-    borderRadius: Radius.sm,
     marginBottom: Spacing.md,
   },
-  modalRecipeList: {
-    maxHeight: 220,
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.neutral.textSecondary,
+    marginBottom: 4,
+    marginTop: Spacing.xs,
   },
-  recipeChoiceRow: {
+  textInput: {
+    borderWidth: 1,
+    borderColor: Colors.neutral.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: Colors.neutral.textPrimary,
+    backgroundColor: Colors.neutral.background,
+    marginBottom: Spacing.sm,
+  },
+  modalRowInputs: {
+    flexDirection: 'row',
+  },
+  modalSelectionList: {
+    maxHeight: 140,
+    borderWidth: 1,
+    borderColor: Colors.neutral.border,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.sm,
+  },
+  selectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: Colors.neutral.border,
   },
-  recipeChoiceSelected: {
-    backgroundColor: 'rgba(217, 119, 6, 0.08)',
-    borderRadius: Radius.sm,
+  selectionRowActive: {
+    backgroundColor: Colors.brand.light,
   },
-  recipeChoiceName: {
-    fontSize: 14,
-    fontWeight: '500',
+  selectionName: {
+    fontSize: 13,
     color: Colors.neutral.textPrimary,
   },
-  recipeChoiceCode: {
-    fontSize: 11,
-    color: Colors.neutral.textTertiary,
-    marginTop: 1,
-  },
-  modalQtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.md,
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.neutral.border,
-  },
-  modalQtyLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.neutral.textPrimary,
-  },
-  modalQtyInput: {
-    width: 60,
-    borderWidth: 1,
-    borderColor: Colors.neutral.border,
-    borderRadius: Radius.sm,
-    padding: Spacing.xs,
-    textAlign: 'center',
-    fontSize: 14,
+  selectionNameActive: {
     fontWeight: '700',
-    color: Colors.neutral.textPrimary,
+    color: Colors.brand.dark,
+  },
+  modalButtonsRow: {
+    marginTop: Spacing.xs,
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

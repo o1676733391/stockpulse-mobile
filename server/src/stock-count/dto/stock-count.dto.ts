@@ -44,6 +44,11 @@ export class StartStockCountSessionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ example: 'Daily Closing Count' })
+  @IsOptional()
+  @IsString()
+  name?: string;
 }
 
 export class RecordCountItemDto {
@@ -53,9 +58,16 @@ export class RecordCountItemDto {
   itemId!: string;
 
   @ApiProperty({ example: 38.5, description: 'Physical quantity counted by staff' })
+  @IsOptional()
   @IsNumber({}, { message: 'Counted quantity must be a valid number' })
   @Min(0, { message: 'Counted quantity cannot be negative' })
   countedQty!: number;
+
+  @ApiPropertyOptional({ example: 38.5, description: 'Alias for countedQty' })
+  @IsOptional()
+  @IsNumber({}, { message: 'Counted quantity must be a valid number' })
+  @Min(0, { message: 'Counted quantity cannot be negative' })
+  countedQuantity?: number;
 
   @ApiProperty({ example: 'L', enum: ['kg', 'g', 'L', 'ml', 'pcs', 'can', 'bottle', 'pack'] })
   @IsEnum(['kg', 'g', 'L', 'ml', 'pcs', 'can', 'bottle', 'pack'])

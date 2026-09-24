@@ -96,11 +96,11 @@ export class RealInvitationService implements IInvitationService {
     try {
       return await apiClient.post<VerifyInvitationResult>('/invitations/validate', {
         codeOrToken: cleanKey,
-      });
+      }, { skipStoreHeader: true, skipAuth: true });
     } catch (err: any) {
       // If POST not found, try GET parameter
       try {
-        return await apiClient.get<VerifyInvitationResult>(`/invitations/validate/${encodeURIComponent(cleanKey)}`);
+        return await apiClient.get<VerifyInvitationResult>(`/invitations/validate/${encodeURIComponent(cleanKey)}`, { skipStoreHeader: true, skipAuth: true });
       } catch (innerErr) {
         logDebugFallback('InvitationService', `/invitations/validate/${cleanKey}`, err);
         throw err;
@@ -124,6 +124,7 @@ export class RealInvitationService implements IInvitationService {
           name: payload?.name,
           phone: payload?.phone,
         },
+        { skipStoreHeader: true }
       );
     } catch (err) {
       logDebugFallback('InvitationService', '/invitations/accept [POST]', err);

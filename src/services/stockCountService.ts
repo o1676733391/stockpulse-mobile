@@ -27,7 +27,7 @@ export interface IStockCountService {
   getSchedules(): Promise<CountSchedule[]>;
   getActiveItems(): Promise<StockCountItem[]>;
   startSession(name?: string, countType?: 'blind' | 'standard'): Promise<StockCountSessionData>;
-  recordItemCount(sessionId: string, itemId: string, countedQuantity: number, notes?: string): Promise<void>;
+  recordItemCount(sessionId: string, itemId: string, countedQuantity: number, notes?: string, unit?: string): Promise<void>;
   submitCount(
     counts: Record<string, number>,
     sessionId?: string
@@ -40,6 +40,7 @@ export interface IStockCountService {
 
 export class RealStockCountService implements IStockCountService {
   private activeSessionId: string = '';
+  private cachedItems: Map<string, StockCountItem> = new Map();
 
   async getSchedules(): Promise<CountSchedule[]> {
     try {
@@ -84,16 +85,28 @@ export class RealStockCountService implements IStockCountService {
 
   async getActiveItems(): Promise<StockCountItem[]> {
     try {
-      const res = await apiClient.get<any>('/inventory');
-      const rawList: any[] = Array.isArray(res)
-        ? res
-        : Array.isArray(res?.items)
-        ? res.items
-        : Array.isArray(res?.data)
-        ? res.data
-        : [];
+      let rawList: any[] = [];
+      try {
+        const countItemsRes = await apiClient.get<any>('/stock-counts/active-items');
+        rawList = Array.isArray(countItemsRes)
+          ? countItemsRes
+          : Array.isArray(countItemsRes?.items)
+          ? countItemsRes.items
+          : Array.isArray(countItemsRes?.data)
+          ? countItemsRes.data
+          : [];
+      } catch {
+        const res = await apiClient.get<any>('/inventory');
+        rawList = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.items)
+          ? res.items
+          : Array.isArray(res?.data)
+          ? res.data
+          : [];
+      }
 
-      return rawList.map((item: any) => ({
+      const items = rawList.map((item: any) => ({
         id: item.id,
         name: item.name,
         sku: item.sku || '',
@@ -101,8 +114,11 @@ export class RealStockCountService implements IStockCountService {
         expected: Number(item.currentStock ?? item.current_stock ?? item.physicalStock ?? 0),
         unit: item.unit || 'kg',
       }));
+
+      items.forEach((it) => this.cachedItems.set(it.id, it));
+      return items;
     } catch (err) {
-      logDebugFallback('StockCountService', '/inventory [getActiveItems]', err);
+      logDebugFallback('StockCountService', '/stock-counts/active-items [getActiveItems]', err);
       throw err;
     }
   }
@@ -112,12 +128,22 @@ export class RealStockCountService implements IStockCountService {
     countType: 'blind' | 'standard' = 'blind'
   ): Promise<StockCountSessionData> {
     try {
-      const res = await apiClient.post<StockCountSessionData>('/stock-counts/sessions', {
-        name,
+      const payload: Record<string, any> = {
         countType,
-      });
+      };
+      if (name) {
+        payload.notes = name;
+      }
+      const res = await apiClient.post<any>('/stock-counts/sessions', payload);
       this.activeSessionId = res.id;
-      return res;
+      return {
+        ...res,
+        name: res.name || res.notes || name,
+        sessionNumber: res.sessionNumber || res.id?.slice(0, 8) || '',
+        scheduledDate: res.scheduledDate || res.startedAt || new Date().toISOString(),
+        countedItemsCount: res.totalCounted ?? res.countedItemsCount ?? 0,
+        totalItemsCount: res.totalItems ?? res.totalItemsCount ?? 0,
+      };
     } catch (err) {
       logDebugFallback('StockCountService', '/stock-counts/sessions [POST]', err);
       throw err;
@@ -128,12 +154,20 @@ export class RealStockCountService implements IStockCountService {
     sessionId: string,
     itemId: string,
     countedQuantity: number,
-    notes?: string
+    notes?: string,
+    unit?: string
   ): Promise<void> {
     try {
+      const cachedUnit = unit || this.cachedItems.get(itemId)?.unit || 'pcs';
+      const validUnits = ['kg', 'g', 'L', 'ml', 'pcs', 'can', 'bottle', 'pack'];
+      const normalizedUnit = validUnits.includes(cachedUnit.toLowerCase())
+        ? cachedUnit.toLowerCase()
+        : 'pcs';
+
       await apiClient.put(`/stock-counts/sessions/${sessionId}/items/${itemId}`, {
-        countedQuantity,
-        notes,
+        countedQty: countedQuantity,
+        unit: normalizedUnit,
+        notes: notes || undefined,
       });
     } catch (err) {
       logDebugFallback(
@@ -156,13 +190,27 @@ export class RealStockCountService implements IStockCountService {
     }
 
     try {
-      const itemsPayload = Object.entries(counts).map(([itemId, countedQuantity]) => ({
-        itemId,
-        countedQuantity,
-      }));
+      const validUnits = ['kg', 'g', 'L', 'ml', 'pcs', 'can', 'bottle', 'pack'];
+      const itemsPayload = Object.entries(counts).map(([itemId, countedQuantity]) => {
+        const cachedUnit = this.cachedItems.get(itemId)?.unit || 'pcs';
+        const unit = validUnits.includes(cachedUnit.toLowerCase())
+          ? cachedUnit.toLowerCase()
+          : 'pcs';
+        return {
+          itemId,
+          countedQty: countedQuantity,
+          unit,
+        };
+      });
+
+      if (itemsPayload.length > 0) {
+        await apiClient.post(`/stock-counts/sessions/${activeId}/items`, {
+          items: itemsPayload,
+        });
+      }
 
       await apiClient.post(`/stock-counts/sessions/${activeId}/submit`, {
-        items: itemsPayload,
+        notes: 'Submitted via StockPulse Mobile App',
       });
 
       const variances = await this.getVariances(activeId);
@@ -216,7 +264,7 @@ export class RealStockCountService implements IStockCountService {
     try {
       const res = await apiClient.post<any>(
         `/stock-counts/sessions/${sessionId}/variance/approve`,
-        { notes }
+        {}
       );
       return {
         success: true,

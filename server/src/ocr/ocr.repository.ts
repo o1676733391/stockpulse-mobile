@@ -845,6 +845,382 @@ export class OcrRepository implements IOcrRepository {
     return appliedResults;
   }
 
+  /**
+   * Add manual line item to an OCR document during review.
+   */
+  async addDocumentItem(
+    documentId: string,
+    data: any,
+    storeId: string,
+  ): Promise<any> {
+    const client = this.supabaseService.getAdminClient();
+    const itemId = `item-${Date.now()}`;
+    const newItem = {
+      id: itemId,
+      ocr_document_id: documentId,
+      line_number: 99,
+      raw_text: data.description,
+      description: data.description,
+      quantity: data.quantity,
+      unit_price: data.unitPrice || 0,
+      total_price: data.totalPrice || data.quantity * (data.unitPrice || 0),
+      confidence: 1.0,
+      matched_recipe_id: data.matchedRecipeId || null,
+      match_status: data.matchedRecipeId ? 'MANUAL' : 'UNMATCHED',
+      match_confidence: data.matchedRecipeId ? 1.0 : 0.0,
+    };
+
+    if (!client) {
+      const items = this.mockItems.get(documentId) || [];
+      items.push(newItem);
+      this.mockItems.set(documentId, items);
+      return newItem;
+    }
+
+    const { data: created, error } = await client
+      .from('ocr_document_items')
+      .insert({
+        ocr_document_id: documentId,
+        line_number: 99,
+        raw_text: data.description,
+        description: data.description,
+        quantity: data.quantity,
+        unit_price: data.unitPrice || null,
+        total_price: data.totalPrice || null,
+        confidence: 1.0,
+        matched_recipe_id: data.matchedRecipeId || null,
+        match_status: data.matchedRecipeId ? 'MANUAL' : 'UNMATCHED',
+        match_confidence: data.matchedRecipeId ? 1.0 : 0.0,
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      this.logger.error(`Failed to add OCR line item: ${error.message}`);
+      throw new InternalServerErrorException('Failed to add OCR line item');
+    }
+    return created;
+  }
+
+  /**
+   * Delete an extracted or manual line item during review.
+   */
+  async deleteDocumentItem(
+    documentId: string,
+    itemId: string,
+    storeId: string,
+  ): Promise<void> {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) {
+      const items = this.mockItems.get(documentId) || [];
+      this.mockItems.set(
+        documentId,
+        items.filter((i) => i.id !== itemId),
+      );
+      return;
+    }
+
+    const { error } = await client
+      .from('ocr_document_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('ocr_document_id', documentId);
+
+    if (error) {
+      this.logger.error(`Failed to delete OCR line item: ${error.message}`);
+      throw new InternalServerErrorException('Failed to delete OCR line item');
+    }
+  }
+
+  /**
+   * Delete OCR document record.
+   */
+  async deleteDocument(documentId: string, storeId: string): Promise<void> {
+    const client = this.supabaseService.getAdminClient();
+    if (!client) {
+      this.mockDocs.delete(documentId);
+      this.mockItems.delete(documentId);
+      return;
+    }
+
+    const { error } = await client
+      .from('ocr_documents')
+      .delete()
+      .eq('id', documentId)
+      .eq('store_id', storeId);
+
+    if (error) {
+      this.logger.error(`Failed to delete OCR document: ${error.message}`);
+      throw new InternalServerErrorException('Failed to delete OCR document');
+    }
+  }
+
+  /**
+   * Check if a confirmed document with the same document number already exists in the store.
+   */
+  async findDuplicateConfirmedDocument(
+    storeId: string,
+    documentNumber: string,
+    excludeId?: string,
+  ): Promise<OcrDocumentResponseDto | null> {
+    if (!documentNumber || !documentNumber.trim()) return null;
+    const client = this.supabaseService.getAdminClient();
+
+    if (!client) {
+      for (const doc of this.mockDocs.values()) {
+        if (
+          doc.store_id === storeId &&
+          doc.id !== excludeId &&
+          doc.status === 'confirmed' &&
+          (doc.raw_provider_response as any)?.metadata?.documentNumber === documentNumber
+        ) {
+          return this.mapDocumentRow(doc);
+        }
+      }
+      return null;
+    }
+
+    let query = client
+      .from('ocr_documents')
+      .select('*')
+      .eq('store_id', storeId)
+      .eq('status', 'confirmed')
+      .contains('raw_provider_response', { metadata: { documentNumber } });
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data } = await query.limit(1);
+    if (data && data.length > 0) {
+      return this.mapDocumentRow(data[0]);
+    }
+    return null;
+  }
+
+  /**
+   * Apply stock increases for confirmed Goods Receipts into inventory.
+   */
+  async applyGoodsReceiptStock(
+    storeId: string,
+    documentId: string,
+    actorId: string,
+    items: Array<{
+      description: string;
+      quantity: number;
+      unitPrice?: number;
+      matchedItemId?: string;
+    }>,
+  ): Promise<
+    Array<{
+      itemId: string;
+      itemName: string;
+      delta: number;
+      unit: string;
+      costEur: number;
+      theoreticalBefore: number;
+      theoreticalAfter: number;
+    }>
+  > {
+    this.logger.log(`OcrRepository.applyGoodsReceiptStock: ${items.length} lines for doc=${documentId}`);
+    const client = this.supabaseService.getAdminClient();
+    const now = new Date().toISOString();
+    const appliedResults: Array<{
+      itemId: string;
+      itemName: string;
+      delta: number;
+      unit: string;
+      costEur: number;
+      theoreticalBefore: number;
+      theoreticalAfter: number;
+    }> = [];
+
+    if (!client) {
+      return items.map((it, idx) => ({
+        itemId: it.matchedItemId || `item-${idx}`,
+        itemName: it.description,
+        delta: it.quantity,
+        unit: 'kg',
+        costEur: (it.unitPrice || 0) * it.quantity,
+        theoreticalBefore: 10,
+        theoreticalAfter: 10 + it.quantity,
+      }));
+    }
+
+    const { data: invItems } = await client
+      .from('inventory_items')
+      .select('id, name, sku, physical_stock, theoretical_stock, unit, cost_per_unit')
+      .eq('store_id', storeId);
+
+    const inventoryList = invItems || [];
+
+    for (const it of items) {
+      let matched = inventoryList.find((i) => i.id === it.matchedItemId);
+      if (!matched) {
+        const descLower = it.description.toLowerCase().trim();
+        matched = inventoryList.find(
+          (i) => i.name.toLowerCase() === descLower || i.sku.toLowerCase() === descLower,
+        );
+      }
+
+      if (matched) {
+        const currentPhysical = Number(matched.physical_stock || 0);
+        const currentTheo = Number(matched.theoretical_stock || 0);
+        const newPhysical = Math.round((currentPhysical + it.quantity) * 10000) / 10000;
+        const newTheo = Math.round((currentTheo + it.quantity) * 10000) / 10000;
+        const lineCost = (it.unitPrice || Number(matched.cost_per_unit || 0)) * it.quantity;
+
+        const txNumber = `REC-${now.slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+        await client.from('inventory_transactions').insert({
+          store_id: storeId,
+          item_id: matched.id,
+          transaction_number: txNumber,
+          transaction_type: 'PURCHASE_RECEIPT',
+          delta: it.quantity,
+          previous_stock: currentPhysical,
+          new_stock: newPhysical,
+          cost_impact: lineCost,
+          actor_id: actorId,
+          reference_type: 'OCR_DOCUMENT',
+          reference_id: documentId,
+          note: `Goods Receipt delivery inbound stock (Doc: ${documentId})`,
+        });
+
+        await client
+          .from('inventory_items')
+          .update({
+            physical_stock: newPhysical,
+            theoretical_stock: newTheo,
+            updated_at: now,
+          })
+          .eq('id', matched.id)
+          .eq('store_id', storeId);
+
+        appliedResults.push({
+          itemId: matched.id,
+          itemName: matched.name,
+          delta: it.quantity,
+          unit: matched.unit || 'kg',
+          costEur: lineCost,
+          theoreticalBefore: currentTheo,
+          theoreticalAfter: newTheo,
+        });
+      }
+    }
+
+    return appliedResults;
+  }
+
+  /**
+   * Revert and rollback warehouse stock for a duplicate or voided confirmed scan.
+   */
+  async revertWarehouseStock(
+    storeId: string,
+    documentId: string,
+    actorId: string,
+    reason?: string,
+  ): Promise<{
+    success: boolean;
+    revertedItemsCount: number;
+    message: string;
+  }> {
+    this.logger.log(`OcrRepository.revertWarehouseStock for doc=${documentId}`);
+    const client = this.supabaseService.getAdminClient();
+    const now = new Date().toISOString();
+
+    if (!client) {
+      const doc = this.mockDocs.get(documentId);
+      if (doc) {
+        doc.status = 'rejected';
+        doc.error_message = `VOIDED / REVERTED: ${reason || 'Duplicate scan reversal'}`;
+      }
+      return {
+        success: true,
+        revertedItemsCount: 1,
+        message: 'Warehouse stock reverted successfully (mock mode)',
+      };
+    }
+
+    const { data: txs, error: txError } = await client
+      .from('inventory_transactions')
+      .select('*')
+      .eq('store_id', storeId)
+      .eq('reference_type', 'OCR_DOCUMENT')
+      .eq('reference_id', documentId);
+
+    if (txError) {
+      this.logger.error(`Failed to fetch transactions for reversal: ${txError.message}`);
+      throw new InternalServerErrorException('Failed to fetch transactions for reversal');
+    }
+
+    const transactions = txs || [];
+    let count = 0;
+
+    for (const tx of transactions) {
+      const itemId = tx.item_id;
+      const originalDelta = Number(tx.delta || 0);
+      const reverseDelta = -originalDelta;
+
+      const { data: item } = await client
+        .from('inventory_items')
+        .select('id, physical_stock, theoretical_stock')
+        .eq('id', itemId)
+        .eq('store_id', storeId)
+        .single();
+
+      if (item) {
+        const currentPhys = Number(item.physical_stock || 0);
+        const currentTheo = Number(item.theoretical_stock || 0);
+        const newPhys = Math.max(0, Math.round((currentPhys + reverseDelta) * 10000) / 10000);
+        const newTheo = Math.max(0, Math.round((currentTheo + reverseDelta) * 10000) / 10000);
+
+        const txNumber = `REV-${now.slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+        await client.from('inventory_transactions').insert({
+          store_id: storeId,
+          item_id: itemId,
+          transaction_number: txNumber,
+          transaction_type: 'REVERSAL_VOID',
+          delta: reverseDelta,
+          previous_stock: currentPhys,
+          new_stock: newPhys,
+          cost_impact: -(Number(tx.cost_impact || 0)),
+          actor_id: actorId,
+          reference_type: 'OCR_DOCUMENT_REVERSAL',
+          reference_id: documentId,
+          note: `Warehouse Stock Rollback: Reversal of doc ${documentId}. Reason: ${reason || 'Duplicate scan reversal'}`,
+        });
+
+        await client
+          .from('inventory_items')
+          .update({
+            physical_stock: newPhys,
+            theoretical_stock: newTheo,
+            updated_at: now,
+          })
+          .eq('id', itemId)
+          .eq('store_id', storeId);
+
+        count++;
+      }
+    }
+
+    await client
+      .from('ocr_documents')
+      .update({
+        status: 'rejected',
+        error_message: `VOIDED / REVERTED: ${reason || 'Duplicate scan warehouse reversal'}`,
+        updated_at: now,
+      })
+      .eq('id', documentId)
+      .eq('store_id', storeId);
+
+    return {
+      success: true,
+      revertedItemsCount: count,
+      message: `Successfully rolled back ${count} inventory balances in the warehouse ledger.`,
+    };
+  }
+
   private mapDocumentRow(row: any, confirmedByName?: string): OcrDocumentResponseDto {
     const confidence = row.overall_confidence ? Number(row.overall_confidence) : undefined;
     return {

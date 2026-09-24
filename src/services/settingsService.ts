@@ -6,6 +6,7 @@ import {
   StoreSettings,
   UserProfile,
 } from '@/types/settings';
+import * as SecureStore from 'expo-secure-store';
 import { apiClient, getActiveStoreId, logDebugFallback, setActiveStoreId } from './apiClient';
 
 export interface ISettingsService {
@@ -161,16 +162,44 @@ export class RealSettingsService implements ISettingsService {
     }
   }
 
+  private localStorePrefs: Record<string, Partial<StoreSettings>> = {};
+
+  private async loadLocalStorePrefs(storeId: string): Promise<void> {
+    if (!storeId || this.localStorePrefs[storeId]) return;
+    try {
+      const raw = await SecureStore.getItemAsync(`stockpulse_store_prefs_${storeId}`);
+      if (raw) {
+        this.localStorePrefs[storeId] = JSON.parse(raw);
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }
+
+  private async persistLocalStorePrefs(storeId: string): Promise<void> {
+    if (!storeId || !this.localStorePrefs[storeId]) return;
+    try {
+      await SecureStore.setItemAsync(
+        `stockpulse_store_prefs_${storeId}`,
+        JSON.stringify(this.localStorePrefs[storeId])
+      );
+    } catch {
+      // Non-blocking fallback
+    }
+  }
+
   async getStoreSettings(): Promise<StoreSettings> {
     try {
       const activeStore = getActiveStoreId();
+      await this.loadLocalStorePrefs(activeStore);
       const res = await apiClient.get<any>(`/stores/${activeStore}`);
       const data = res?.data !== undefined ? res.data : res;
       if (!data) {
         throw new Error('Store settings unavailable');
       }
 
-      const currency = data.currency || 'EUR';
+      const localPrefs = (activeStore && this.localStorePrefs[activeStore]) || {};
+      const currency = data.currency || localPrefs.currency || 'EUR';
       const currencySymbol = currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency === 'GBP' ? '£' : currency;
 
       return {
@@ -179,15 +208,15 @@ export class RealSettingsService implements ISettingsService {
         address: data.address || `${data.city || ''} ${data.country || ''}`.trim() || 'Store Location',
         currency,
         currencySymbol,
-        language: data.language || 'English',
-        timezone: data.timezone || 'Europe/Berlin (UTC+1)',
-        countSchedule: data.countSchedule || 'daily',
-        defaultUnits: data.defaultUnits || 'metric',
-        bbdAlertDays: Number(data.bbdAlertDays || 7),
-        safetyStockMultiplier: Number(data.safetyStockMultiplier || 1.0),
+        language: localPrefs.language || data.language || 'English',
+        timezone: data.timezone || localPrefs.timezone || 'Europe/Berlin (UTC+1)',
+        countSchedule: localPrefs.countSchedule || data.countSchedule || 'daily',
+        defaultUnits: localPrefs.defaultUnits || data.defaultUnits || 'metric',
+        bbdAlertDays: Number(localPrefs.bbdAlertDays ?? data.bbdAlertDays ?? 7),
+        safetyStockMultiplier: Number(localPrefs.safetyStockMultiplier ?? data.safetyStockMultiplier ?? 1.0),
       };
     } catch (err) {
-      logDebugFallback('SettingsService', '/stores/:id', err);
+      logDebugFallback('SettingsService', '/stores/:id [GET]', err);
       throw err;
     }
   }
@@ -195,18 +224,34 @@ export class RealSettingsService implements ISettingsService {
   async updateStoreSettings(settings: Partial<StoreSettings>): Promise<StoreSettings> {
     try {
       const activeStore = getActiveStoreId();
-      const res = await apiClient.patch<any>(`/stores/${activeStore}`, {
-        name: settings.name,
-        address: settings.address,
-        currency: settings.currency,
-        timezone: settings.timezone,
-        bbdAlertDays: settings.bbdAlertDays,
-        countSchedule: settings.countSchedule,
-        defaultUnits: settings.defaultUnits,
-      });
-      const data = res?.data !== undefined ? res.data : res;
 
-      const currency = data.currency || settings.currency || 'EUR';
+      // Only send fields accepted by UpdateStoreDto:
+      // name, address, city, country, postalCode, phone, email, currency, timezone
+      const payload: Record<string, any> = {};
+      if (settings.name !== undefined) payload.name = settings.name;
+      if (settings.address !== undefined) payload.address = settings.address;
+      if (settings.currency !== undefined) payload.currency = settings.currency;
+      if (settings.timezone !== undefined) {
+        payload.timezone = settings.timezone.replace(/\s*\(UTC.*?\)\s*/g, '').trim() || settings.timezone;
+      }
+
+      let data: any = {};
+      if (Object.keys(payload).length > 0 && activeStore) {
+        const res = await apiClient.patch<any>(`/stores/${activeStore}`, payload);
+        data = res?.data !== undefined ? res.data : res;
+      }
+
+      // Persist client-side operational preferences
+      if (activeStore) {
+        this.localStorePrefs[activeStore] = {
+          ...(this.localStorePrefs[activeStore] || {}),
+          ...settings,
+        };
+        await this.persistLocalStorePrefs(activeStore);
+      }
+
+      const localPrefs = (activeStore && this.localStorePrefs[activeStore]) || {};
+      const currency = data.currency || settings.currency || localPrefs.currency || 'EUR';
       const currencySymbol = currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency === 'GBP' ? '£' : currency;
 
       return {
@@ -215,12 +260,12 @@ export class RealSettingsService implements ISettingsService {
         address: data.address || settings.address || '',
         currency,
         currencySymbol,
-        language: settings.language || 'English',
-        timezone: data.timezone || settings.timezone || 'Europe/Berlin (UTC+1)',
-        countSchedule: settings.countSchedule || 'daily',
-        defaultUnits: settings.defaultUnits || 'metric',
-        bbdAlertDays: Number(settings.bbdAlertDays || 7),
-        safetyStockMultiplier: Number(settings.safetyStockMultiplier || 1.0),
+        language: localPrefs.language || settings.language || 'English',
+        timezone: data.timezone || settings.timezone || localPrefs.timezone || 'Europe/Berlin (UTC+1)',
+        countSchedule: localPrefs.countSchedule || settings.countSchedule || 'daily',
+        defaultUnits: localPrefs.defaultUnits || settings.defaultUnits || 'metric',
+        bbdAlertDays: Number(localPrefs.bbdAlertDays ?? settings.bbdAlertDays ?? 7),
+        safetyStockMultiplier: Number(localPrefs.safetyStockMultiplier ?? settings.safetyStockMultiplier ?? 1.0),
       };
     } catch (err) {
       logDebugFallback('SettingsService', '/stores/:id [PATCH]', err);

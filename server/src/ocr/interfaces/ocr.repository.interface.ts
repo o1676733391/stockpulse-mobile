@@ -87,4 +87,60 @@ export interface IOcrRepository {
       theoreticalAfter: number;
     }>
   >;
+
+  addDocumentItem(
+    documentId: string,
+    data: any,
+    storeId: string,
+  ): Promise<any>;
+
+  deleteDocumentItem(
+    documentId: string,
+    itemId: string,
+    storeId: string,
+  ): Promise<void>;
+
+  deleteDocument(
+    documentId: string,
+    storeId: string,
+  ): Promise<void>;
+
+  findDuplicateConfirmedDocument(
+    storeId: string,
+    documentNumber: string,
+    excludeId?: string,
+  ): Promise<OcrDocumentResponseDto | null>;
+
+  applyGoodsReceiptStock(
+    storeId: string,
+    documentId: string,
+    actorId: string,
+    items: Array<{
+      description: string;
+      quantity: number;
+      unitPrice?: number;
+      matchedItemId?: string;
+    }>,
+  ): Promise<
+    Array<{
+      itemId: string;
+      itemName: string;
+      delta: number;
+      unit: string;
+      costEur: number;
+      theoreticalBefore: number;
+      theoreticalAfter: number;
+    }>
+  >;
+
+  revertWarehouseStock(
+    storeId: string,
+    documentId: string,
+    actorId: string,
+    reason?: string,
+  ): Promise<{
+    success: boolean;
+    revertedItemsCount: number;
+    message: string;
+  }>;
 }

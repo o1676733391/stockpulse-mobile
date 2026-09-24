@@ -2,8 +2,8 @@
 
 ## 1. Executive Summary
 
-- **Execution Timestamp**: `2026-08-27T09:12:04.212Z`
-- **Request / Test ID**: `GCP-SMOKE-1787821924213`
+- **Execution Timestamp**: `2026-09-14T09:49:56.319Z`
+- **Request / Test ID**: `GCP-SMOKE-1789379396319`
 - **Target Provider**: `Google Gemini Multimodal Vision OCR Agent (gemini_vision)`
 - **Configured Model**: `gemini-2.5-flash`
 - **GCP Project**: `ocr-stem`
@@ -32,19 +32,22 @@
 | Metric / Field | Value |
 |---|---|
 | **API Endpoint** | `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent` |
-| **Request Latency** | **52302 ms** |
+| **Request Latency** | **41375 ms** |
 | **Real LLM Inference** | `SUCCEEDED` |
 | **Extracted Line Items** | **38 items** |
-| **Overall Extraction Confidence** | **0.98** |
+| **Overall Extraction Confidence** | **0.95** |
 | **Schema Validation** | `VALID` |
 
 ### Extracted Document Metadata
 ```json
 {
-  "documentNumber": "BILL-976521",
+  "documentNumber": "POS-437699",
   "date": "2026-07-27",
   "supplierName": "Restaurant POS Till",
-  "currency": "EUR"
+  "currency": "EUR",
+  "netAmount": 0,
+  "taxAmount": 0,
+  "totalAmount": 0
 }
 ```
 
@@ -56,21 +59,27 @@
     "rawText": "101 Menü 1 11",
     "description": "Menü 1",
     "quantity": 11,
-    "confidence": 0.98
+    "unitPrice": 0,
+    "totalPrice": 0,
+    "confidence": 0.95
   },
   {
     "lineNumber": 2,
     "rawText": "102 Menü 2 13",
     "description": "Menü 2",
     "quantity": 13,
-    "confidence": 0.98
+    "unitPrice": 0,
+    "totalPrice": 0,
+    "confidence": 0.95
   },
   {
     "lineNumber": 3,
     "rawText": "103 Menü 3 11",
     "description": "Menü 3",
     "quantity": 11,
-    "confidence": 0.98
+    "unitPrice": 0,
+    "totalPrice": 0,
+    "confidence": 0.95
   }
 ]
 ```

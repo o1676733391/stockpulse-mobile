@@ -8,6 +8,7 @@ export interface IInventoryService {
   createItem(item: Partial<InventoryItem>): Promise<InventoryItem>;
   updateItem(id: string, item: Partial<InventoryItem>): Promise<InventoryItem>;
   archiveItem(id: string): Promise<void>;
+  deleteItem(id: string): Promise<void>;
   getCategories(): Promise<Array<{ id: string; name: string }>>;
 }
 
@@ -136,6 +137,10 @@ export class RealInventoryService implements IInventoryService {
       logDebugFallback('InventoryService', `/inventory/${id} [DELETE]`, err);
       throw err;
     }
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    return this.archiveItem(id);
   }
 
   async getCategories(): Promise<Array<{ id: string; name: string }>> {

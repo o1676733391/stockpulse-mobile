@@ -16,6 +16,83 @@ import {
   RawOcrMetadata,
 } from '../interfaces/ocr-provider.interface';
 
+export const ORDER_INVOICE_PROMPT = `You are an expert F&B (Food & Beverage) OCR and Inventory Intelligence AI agent specialized in customer order receipts, dining bills, and POS register closures (Z-reports, Tagesabschluss, Kassenzettel, Gastronomierechnung, Bon).
+Your goal is to extract sold menu items, dishes, beverages, portion quantities, prices, taxes, and metadata with high precision to support automated BOM recipe inventory deductions.
+
+Document Context: Customer Order / Sales Invoice / POS Register Z-Report
+- English: 'Order Receipt', 'Tax Invoice', 'Guest Check', 'Z-Report', 'Subtotal', 'VAT', 'Total Due'
+- German: 'Kassenzettel', 'Bewirtungsbeleg', 'Z-Bon', 'Tagesabschluss', 'Rechnungs-Nr', 'USt / MwSt', 'Netto', 'Brutto', 'Gesamtsumme'
+- Dutch: 'Kassabon', 'Dagafsluiting', 'Z-Rapport', 'Factuurnummer', 'Btw-tarief', 'Excl. Btw', 'Incl. Btw', 'Totaal te betalen'
+
+Extraction Guidelines:
+1. Extract every individual dish, beverage, or sold menu item. Clean up prefixes or register codes from the description (e.g. '012 Cheeseburger Double' -> description: 'Cheeseburger Double', rawText: '012 Cheeseburger Double').
+2. Parse sold portion quantities. If a line indicates multiple quantities (e.g. '3x Flat White @ 3.80'), set quantity: 3, unitPrice: 3.80, totalPrice: 11.40.
+3. Parse European comma decimals (12,50 -> 12.50).
+4. Assign realistic extraction confidence scores (0.0 to 1.0).
+
+Respond ONLY with valid JSON conforming to this schema:
+{
+  "metadata": {
+    "documentNumber": "string",
+    "date": "YYYY-MM-DD",
+    "supplierName": "Merchant or Restaurant Name",
+    "currency": "EUR",
+    "netAmount": 0.0,
+    "taxAmount": 0.0,
+    "totalAmount": 0.0
+  },
+  "lineItems": [
+    {
+      "lineNumber": 1,
+      "description": "Clean dish/beverage menu item name",
+      "rawText": "Exact line text as printed on receipt",
+      "quantity": 1,
+      "unitPrice": 14.0,
+      "totalPrice": 14.0,
+      "confidence": 0.98
+    }
+  ]
+}`;
+
+export const GOODS_RECEIPT_PROMPT = `You are an expert F&B (Food & Beverage) OCR and Inbound Supply Chain AI agent specialized in supplier delivery notes, goods receipt slips, vendor purchase invoices, and warehouse receiving manifests (Lieferschein, Wareneingangsbeleg, Lieferantenrechnung, Factuur, Delivery Note).
+Your goal is to extract delivered raw food materials, ingredients, package quantities, units of measure, lot/batch numbers, and unit costs to record incoming stock directly into the warehouse inventory.
+
+Document Context: Supplier Delivery Note / Goods Receipt / Vendor Invoice
+- English: 'Delivery Note', 'Goods Receipt', 'Vendor Invoice', 'Bill of Lading', 'Supplier', 'Delivered Qty', 'Unit Cost'
+- German: 'Lieferschein', 'Wareneingang', 'Lieferantenrechnung', 'Lieferschein-Nr', 'Lieferant', 'Menge / ME', 'Einzelpreis', 'Gesamtpreis', 'Charge / MHD'
+- Dutch: 'Pakbon', 'Goederenontvangst', 'Leveranciersfactuur', 'Leveringsbon', 'Aantal', 'Prijs per eenheid'
+
+Extraction Guidelines:
+1. Extract inbound raw food ingredients, beverages, and culinary supplies (e.g. 'Whole Milk 3.5%', 'Chicken Breast Fillet', 'Potatoes Agria 25kg').
+2. Identify the unit of measure ('kg', 'g', 'L', 'ml', 'pcs', 'can', 'bottle', 'pack', 'box', 'crate').
+3. Distinguish package quantity vs total volume (e.g. '5 x 2.0 kg' -> quantity: 10, unitPrice: cost per unit, or preserve standard unit quantity).
+4. Extract vendor name (Metro, Transgourmet, Sysco, etc.) and delivery slip/invoice number.
+5. Parse European comma decimals (12,50 -> 12.50). Assign realistic confidence (0.0 to 1.0).
+
+Respond ONLY with valid JSON conforming to this schema:
+{
+  "metadata": {
+    "documentNumber": "Delivery Note / Invoice Number",
+    "date": "YYYY-MM-DD",
+    "supplierName": "Supplier / Vendor Name",
+    "currency": "EUR",
+    "netAmount": 0.0,
+    "taxAmount": 0.0,
+    "totalAmount": 0.0
+  },
+  "lineItems": [
+    {
+      "lineNumber": 1,
+      "description": "Standard raw material / ingredient name",
+      "rawText": "Exact printed delivery line item text",
+      "quantity": 10.0,
+      "unitPrice": 4.50,
+      "totalPrice": 45.0,
+      "confidence": 0.98
+    }
+  ]
+}`;
+
 @Injectable()
 export class GeminiVisionProvider implements IOcrProvider {
   readonly providerId: OcrProviderType = 'gemini_vision';
@@ -95,40 +172,11 @@ export class GeminiVisionProvider implements IOcrProvider {
       const base64Data = content.toString('base64');
       const validMimeType = this.sanitizeMimeType(mimeType);
 
-      const systemPrompt = `You are an expert F&B (Food & Beverage) OCR and Inventory Intelligence AI agent specialized in European and International hospitality markets (English, German, and Dutch).
-Analyze the provided receipt, POS end-of-day Z-report / register closure, or supplier delivery invoice image.
-Extract all sold or purchased line items, quantities, prices, taxes, and metadata with high precision.
+      const isGoodsReceipt =
+        options?.documentType === 'goods_receipt' ||
+        options?.documentType === 'supplier_invoice';
 
-Language & Regional Expertise:
-1. English: Common hospitality terms ('Receipt', 'Tax Invoice', 'Subtotal', 'VAT', 'Total Due').
-2. German: Kassenzettel, Bewirtungsbeleg, Z-Bon, Tagesabschluss, Lieferantenrechnung ('Rechnungs-Nr', 'Datum', 'USt / MwSt', 'Netto', 'Brutto', 'Gesamtsumme').
-3. Dutch: Kassabon, Dagafsluiting, Z-Rapport ('Factuurnummer', 'Btw-tarief', 'Excl. Btw', 'Incl. Btw', 'Totaal te betalen').
-
-Numerical Rules: Parse European comma decimals (12,50 -> 12.50). Assign realistic confidence (0.0 to 1.0).
-
-Respond ONLY with valid JSON conforming to this schema:
-{
-  "metadata": {
-    "documentNumber": "string",
-    "date": "YYYY-MM-DD",
-    "supplierName": "string",
-    "currency": "EUR",
-    "netAmount": 0.0,
-    "taxAmount": 0.0,
-    "totalAmount": 0.0
-  },
-  "lineItems": [
-    {
-      "lineNumber": 1,
-      "description": "Standardized item name",
-      "rawText": "Exact line text",
-      "quantity": 1,
-      "unitPrice": 14.0,
-      "totalPrice": 28.0,
-      "confidence": 0.98
-    }
-  ]
-}`;
+      const systemPrompt = isGoodsReceipt ? GOODS_RECEIPT_PROMPT : ORDER_INVOICE_PROMPT;
 
       let endpoint: string;
       const headers: Record<string, string> = {

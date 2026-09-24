@@ -52,6 +52,34 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name="recipes/index"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="recipes/[id]"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="recipes/create"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="recipes/edit"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
                 name="notifications"
                 options={{
                   headerShown: false,
@@ -95,6 +123,13 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="scan/result"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="scan/history"
                 options={{
                   headerShown: false,
                   presentation: 'card',

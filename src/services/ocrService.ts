@@ -1,16 +1,42 @@
-import { BomIngredientDeduction, OcrItem, OcrReport } from '@/types/ocr';
+import {
+  BomIngredientDeduction,
+  OcrDocumentType,
+  OcrDuplicateCheckResult,
+  OcrHistoryItem,
+  OcrItem,
+  OcrReport,
+} from '@/types/ocr';
 import { apiClient, logDebugFallback } from './apiClient';
 
 export interface IPOSOcrService {
-  processImage(imageUri?: string): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }>;
+  processImage(
+    imageUri?: string,
+    documentType?: OcrDocumentType,
+  ): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }>;
   getDocument(documentId: string): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }>;
-  confirmDeductions(reportId: string, items?: OcrItem[]): Promise<{ success: boolean; deductions: BomIngredientDeduction[] }>;
+  confirmDeductions(
+    reportId: string,
+    items?: OcrItem[],
+  ): Promise<{ success: boolean; deductions: BomIngredientDeduction[] }>;
   rejectDocument(reportId: string, reason?: string): Promise<{ success: boolean }>;
+  addItem(documentId: string, item: Partial<OcrItem>): Promise<OcrItem>;
   updateItem(documentId: string, itemId: string, item: Partial<OcrItem>): Promise<OcrItem>;
+  deleteItem(documentId: string, itemId: string): Promise<{ success: boolean }>;
+  checkDuplicate(documentId: string): Promise<OcrDuplicateCheckResult>;
+  revertDocument(documentId: string, reason?: string): Promise<{ success: boolean; message: string }>;
+  deleteDocument(documentId: string, revertWarehouse?: boolean): Promise<{ success: boolean }>;
+  getDocuments(params?: {
+    documentType?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<{ data: OcrHistoryItem[]; total: number }>;
 }
 
 export class RealPOSOcrService implements IPOSOcrService {
-  async processImage(imageUri?: string): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }> {
+  async processImage(
+    imageUri?: string,
+    documentType: OcrDocumentType = 'order_invoice',
+  ): Promise<{ report: OcrReport; bomDeductions?: BomIngredientDeduction[] }> {
     try {
       let imageBase64: string | undefined = undefined;
 
@@ -38,7 +64,7 @@ export class RealPOSOcrService implements IPOSOcrService {
         status: string;
         extractedItemCount?: number;
       }>('/ocr/scan', {
-        documentType: 'pos_z_report',
+        documentType,
         imageBase64,
       });
 
@@ -62,6 +88,7 @@ export class RealPOSOcrService implements IPOSOcrService {
         qty: Number(l.quantity || 1),
         confidence: Math.round(Number(l.confidence || 0.95) * 100),
         unitPrice: l.unitPrice ? Number(l.unitPrice) : undefined,
+        unit: l.unit || undefined,
       }));
 
       const bomDeductions: BomIngredientDeduction[] = (doc.bomPreview || []).map((b: any) => ({
@@ -78,10 +105,16 @@ export class RealPOSOcrService implements IPOSOcrService {
         id: doc.id,
         reportNumber: doc.metadata?.documentNumber || doc.fileName || doc.id.slice(-6),
         date: doc.metadata?.date || doc.createdAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-        shift: 'POS Register Closure',
+        shift: doc.documentType === 'goods_receipt' ? 'Delivery Receiving' : 'POS Register Closure',
         storeName: doc.metadata?.supplierName || 'Restaurant Location',
+        documentType: doc.documentType || 'order_invoice',
+        status: doc.status || 'pending',
         items,
         rawImageUrl: doc.storagePath,
+        totalAmount: doc.metadata?.totalAmount ? Number(doc.metadata.totalAmount) : undefined,
+        vatAmount: doc.metadata?.vatAmount ? Number(doc.metadata.vatAmount) : undefined,
+        vendorName: doc.metadata?.supplierName || undefined,
+        isDuplicate: Boolean(doc.isDuplicate),
       };
 
       return { report, bomDeductions };
@@ -125,9 +158,33 @@ export class RealPOSOcrService implements IPOSOcrService {
     }
   }
 
+  async addItem(documentId: string, item: Partial<OcrItem>): Promise<OcrItem> {
+    try {
+      const res = await apiClient.post<any>(`/ocr/documents/${documentId}/items`, {
+        description: item.item,
+        quantity: item.qty || 1,
+        unitPrice: item.unitPrice,
+        matchedRecipeId: item.recipeId,
+      });
+
+      return {
+        id: res.id || String(Date.now()),
+        artNr: res.articleNumber || item.artNr || 'ITEM',
+        item: res.description || item.item || '',
+        recipeId: res.matchedRecipeId || item.recipeId,
+        qty: Number(res.quantity || item.qty || 1),
+        confidence: 100,
+        unitPrice: res.unitPrice ? Number(res.unitPrice) : item.unitPrice,
+      };
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${documentId}/items`, err);
+      throw err;
+    }
+  }
+
   async updateItem(documentId: string, itemId: string, item: Partial<OcrItem>): Promise<OcrItem> {
     try {
-      const updated = await apiClient.patch<any>(`/ocr/documents/${documentId}/items/${itemId}`, {
+      await apiClient.patch<any>(`/ocr/documents/${documentId}/items/${itemId}`, {
         description: item.item,
         quantity: item.qty,
         matchedRecipeId: item.recipeId,
@@ -146,6 +203,83 @@ export class RealPOSOcrService implements IPOSOcrService {
     } catch (err) {
       logDebugFallback('POSOcrService', `/ocr/documents/${documentId}/items/${itemId}`, err);
       throw err;
+    }
+  }
+
+  async deleteItem(documentId: string, itemId: string): Promise<{ success: boolean }> {
+    try {
+      await apiClient.delete(`/ocr/documents/${documentId}/items/${itemId}`);
+      return { success: true };
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${documentId}/items/${itemId}`, err);
+      throw err;
+    }
+  }
+
+  async checkDuplicate(documentId: string): Promise<OcrDuplicateCheckResult> {
+    try {
+      return await apiClient.get<OcrDuplicateCheckResult>(`/ocr/documents/${documentId}/duplicate`);
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${documentId}/duplicate`, err);
+      return { isDuplicate: false };
+    }
+  }
+
+  async revertDocument(documentId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    try {
+      return await apiClient.post<{ success: boolean; message: string }>(
+        `/ocr/documents/${documentId}/revert`,
+        { reason },
+      );
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${documentId}/revert`, err);
+      throw err;
+    }
+  }
+
+  async deleteDocument(documentId: string, revertWarehouse = false): Promise<{ success: boolean }> {
+    try {
+      await apiClient.delete(`/ocr/documents/${documentId}?revertWarehouse=${revertWarehouse}`);
+      return { success: true };
+    } catch (err) {
+      logDebugFallback('POSOcrService', `/ocr/documents/${documentId}`, err);
+      throw err;
+    }
+  }
+
+  async getDocuments(params?: {
+    documentType?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<{ data: OcrHistoryItem[]; total: number }> {
+    try {
+      const queryParts: string[] = [];
+      if (params?.documentType) queryParts.push(`documentType=${encodeURIComponent(params.documentType)}`);
+      if (params?.status) queryParts.push(`status=${encodeURIComponent(params.status)}`);
+      if (params?.limit) queryParts.push(`limit=${params.limit}`);
+      const qs = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+
+      const res = await apiClient.get<any>(`/ocr/documents${qs}`);
+      const rawList = res.data || res.items || (Array.isArray(res) ? res : []);
+      const data: OcrHistoryItem[] = rawList.map((d: any) => ({
+        id: d.id,
+        documentType: d.documentType || 'order_invoice',
+        documentNumber: d.metadata?.documentNumber || d.fileName || d.id.slice(-6),
+        vendorName: d.metadata?.supplierName || undefined,
+        date: d.metadata?.date || d.createdAt?.slice(0, 10) || '',
+        status: d.status || 'pending',
+        itemCount: d.extractedItemCount || d.extractedLines?.length || 0,
+        totalAmount: d.metadata?.totalAmount ? Number(d.metadata.totalAmount) : undefined,
+        currency: d.metadata?.currency || 'EUR',
+        createdAt: d.createdAt || new Date().toISOString(),
+        isDuplicate: Boolean(d.isDuplicate),
+        revertedAt: d.metadata?.revertedAt || undefined,
+      }));
+
+      return { data, total: res.total || data.length };
+    } catch (err) {
+      logDebugFallback('POSOcrService', '/ocr/documents', err);
+      return { data: [], total: 0 };
     }
   }
 }

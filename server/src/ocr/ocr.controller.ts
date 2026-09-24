@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -24,11 +25,13 @@ import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
   ConfirmOcrDeductionDto,
+  CreateOcrItemDto,
   OcrDocumentDetailResponseDto,
   OcrDocumentResponseDto,
   PresignedUploadRequestDto,
   QueryOcrDocumentsDto,
   RejectOcrDocumentDto,
+  RevertOcrDocumentDto,
   TriggerScanRequestDto,
   UpdateOcrItemDto,
 } from './dto/ocr.dto';
@@ -192,5 +195,77 @@ export class OcrController {
     @CurrentUser('id') actorId: string,
   ) {
     return this.ocrService.rejectDocument(id, dto, storeId, actorId);
+  }
+
+  @Post('documents/:id/items')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
+  @RequirePermissions('ocr:review')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add a new line item during review workflow' })
+  @ApiParam({ name: 'id', description: 'OCR document UUID' })
+  async addDocumentItem(
+    @Param('id') id: string,
+    @Body() dto: CreateOcrItemDto,
+    @CurrentStore() storeId: string,
+  ) {
+    return this.ocrService.addDocumentItem(id, dto, storeId);
+  }
+
+  @Delete('documents/:id/items/:itemId')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
+  @RequirePermissions('ocr:review')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a line item during review workflow' })
+  @ApiParam({ name: 'id', description: 'OCR document UUID' })
+  @ApiParam({ name: 'itemId', description: 'OCR line item UUID' })
+  async deleteDocumentItem(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @CurrentStore() storeId: string,
+  ) {
+    return this.ocrService.deleteDocumentItem(id, itemId, storeId);
+  }
+
+  @Post('documents/:id/revert')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor')
+  @RequirePermissions('ocr:review')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revert warehouse stock changes for a duplicate or voided confirmed invoice' })
+  @ApiParam({ name: 'id', description: 'OCR document UUID' })
+  async revertDocument(
+    @Param('id') id: string,
+    @Body() dto: RevertOcrDocumentDto,
+    @CurrentStore() storeId: string,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.ocrService.revertReview(id, dto, storeId, actorId);
+  }
+
+  @Delete('documents/:id')
+  @Roles('admin', 'superadmin', 'manager')
+  @RequirePermissions('ocr:review')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete an OCR document with optional warehouse rollback' })
+  @ApiParam({ name: 'id', description: 'OCR document UUID' })
+  async deleteDocument(
+    @Param('id') id: string,
+    @Query('revertWarehouse') revertWarehouse: string,
+    @CurrentStore() storeId: string,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const shouldRevert = revertWarehouse === 'true';
+    return this.ocrService.deleteDocument(id, storeId, actorId, shouldRevert);
+  }
+
+  @Get('documents/:id/duplicate')
+  @Roles('admin', 'superadmin', 'manager', 'supervisor', 'staff')
+  @RequirePermissions('ocr:view')
+  @ApiOperation({ summary: 'Check if a confirmed duplicate document exists' })
+  @ApiParam({ name: 'id', description: 'OCR document UUID' })
+  async checkDuplicate(
+    @Param('id') id: string,
+    @CurrentStore() storeId: string,
+  ) {
+    return this.ocrService.checkDuplicate(id, storeId);
   }
 }

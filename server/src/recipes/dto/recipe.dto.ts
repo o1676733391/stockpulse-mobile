@@ -176,6 +176,9 @@ export class RecipeIngredientResponseDto {
 
   @ApiProperty({ example: 0.3188 })
   lineCost!: number;
+
+  @ApiPropertyOptional({ example: 45.0, description: 'Live available physical stock in inventory' })
+  availableStock?: number;
 }
 
 export class RecipeResponseDto {

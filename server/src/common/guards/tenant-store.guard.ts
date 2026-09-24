@@ -23,6 +23,11 @@ export class TenantStoreGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
+    const path = request.path || request.url || '';
+    if (path.includes('/auth/me') || path.includes('/invitations/accept') || path.includes('/invitations/validate')) {
+      return true;
+    }
+
     const user = request.user as AuthenticatedUser;
     const storeId =
       request.headers['x-store-id'] ||

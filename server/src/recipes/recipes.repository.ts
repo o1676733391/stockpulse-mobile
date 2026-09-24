@@ -39,6 +39,8 @@ export class RecipesRepository implements IRecipesRepository {
         const lineCost = Math.round(grossQty * costPerUnit * 10000) / 10000;
         totalCost += lineCost;
 
+        const availableStock = item.physical_stock !== undefined ? Number(item.physical_stock) : undefined;
+
         ingredients.push({
           id: ing.id,
           recipeId: ing.recipe_id,
@@ -50,6 +52,7 @@ export class RecipesRepository implements IRecipesRepository {
           wastePercentage,
           costPerUnit,
           lineCost,
+          availableStock,
         });
       }
     }
@@ -107,7 +110,8 @@ export class RecipesRepository implements IRecipesRepository {
             id,
             sku,
             name,
-            cost_per_unit
+            cost_per_unit,
+            physical_stock
           )
         )
       `)
@@ -167,7 +171,8 @@ export class RecipesRepository implements IRecipesRepository {
             id,
             sku,
             name,
-            cost_per_unit
+            cost_per_unit,
+            physical_stock
           )
         )
       `)
