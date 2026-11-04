@@ -390,7 +390,7 @@ export default function TeamScreen() {
                         <View style={styles.memberInfo}>
                           <View style={styles.nameRow}>
                             <Text style={styles.memberName}>{m.name}</Text>
-                            {isSelf && <Badge variant="gray">YOU</Badge>}
+                            {isSelf && <Badge variant="gray">{t('common.you')}</Badge>}
                           </View>
                           <Text style={styles.memberEmail}>{m.email}</Text>
                           {m.phone ? (
@@ -401,7 +401,7 @@ export default function TeamScreen() {
                         {/* Role Badge */}
                         <View style={styles.roleCol}>
                           <Badge variant={getRoleVariant(m.role)}>
-                            {roleDef.label}
+                            {t(`team.roles.${m.role}`, { defaultValue: roleDef.label })}
                           </Badge>
                         </View>
                       </View>
@@ -530,7 +530,7 @@ export default function TeamScreen() {
                         <View style={styles.invitationRoleBox}>
                           <Text style={styles.invitationDetailLabel}>{t('onboarding.roleLabel')}:</Text>
                           <Badge variant={getRoleVariant(inv.role)}>
-                            {roleDef.label}
+                            {t(`team.roles.${inv.role}`, { defaultValue: roleDef.label })}
                           </Badge>
                         </View>
 
@@ -613,14 +613,16 @@ export default function TeamScreen() {
                     <Card key={roleKey} style={styles.roleCard}>
                       <View style={styles.roleCardHeader}>
                         <Badge variant={getRoleVariant(roleKey)}>
-                          {roleDef.label}
+                          {t(`team.roles.${roleKey}`, { defaultValue: roleDef.label })}
                         </Badge>
                       </View>
-                      <Text style={styles.roleCardDesc}>{roleDef.description}</Text>
+                      <Text style={styles.roleCardDesc}>
+                        {t(`team.roleDescriptions.${roleKey}`, { defaultValue: roleDef.description })}
+                      </Text>
                       <View style={styles.permCountBox}>
                         <VectorIcon name="ShieldCheck" size={14} color={Colors.brand.primary} />
                         <Text style={styles.permCountText}>
-                          {roleDef.permissions.length} module permissions granted
+                          {t('team.modulePermissionsGranted', { count: roleDef.permissions.length })}
                         </Text>
                       </View>
                     </Card>
@@ -687,10 +689,10 @@ export default function TeamScreen() {
                           <View style={styles.roleOptionRow}>
                             <View style={{ flex: 1 }}>
                               <Text style={styles.roleOptionLabel}>
-                                {roleDef.label}
+                                {t(`team.roles.${roleKey}`, { defaultValue: roleDef.label })}
                               </Text>
                               <Text style={styles.roleOptionDesc}>
-                                {roleDef.description}
+                                {t(`team.roleDescriptions.${roleKey}`, { defaultValue: roleDef.description })}
                               </Text>
                             </View>
                             {isCurrent && (

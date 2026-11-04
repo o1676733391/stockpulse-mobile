@@ -41,9 +41,9 @@ export default function TeamMemberDetailScreen() {
   if (!member) {
     return (
       <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-        <TopBar title="Member Details" showBack />
+        <TopBar title={t('team.inviteDetails')} showBack />
         <View style={styles.centerBox}>
-          <Text style={styles.loadingText}>Loading member details...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
     );
@@ -60,9 +60,15 @@ export default function TeamMemberDetailScreen() {
       const updated = await authService.updateMemberRole(member.id, newRole);
       setMember(updated);
       setShowRoleModal(false);
-      Alert.alert('Role Updated', `${member.name}'s role is now ${ROLES[newRole].label}.`);
+      Alert.alert(
+        t('team.changeRole'),
+        t('team.roleUpdatedSuccess', {
+          name: member.name,
+          role: t(`team.roles.${newRole}`, { defaultValue: ROLES[newRole].label }),
+        })
+      );
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to update role');
+      Alert.alert(t('common.error'), err?.message || t('errors.serverError'));
     } finally {
       setIsMutating(false);
     }
@@ -71,21 +77,24 @@ export default function TeamMemberDetailScreen() {
   const handleDeleteMember = () => {
     if (isMutating) return;
     Alert.alert(
-      'Deactivate Member',
-      `Are you sure you want to deactivate ${member.name}? They will lose access to the store.`,
+      t('team.removeMemberTitle'),
+      t('team.removeMemberConfirm', { name: member.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Deactivate',
+          text: t('team.removeFromStore'),
           style: 'destructive',
           onPress: async () => {
             try {
               setIsMutating(true);
               await authService.removeMember(member.id);
-              Alert.alert('Member Deactivated', `${member.name} has been deactivated.`);
+              Alert.alert(
+                t('common.success'),
+                t('team.memberRemovedSuccess', { name: member.name })
+              );
               router.back();
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to deactivate member');
+              Alert.alert(t('common.error'), err?.message || t('errors.serverError'));
             } finally {
               setIsMutating(false);
             }
@@ -245,7 +254,7 @@ export default function TeamMemberDetailScreen() {
             <View style={styles.modalGrabber} />
 
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Change Member Role</Text>
+              <Text style={styles.modalTitle}>{t('team.changeRole')}</Text>
               <Pressable
                 onPress={() => setShowRoleModal(false)}
                 style={styles.closeBtn}
@@ -270,10 +279,16 @@ export default function TeamMemberDetailScreen() {
                   >
                     <View style={styles.roleOptionInfo}>
                       <View style={styles.roleOptionTitleRow}>
-                        <Text style={styles.roleOptionLabel}>{def.label}</Text>
-                        <Badge variant={def.badgeVariant}>{r.toUpperCase()}</Badge>
+                        <Text style={styles.roleOptionLabel}>
+                          {t(`team.roles.${r}`, { defaultValue: def.label })}
+                        </Text>
+                        <Badge variant={def.badgeVariant}>
+                          {t(`team.roles.${r}`, { defaultValue: r.toUpperCase() })}
+                        </Badge>
                       </View>
-                      <Text style={styles.roleOptionDesc}>{def.description}</Text>
+                      <Text style={styles.roleOptionDesc}>
+                        {t(`team.roleDescriptions.${r}`, { defaultValue: def.description })}
+                      </Text>
                     </View>
 
                     {isSelected && (

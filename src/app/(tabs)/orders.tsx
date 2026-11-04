@@ -182,7 +182,7 @@ export default function OrdersScreen() {
               {loading ? '--' : tab === 'active' ? activeOrders.length : historyOrders.length}
             </Text>
             <Text style={styles.metricLabel}>
-              {tab === 'active' ? 'Active Orders' : 'Past Orders'}
+              {tab === 'active' ? t('orders.activeOrders') : t('orders.pastOrders')}
             </Text>
           </Card>
           <Card style={styles.metricCard}>
@@ -190,7 +190,7 @@ export default function OrdersScreen() {
               {loading ? '--' : formatCurrency(totalActiveValue)}
             </Text>
             <Text style={styles.metricLabel}>
-              {tab === 'active' ? 'Total Value' : 'Total Spent'}
+              {tab === 'active' ? t('orders.totalValue') : t('orders.totalSpent')}
             </Text>
           </Card>
           <Card style={styles.metricCard}>
@@ -198,7 +198,7 @@ export default function OrdersScreen() {
               {loading ? '--' : thirdStatValue}
             </Text>
             <Text style={styles.metricLabel}>
-              {tab === 'active' ? 'Awaiting' : 'Cancelled'}
+              {tab === 'active' ? t('orders.awaiting') : t('orders.cancelled')}
             </Text>
           </Card>
         </View>
@@ -227,7 +227,7 @@ export default function OrdersScreen() {
               <VectorIcon name="Package" size={24} color={Colors.neutral.textTertiary} />
             </View>
             <Text style={styles.emptyTitle}>
-              {tab === 'active' ? 'No active orders' : 'No order history'}
+              {tab === 'active' ? t('orders.noActiveOrders') : t('orders.noOrderHistory')}
             </Text>
             {tab === 'active' && (
               <Pressable
@@ -235,7 +235,7 @@ export default function OrdersScreen() {
                 style={styles.emptyActionBtn}
               >
                 <Text style={styles.emptyActionBtnText}>
-                  + Create from POQ Recommendations
+                  + {t('orders.createFromPoq')}
                 </Text>
               </Pressable>
             )}
@@ -320,7 +320,9 @@ export default function OrdersScreen() {
 
               {/* Bottom Items & Total Row */}
               <View style={styles.orderBottomRow}>
-                <Text style={styles.itemCountText}>{po.items.length} items</Text>
+                <Text style={styles.itemCountText}>
+                  {po.items.length} {po.items.length === 1 ? t('common.item') : t('common.items')}
+                </Text>
                 <Text style={styles.orderTotalText}>{formatCurrency(po.total)}</Text>
               </View>
             </Card>
@@ -335,7 +337,7 @@ export default function OrdersScreen() {
           >
             <VectorIcon name="Plus" size={16} color={Colors.brand.primary} strokeWidth={2.5} />
             <Text style={styles.createPoqBtnText}>
-              Create from POQ Recommendations
+              {t('orders.createFromPoq')}
             </Text>
           </Pressable>
         )}

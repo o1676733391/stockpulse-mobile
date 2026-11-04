@@ -79,7 +79,7 @@ export default function ForgotPasswordScreen() {
               </Card>
 
               <Button
-                label="Back to Sign In"
+                label={t('auth.backToLogin')}
                 variant="primary"
                 size="lg"
                 fullWidth
@@ -92,19 +92,19 @@ export default function ForgotPasswordScreen() {
                 <VectorIcon name="KeyRound" size={40} color={Colors.brand.primary} />
               </View>
 
-              <Text style={styles.heading}>Forgot Password?</Text>
+              <Text style={styles.heading}>{t('auth.forgotPassword')}</Text>
 
               <Text style={styles.subheading}>
-                Enter your registered email address and we will send you a link to reset your password.
+                {t('auth.forgotPasswordSub', { defaultValue: 'Geben Sie Ihre registrierte E-Mail-Adresse ein, um einen Link zum Zurücksetzen Ihres Passworts zu erhalten.' })}
               </Text>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email Address</Text>
+                <Text style={styles.inputLabel}>{t('auth.emailLabel')}</Text>
                 <View style={styles.inputContainer}>
                   <VectorIcon name="Mail" size={20} color={Colors.neutral.textTertiary} />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="name@restaurant.de"
+                    placeholder={t('auth.emailPlaceholder')}
                     placeholderTextColor={Colors.neutral.textTertiary}
                     value={email}
                     onChangeText={setEmail}
@@ -117,7 +117,7 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <Button
-                label="Send Reset Link"
+                label={t('auth.sendResetLink', { defaultValue: 'Link zum Zurücksetzen senden' })}
                 variant="primary"
                 size="lg"
                 fullWidth
@@ -132,7 +132,7 @@ export default function ForgotPasswordScreen() {
                 style={styles.backButton}
                 disabled={isLoading}
               >
-                <Text style={styles.backText}>Back to Sign In</Text>
+                <Text style={styles.backText}>{t('auth.backToLogin')}</Text>
               </Pressable>
             </View>
           )}

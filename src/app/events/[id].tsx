@@ -70,8 +70,8 @@ export default function EventDetailScreen() {
   if (!event) {
     return (
       <View style={[styles.screen, styles.center]}>
-        <Text style={styles.errorText}>Event not found</Text>
-        <Button label="Go Back" variant="outline" onPress={() => router.back()} />
+        <Text style={styles.errorText}>{t('events.emptyState')}</Text>
+        <Button label={t('common.goBack')} variant="outline" onPress={() => router.back()} />
       </View>
     );
   }
@@ -79,13 +79,13 @@ export default function EventDetailScreen() {
   const getStatusBadge = (status: EventStatus): { label: string; variant: BadgeVariant } => {
     switch (status) {
       case 'upcoming':
-        return { label: 'Upcoming', variant: 'blue' };
+        return { label: t('events.upcoming'), variant: 'blue' };
       case 'in_prep':
-        return { label: 'In Preparation', variant: 'amber' };
+        return { label: t('events.inPrep'), variant: 'amber' };
       case 'completed':
-        return { label: 'Completed', variant: 'green' };
+        return { label: t('events.completed'), variant: 'green' };
       case 'cancelled':
-        return { label: 'Cancelled', variant: 'red' };
+        return { label: t('common.cancelled', { defaultValue: 'Storniert' }), variant: 'red' };
       default:
         return { label: status, variant: 'gray' };
     }
@@ -97,7 +97,7 @@ export default function EventDetailScreen() {
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       <TopBar
         title={event.title}
-        subtitle={`${event.guestCount} Guests · ${event.date}`}
+        subtitle={`${event.guestCount} ${t('events.guestCount')} · ${event.date}`}
         showBack
       />
 
@@ -261,7 +261,7 @@ export default function EventDetailScreen() {
           )}
 
           <Button
-            label="Back to Events"
+            label={t('events.allEvents')}
             variant="outline"
             size="md"
             fullWidth

@@ -149,7 +149,7 @@ export default function EventsListScreen() {
             style={({ pressed }) => [styles.newBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="Plus" size={14} color="#ffffff" strokeWidth={2.5} />
-            <Text style={styles.newBtnText}>Plan</Text>
+            <Text style={styles.newBtnText}>{t('events.plan', { defaultValue: 'Planen' })}</Text>
           </Pressable>
         }
       />
@@ -162,7 +162,7 @@ export default function EventsListScreen() {
             style={[styles.tabItem, selectedTab === 'upcoming' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'upcoming' && styles.tabTextActive]}>
-              Upcoming ({metrics.upcomingCount})
+              {t('events.upcoming')} ({metrics.upcomingCount})
             </Text>
           </Pressable>
 
@@ -171,7 +171,7 @@ export default function EventsListScreen() {
             style={[styles.tabItem, selectedTab === 'all' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'all' && styles.tabTextActive]}>
-              All Events ({events.length})
+              {t('events.allEvents')} ({events.length})
             </Text>
           </Pressable>
 
@@ -180,7 +180,7 @@ export default function EventsListScreen() {
             style={[styles.tabItem, selectedTab === 'completed' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
-              Past Events ({events.filter((e) => e.status === 'completed').length})
+              {t('events.completed')} ({events.filter((e) => e.status === 'completed').length})
             </Text>
           </Pressable>
         </ScrollView>

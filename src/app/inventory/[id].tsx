@@ -91,9 +91,9 @@ export default function InventoryDetailScreen() {
   if (loading) {
     return (
       <View style={[styles.screen, { backgroundColor: Colors.neutral.surface, justifyContent: 'center', alignItems: 'center' }]}>
-        <TopBar title="Loading..." showBack />
+        <TopBar title={t('common.loading')} showBack />
         <Text style={{ ...Typography.body, color: Colors.neutral.textSecondary, marginTop: Spacing.xl }}>
-          Loading item details...
+          {t('common.loading')}
         </Text>
       </View>
     );
@@ -102,17 +102,17 @@ export default function InventoryDetailScreen() {
   if (errorMsg || !item) {
     return (
       <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-        <TopBar title="Error" showBack />
+        <TopBar title={t('common.error')} showBack />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md }}>
           <VectorIcon name="AlertCircle" size={40} color={Colors.critical.main} />
           <Text style={{ ...Typography.sectionHeader, color: Colors.critical.dark }}>
-            {errorMsg || 'Inventory item not found'}
+            {errorMsg || t('inventory.notFound', { defaultValue: 'Artikel nicht gefunden' })}
           </Text>
           <Pressable
             onPress={() => router.back()}
             style={{ paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, backgroundColor: Colors.brand.primary, borderRadius: Radius.md }}
           >
-            <Text style={{ ...Typography.body, fontWeight: '700', color: '#FFFFFF' }}>Back to Inventory</Text>
+            <Text style={{ ...Typography.body, fontWeight: '700', color: '#FFFFFF' }}>{t('inventory.backToList')}</Text>
           </Pressable>
         </View>
       </View>

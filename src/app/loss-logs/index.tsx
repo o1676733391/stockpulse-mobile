@@ -302,8 +302,8 @@ export default function LossLogsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       <TopBar
-        title="Loss & Cancellations"
-        subtitle="Kitchen spoilage, waste & voided tickets"
+        title={t('lossLogs.title')}
+        subtitle={t('lossLogs.subtitle')}
         showBack
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -319,7 +319,7 @@ export default function LossLogsScreen() {
               style={({ pressed }) => [styles.newBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="Plus" size={14} color="#ffffff" strokeWidth={2.5} />
-              <Text style={styles.newBtnText}>{activeTab === 'loss' ? 'Log Loss' : 'Void Dish'}</Text>
+              <Text style={styles.newBtnText}>{activeTab === 'loss' ? t('lossLogs.logLoss') : t('lossLogs.voidDish')}</Text>
             </Pressable>
           </View>
         }
@@ -337,7 +337,7 @@ export default function LossLogsScreen() {
             color={activeTab === 'loss' ? Colors.brand.primary : Colors.neutral.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === 'loss' && styles.tabTextActive]}>
-            Food Loss & Spoilage ({metrics.lossCount})
+            {t('lossLogs.foodLossSpoilage')} ({metrics.lossCount})
           </Text>
         </Pressable>
 
@@ -351,7 +351,7 @@ export default function LossLogsScreen() {
             color={activeTab === 'cancellations' ? Colors.brand.primary : Colors.neutral.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === 'cancellations' && styles.tabTextActive]}>
-            Kitchen Voids ({metrics.cancellationsCount})
+            {t('lossLogs.kitchenCancellations')} ({metrics.cancellationsCount})
           </Text>
         </Pressable>
       </View>

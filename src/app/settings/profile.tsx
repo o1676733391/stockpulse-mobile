@@ -133,7 +133,10 @@ export default function ProfileScreen() {
     }
   };
 
-  const biometricLabel = Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Fingerprint';
+  const biometricLabel =
+    Platform.OS === 'ios'
+      ? t('settings.profile.biometrics')
+      : t('settings.profile.fingerprint');
 
   if (loading) {
     return (
@@ -249,7 +252,7 @@ export default function ProfileScreen() {
             <View style={styles.toggleTextCol}>
               <Text style={styles.toggleTitle}>{biometricLabel}</Text>
               <Text style={styles.toggleSub}>
-                {t('settings.appearance.hapticsSub')}
+                {t('settings.profile.biometricsSub')}
               </Text>
             </View>
             <Switch
@@ -287,7 +290,9 @@ export default function ProfileScreen() {
                   : 'green'
               }
             >
-              {ROLES[profile.role]?.label || profile.role.toUpperCase()}
+              {t('team.roles.' + profile.role, {
+                defaultValue: ROLES[profile.role]?.label || profile.role.toUpperCase(),
+              })}
             </Badge>
           </View>
           <View style={styles.infoFieldRow}>

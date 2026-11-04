@@ -127,7 +127,7 @@ export default function InviteMemberScreen() {
 
           {/* Full Name Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>{t('common.details')} (Optional)</Text>
+            <Text style={styles.inputLabel}>{t('team.fullNameOptional')}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -173,7 +173,7 @@ export default function InviteMemberScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>{t('onboarding.roleLabel')} *</Text>
             <Text style={styles.inputHint}>
-              Select the initial operational role and permissions for this member.
+              {t('team.selectRolePrompt')}
             </Text>
 
             <View style={styles.rolesGrid}>
@@ -194,9 +194,11 @@ export default function InviteMemberScreen() {
                     <View style={styles.roleOptionHeader}>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.roleOptionName, isSelected && styles.roleOptionNameSelected]}>
-                          {roleDef.label}
+                          {t(`team.roles.${r}`, { defaultValue: roleDef.label })}
                         </Text>
-                        <Text style={styles.roleOptionDesc}>{roleDef.description}</Text>
+                        <Text style={styles.roleOptionDesc}>
+                          {t(`team.roleDescriptions.${r}`, { defaultValue: roleDef.description })}
+                        </Text>
                       </View>
 
                       <View
@@ -211,10 +213,10 @@ export default function InviteMemberScreen() {
 
                     <View style={styles.roleBadgeRow}>
                       <Badge variant={getRoleBadgeVariant(r)}>
-                        {r.toUpperCase()}
+                        {t(`team.roles.${r}`, { defaultValue: r.toUpperCase() })}
                       </Badge>
                       <Text style={styles.rolePermCount}>
-                        {roleDef.permissions.length} module permissions
+                        {t('team.modulePermissionsGranted', { count: roleDef.permissions.length })}
                       </Text>
                     </View>
                   </Pressable>
@@ -225,7 +227,7 @@ export default function InviteMemberScreen() {
 
           {/* Expiration Validity Selector */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Validity Duration</Text>
+            <Text style={styles.inputLabel}>{t('team.validityDuration')}</Text>
             <View style={styles.validityPillRow}>
               {[3, 7, 14, 30].map((days) => (
                 <Pressable
@@ -242,7 +244,7 @@ export default function InviteMemberScreen() {
                       expiresInDays === days && styles.validityPillTextActive,
                     ]}
                   >
-                    {days} Days
+                    {t('team.daysCount', { count: days })}
                   </Text>
                 </Pressable>
               ))}
@@ -277,23 +279,23 @@ export default function InviteMemberScreen() {
               <VectorIcon name="CheckCircle2" size={36} color={Colors.brand.primary} />
             </View>
 
-            <Text style={styles.successModalTitle}>Invitation Ready</Text>
+            <Text style={styles.successModalTitle}>{t('team.invitationReady')}</Text>
             <Text style={styles.successModalSub}>
-              Share this 6-character code with <Text style={{ fontWeight: '700' }}>{createdInvitation?.email}</Text> to join the kitchen store.
+              {t('team.invitationReadySub', { email: createdInvitation?.email })}
             </Text>
 
             {/* Code Box */}
             <View style={styles.codeContainer}>
-              <Text style={styles.codeLabel}>INVITATION CODE</Text>
+              <Text style={styles.codeLabel}>{t('team.invitationCode')}</Text>
               <Text style={styles.codeValue}>{createdInvitation?.invitationCode}</Text>
               <Text style={styles.codeExpiry}>
-                Expires in {expiresInDays} days · Single-use secure token
+                {t('team.expiresInDaysToken', { days: expiresInDays })}
               </Text>
             </View>
 
             <View style={styles.modalActionsCol}>
               <Button
-                label="Copy & Share Code"
+                label={t('team.copyAndShareCode')}
                 variant="primary"
                 onPress={handleShareInvitation}
                 leftIcon={<VectorIcon name="Share2" size={16} color="#ffffff" />}

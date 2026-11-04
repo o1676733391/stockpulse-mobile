@@ -147,8 +147,8 @@ export default function InvoiceDetailScreen() {
   if (!invoice) {
     return (
       <View style={[styles.screen, styles.center]}>
-        <Text style={styles.errorText}>Invoice not found</Text>
-        <Button label="Go Back" variant="outline" onPress={() => router.back()} />
+        <Text style={styles.errorText}>{t('invoices.invoiceNotFound')}</Text>
+        <Button label={t('common.goBack')} variant="outline" onPress={() => router.back()} />
       </View>
     );
   }
@@ -167,7 +167,7 @@ export default function InvoiceDetailScreen() {
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       <TopBar
         title={invoice.invoiceNumber}
-        subtitle={invoice.supplierName || invoice.customerReference || 'Invoice Details'}
+        subtitle={invoice.supplierName || invoice.customerReference || t('invoices.invoiceDetails')}
         showBack
       />
 
@@ -199,13 +199,13 @@ export default function InvoiceDetailScreen() {
                 ]}
               >
                 {isSupplierDoc
-                  ? 'Delivery invoice from supplier'
-                  : 'Order form receipt'}
+                  ? t('invoices.deliveryInvoiceSupplier')
+                  : t('invoices.orderFormReceipt')}
               </Text>
             </View>
 
             <Badge variant={statusBadgeVariant}>
-              {invoice.status.toUpperCase()}
+              {t(`invoices.statuses.${invoice.status}`, { defaultValue: invoice.status.toUpperCase() })}
             </Badge>
           </View>
 
@@ -215,19 +215,19 @@ export default function InvoiceDetailScreen() {
 
           <View style={styles.metaGrid}>
             <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Invoice Date</Text>
+              <Text style={styles.metaLabel}>{t('invoices.invoiceDate')}</Text>
               <Text style={styles.metaValue}>{invoice.date}</Text>
             </View>
 
             {invoice.dueDate && (
               <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Due Date</Text>
+                <Text style={styles.metaLabel}>{t('invoices.dueDate')}</Text>
                 <Text style={styles.metaValue}>{invoice.dueDate}</Text>
               </View>
             )}
 
             <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Payment Status</Text>
+              <Text style={styles.metaLabel}>{t('invoices.paymentStatus')}</Text>
               <Text
                 style={[
                   styles.metaValue,
@@ -245,7 +245,7 @@ export default function InvoiceDetailScreen() {
 
             {invoice.verifiedBy && (
               <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Verified By</Text>
+                <Text style={styles.metaLabel}>{t('invoices.verifiedBy')}</Text>
                 <Text style={styles.metaValue}>{invoice.verifiedBy}</Text>
               </View>
             )}
@@ -261,7 +261,7 @@ export default function InvoiceDetailScreen() {
                 >
                   <VectorIcon name="ShoppingCart" size={12} color={Colors.brand.primary} />
                   <Text style={styles.connectionText}>
-                    Linked PO: {invoice.purchaseOrderId.toUpperCase()}
+                    {t('invoices.linkedPo', { po: invoice.purchaseOrderId.toUpperCase() })}
                   </Text>
                 </Pressable>
               )}
@@ -273,7 +273,7 @@ export default function InvoiceDetailScreen() {
                 >
                   <VectorIcon name="ClipboardList" size={12} color="#1d4ed8" />
                   <Text style={[styles.connectionText, { color: '#1d4ed8' }]}>
-                    Linked Delivery Note
+                    {t('invoices.linkedDeliveryNote')}
                   </Text>
                 </Pressable>
               )}
@@ -291,14 +291,14 @@ export default function InvoiceDetailScreen() {
                 !invoice.notes && { fontStyle: 'italic', color: Colors.neutral.textTertiary },
               ]}
             >
-              {invoice.notes || '+ Tap to add receiving remarks / invoice notes'}
+              {invoice.notes || t('invoices.tapToAddNotes')}
             </Text>
             <VectorIcon name="Edit3" size={13} color={Colors.brand.primary} />
           </Pressable>
         </Card>
 
         {/* Line Items Table */}
-        <Text style={styles.sectionHeading}>Line Items ({invoice.items.length})</Text>
+        <Text style={styles.sectionHeading}>{t('invoices.lineItems')} ({invoice.items.length})</Text>
 
         <Card style={styles.tableCard}>
           {invoice.items.map((it, idx) => (
@@ -330,31 +330,31 @@ export default function InvoiceDetailScreen() {
             <View style={styles.skipHeaderRow}>
               <View style={styles.skipTitleContainer}>
                 <VectorIcon name="Scissors" size={16} color="#d97706" />
-                <Text style={styles.skipCardTitle}>Skip Control & Debt Deduction</Text>
+                <Text style={styles.skipCardTitle}>{t('invoices.skipControlTitle')}</Text>
               </View>
               {invoice.skipDeductionAmount && invoice.skipDeductionAmount > 0 ? (
-                <Badge variant="amber">Deduction Applied</Badge>
+                <Badge variant="amber">{t('invoices.deductionApplied')}</Badge>
               ) : null}
             </View>
             <Text style={styles.skipCardDesc}>
-              Directly deduct supplier debt for rejected, damaged, or short-delivered goods without complex reconciliation paperwork.
+              {t('invoices.skipControlDesc')}
             </Text>
 
             {invoice.skipDeductionAmount && invoice.skipDeductionAmount > 0 ? (
               <View style={styles.appliedSkipBox}>
                 <View style={styles.appliedSkipRow}>
-                  <Text style={styles.appliedSkipLabel}>Deducted from Debt:</Text>
+                  <Text style={styles.appliedSkipLabel}>{t('invoices.deductedFromDebt')}</Text>
                   <Text style={styles.appliedSkipAmount}>-{formatCurrency(invoice.skipDeductionAmount)}</Text>
                 </View>
                 {invoice.skipDeductionReason && (
-                  <Text style={styles.appliedSkipReason}>Reason: {invoice.skipDeductionReason}</Text>
+                  <Text style={styles.appliedSkipReason}>{t('invoices.reason')} {invoice.skipDeductionReason}</Text>
                 )}
                 <Pressable
                   onPress={handleOpenSkipModal}
                   style={({ pressed }) => [styles.skipActionBtn, pressed && styles.pressed]}
                 >
                   <VectorIcon name="Edit3" size={14} color="#92400e" />
-                  <Text style={styles.skipActionBtnText}>Modify Skip Deduction</Text>
+                  <Text style={styles.skipActionBtnText}>{t('invoices.modifySkipDeduction')}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -363,7 +363,7 @@ export default function InvoiceDetailScreen() {
                 style={({ pressed }) => [styles.skipActionBtn, pressed && styles.pressed]}
               >
                 <VectorIcon name="MinusCircle" size={16} color="#d97706" />
-                <Text style={styles.skipActionBtnText}>+ Deduct Skip / Damaged Goods</Text>
+                <Text style={styles.skipActionBtnText}>{t('invoices.addSkipDeduction')}</Text>
               </Pressable>
             )}
           </Card>
@@ -372,23 +372,23 @@ export default function InvoiceDetailScreen() {
         {/* Financial Breakdown Card */}
         <Card style={styles.financialCard}>
           <View style={styles.finRow}>
-            <Text style={styles.finLabel}>Subtotal</Text>
+            <Text style={styles.finLabel}>{t('invoices.subtotal')}</Text>
             <Text style={styles.finValue}>{formatCurrency(invoice.subtotal)}</Text>
           </View>
 
           <View style={styles.finRow}>
-            <Text style={styles.finLabel}>VAT / Tax (19%)</Text>
+            <Text style={styles.finLabel}>{t('invoices.vatTax')}</Text>
             <Text style={styles.finValue}>{formatCurrency(invoice.taxAmount)}</Text>
           </View>
 
           <View style={[styles.finRow, styles.subtotalDivider]}>
-            <Text style={styles.finLabel}>Gross Invoiced</Text>
+            <Text style={styles.finLabel}>{t('invoices.grossInvoiced')}</Text>
             <Text style={styles.finValue}>{formatCurrency(invoice.totalAmount)}</Text>
           </View>
 
           {isSupplierDoc && invoice.skipDeductionAmount && invoice.skipDeductionAmount > 0 ? (
             <View style={styles.finRow}>
-              <Text style={[styles.finLabel, { color: Colors.warning.dark }]}>Skip / Shortage Deduction</Text>
+              <Text style={[styles.finLabel, { color: Colors.warning.dark }]}>{t('invoices.skipDeduction')}</Text>
               <Text style={[styles.finValue, { color: Colors.warning.dark, fontWeight: '700' }]}>
                 -{formatCurrency(invoice.skipDeductionAmount)}
               </Text>
@@ -397,7 +397,7 @@ export default function InvoiceDetailScreen() {
 
           <View style={[styles.finRow, styles.grandTotalRow]}>
             <Text style={styles.grandTotalLabel}>
-              {isSupplierDoc ? 'Net Debt to Supplier' : 'Total Amount'}
+              {isSupplierDoc ? t('invoices.netDebtSupplier') : t('invoices.totalAmount')}
             </Text>
             <Text style={styles.grandTotalValue}>
               {formatCurrency(
@@ -413,7 +413,7 @@ export default function InvoiceDetailScreen() {
         <View style={styles.actionsContainer}>
           {invoice.status !== 'verified' && (
             <Button
-              label="Mark as Verified"
+              label={t('invoices.markVerified')}
               variant="primary"
               size="md"
               icon="Check"
@@ -425,11 +425,13 @@ export default function InvoiceDetailScreen() {
 
           {invoice.paymentStatus !== 'paid' && (
             <Button
-              label={`Record Payment (${formatCurrency(
-                invoice.netPayableAmount !== undefined
-                  ? invoice.netPayableAmount
-                  : invoice.totalAmount - (invoice.skipDeductionAmount || 0)
-              )})`}
+              label={t('invoices.recordPayment', {
+                amount: formatCurrency(
+                  invoice.netPayableAmount !== undefined
+                    ? invoice.netPayableAmount
+                    : invoice.totalAmount - (invoice.skipDeductionAmount || 0)
+                ),
+              })}
               variant="secondary"
               size="md"
               icon="CreditCard"
@@ -440,7 +442,7 @@ export default function InvoiceDetailScreen() {
           )}
 
           <Button
-            label="Back to Invoices"
+            label={t('invoices.backToList')}
             variant="outline"
             size="md"
             fullWidth

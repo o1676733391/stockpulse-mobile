@@ -7,6 +7,7 @@ import {
   formatNumber,
   formatPercent,
   formatRelativeTime,
+  formatTimestampRelative,
   formatTime,
   getIntlLocale,
 } from './formatters';
@@ -293,6 +294,10 @@ class I18nManager {
 
   public formatRelativeTime(value: number, unit: Intl.RelativeTimeFormatUnit): string {
     return formatRelativeTime(value, unit, this.currentLanguage);
+  }
+
+  public formatTimestampRelative(timestamp: number): string {
+    return formatTimestampRelative(timestamp, this.currentLanguage);
   }
 }
 

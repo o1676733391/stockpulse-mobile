@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import {
   NOTIFICATION_TYPE_CONFIG,
   notificationService,
+  localizeNotification,
 } from '@/services/notificationService';
 import { AppNotification, NotificationFilter } from '@/types/notification';
 import { useRouter } from 'expo-router';
@@ -53,7 +54,7 @@ function groupByDay(notifs: AppNotification[]) {
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -290,13 +291,34 @@ export default function NotificationsScreen() {
             const items = grouped[day];
             if (!items || items.length === 0) return null;
 
+            const dayLabel =
+              day === 'Today'
+                ? t('common.today')
+                : day === 'Yesterday'
+                ? t('common.yesterday')
+                : t('common.earlier') || (language === 'de' ? 'Früher' : 'Earlier');
+
             return (
               <View key={day} style={styles.dayGroup}>
-                <Text style={styles.dayHeader}>{day.toUpperCase()}</Text>
+                <Text style={styles.dayHeader}>{dayLabel.toUpperCase()}</Text>
 
                 <View style={styles.itemsStack}>
                   {items.map((n) => {
                     const cfg = NOTIFICATION_TYPE_CONFIG[n.type] ?? NOTIFICATION_TYPE_CONFIG.system_alert;
+                    const loc = localizeNotification(n, language);
+
+                    const typeKeyMap: Record<string, string> = {
+                      low_stock: 'lowStock',
+                      expiring_soon: 'expiringSoon',
+                      po_update: 'poStatus',
+                      goods_receipt_update: 'goodsReceipt',
+                      count_due: 'stockCount',
+                      variance: 'variance',
+                      expired_items: 'expiringSoon',
+                      system_alert: 'system',
+                    };
+                    const typeKey = typeKeyMap[n.type] || 'system';
+                    const badgeLabel = t(`notifications.types.${typeKey}`) || cfg.label;
 
                     return (
                       <Card
@@ -341,12 +363,12 @@ export default function NotificationsScreen() {
                           <View style={styles.notifMainCol}>
                             {/* Header: Title + Badge */}
                             <View style={styles.titleBadgeRow}>
-                              <Text style={styles.notifTitle}>{n.title}</Text>
-                              <Badge variant={cfg.badgeVariant}>{cfg.label}</Badge>
+                              <Text style={styles.notifTitle}>{loc.title}</Text>
+                              <Badge variant={cfg.badgeVariant}>{badgeLabel}</Badge>
                             </View>
 
-                            <Text style={styles.notifBody}>{n.body}</Text>
-                            <Text style={styles.notifTime}>{n.time}</Text>
+                            <Text style={styles.notifBody}>{loc.body}</Text>
+                            <Text style={styles.notifTime}>{loc.time}</Text>
 
                             {/* Action Buttons Row */}
                             <View style={styles.actionsRow}>

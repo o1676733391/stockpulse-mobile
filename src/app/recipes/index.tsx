@@ -315,21 +315,21 @@ export default function RecipesListScreen() {
                     <View style={styles.stockAlertBadge}>
                       <VectorIcon name="AlertCircle" size={12} color={Colors.critical.main} />
                       <Text style={styles.stockAlertText}>
-                        {isDe ? 'Zutat nicht vorrätig' : 'Ingredient Out of Stock'}
+                        {t('recipes.outOfStockBadge')}
                       </Text>
                     </View>
                   ) : hasLowStockIngredient ? (
                     <View style={styles.stockWarningBadge}>
                       <VectorIcon name="AlertTriangle" size={12} color={Colors.warning.dark} />
                       <Text style={styles.stockWarningText}>
-                        {isDe ? 'Niedriger Zutatenbestand' : 'Low Stock Warning'}
+                        {t('recipes.lowStockBadge')}
                       </Text>
                     </View>
                   ) : (
                     <View style={styles.stockReadyBadge}>
                       <VectorIcon name="CheckCircle" size={12} color={Colors.brand.primary} />
                       <Text style={styles.stockReadyText}>
-                        {isDe ? 'Zutaten verfügbar' : 'Ingredients Ready'}
+                        {t('recipes.readyBadge')}
                       </Text>
                     </View>
                   )}
@@ -341,13 +341,9 @@ export default function RecipesListScreen() {
                     <VectorIcon name="Layers" size={14} color={Colors.neutral.textSecondary} />
                     <Text style={styles.ingredientCountText}>
                       {recipe.ingredients.length}{' '}
-                      {isDe
-                        ? recipe.ingredients.length === 1
-                          ? 'Zutat'
-                          : 'Zutaten'
-                        : recipe.ingredients.length === 1
-                        ? 'ingredient'
-                        : 'ingredients'}
+                      {recipe.ingredients.length === 1
+                        ? t('recipes.ingredientOne')
+                        : t('recipes.ingredientOther')}
                     </Text>
                   </View>
 
@@ -355,7 +351,7 @@ export default function RecipesListScreen() {
                     <Text style={styles.costValue}>
                       {formatCurrency(recipe.costPerPortion || 0)}
                     </Text>
-                    <Text style={styles.costUnit}>{isDe ? '/ Portion' : '/ serving'}</Text>
+                    <Text style={styles.costUnit}>{t('recipes.perServing')}</Text>
                     <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
                   </View>
                 </View>

@@ -3,7 +3,9 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import {
+  localizeNotification,
   NOTIFICATION_TYPE_CONFIG,
   notificationService,
 } from '@/services/notificationService';
@@ -24,6 +26,7 @@ export default function NotificationDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t, language } = useI18n();
 
   const [notification, setNotification] = useState<AppNotification | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -80,10 +83,10 @@ export default function NotificationDetailScreen() {
   if (loading) {
     return (
       <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-        <TopBar title="Notification Detail" showBack />
+        <TopBar title={t('notifications.detailTitle')} showBack />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={Colors.brand.primary} />
-          <Text style={styles.loadingText}>Loading notification details...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
     );
@@ -92,34 +95,36 @@ export default function NotificationDetailScreen() {
   if (notFound || !notification) {
     return (
       <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-        <TopBar title="Notification Detail" showBack />
+        <TopBar title={t('notifications.detailTitle')} showBack />
         <View style={styles.centerContainer}>
           <VectorIcon name="AlertCircle" size={40} color={Colors.neutral.textTertiary} />
-          <Text style={styles.notFoundTitle}>Notification Not Found</Text>
-          <Text style={styles.notFoundSub}>This notification may have been dismissed or removed.</Text>
+          <Text style={styles.notFoundTitle}>{t('notifications.notFound', { defaultValue: 'Benachrichtigung nicht gefunden' })}</Text>
+          <Text style={styles.notFoundSub}>{t('notifications.notFoundSub', { defaultValue: 'Diese Benachrichtigung existiert nicht mehr.' })}</Text>
           <Pressable
             onPress={() => router.replace('/notifications' as any)}
             style={styles.backBtn}
           >
-            <Text style={styles.backBtnText}>Back to Notifications</Text>
+            <Text style={styles.backBtnText}>{t('notifications.backToList')}</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
+  const localizedNotif = localizeNotification(notification, language);
+
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       {/* ── TopBar ── */}
       <TopBar
-        title="Notification Detail"
+        title={t('notifications.detailTitle')}
         showBack
         right={
           <Pressable
             onPress={handleDismiss}
             style={({ pressed }) => [styles.dismissTopBtn, pressed && styles.pressed]}
           >
-            <Text style={styles.dismissTopBtnText}>Dismiss</Text>
+            <Text style={styles.dismissTopBtnText}>{t('notifications.dismiss', { defaultValue: 'Schließen' })}</Text>
           </Pressable>
         }
       />
@@ -140,15 +145,15 @@ export default function NotificationDetailScreen() {
 
             <View style={styles.headerMetaCol}>
               <View style={styles.badgePriorityRow}>
-                <Badge variant={cfg.badgeVariant}>{cfg.label}</Badge>
-                {notification.urgent && <Badge variant="red">Urgent</Badge>}
+                <Badge variant={cfg.badgeVariant}>{t(`notifications.types.${notification.type}`, { defaultValue: cfg.label })}</Badge>
+                {notification.urgent && <Badge variant="red">{t('notifications.urgent', { defaultValue: 'Dringend' })}</Badge>}
               </View>
-              <Text style={styles.timeText}>{notification.time}</Text>
+              <Text style={styles.timeText}>{localizedNotif.time}</Text>
             </View>
           </View>
 
-          <Text style={styles.notificationTitle}>{notification.title}</Text>
-          <Text style={styles.notificationBody}>{notification.body}</Text>
+          <Text style={styles.notificationTitle}>{localizedNotif.title}</Text>
+          <Text style={styles.notificationBody}>{localizedNotif.body}</Text>
         </Card>
 
         {/* ── Technical Context & Details ── */}

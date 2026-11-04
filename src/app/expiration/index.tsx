@@ -4,6 +4,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import {
   expirationService,
   INITIAL_EXPIRED_ITEMS,
@@ -35,16 +36,17 @@ function formatDateStr(dateStr?: string): string {
   }
 }
 
-function daysLabel(days: number) {
-  if (days < 0) return 'Expired';
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  return `${days}d left`;
-}
-
 export default function ExpirationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
+
+  const daysLabel = (days: number) => {
+    if (days < 0) return t('expiration.expired', { defaultValue: 'Abgelaufen' });
+    if (days === 0) return t('common.today');
+    if (days === 1) return t('common.tomorrow', { defaultValue: 'Morgen' });
+    return t('expiration.daysLeft', { count: days, defaultValue: `Noch ${days} Tage` });
+  };
 
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [expiredItems, setExpiredItems] = useState<ExpiredItem[]>([]);
@@ -134,7 +136,7 @@ export default function ExpirationScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title="Expiration Alerts" large showBack />
+      <TopBar title={t('expiration.title')} large showBack />
 
       {/* ── Summary & Tabs Header Card ── */}
       <View style={styles.headerSummaryCard}>
@@ -142,15 +144,15 @@ export default function ExpirationScreen() {
         <View style={styles.metricsGrid}>
           <View style={styles.metricBoxRed}>
             <Text style={styles.metricNumRed}>{loading ? '--' : expiredCount}</Text>
-            <Text style={styles.metricLabelRed}>Expired</Text>
+            <Text style={styles.metricLabelRed}>{t('expiration.expired', { defaultValue: 'Abgelaufen' })}</Text>
           </View>
           <View style={styles.metricBoxAmber}>
             <Text style={styles.metricNumAmber}>{loading ? '--' : next3Days}</Text>
-            <Text style={styles.metricLabelAmber}>Next 3 days</Text>
+            <Text style={styles.metricLabelAmber}>{t('expiration.next3Days', { defaultValue: 'Nächste 3 Tage' })}</Text>
           </View>
           <View style={styles.metricBoxSlate}>
             <Text style={styles.metricNumSlate}>{loading ? '--' : next7Days}</Text>
-            <Text style={styles.metricLabelSlate}>Next 7 days</Text>
+            <Text style={styles.metricLabelSlate}>{t('expiration.next7Days', { defaultValue: 'Nächste 7 Tage' })}</Text>
           </View>
         </View>
 
@@ -159,8 +161,10 @@ export default function ExpirationScreen() {
           <View style={styles.riskBanner}>
             <VectorIcon name="AlertTriangle" size={14} color={Colors.critical.main} />
             <Text style={styles.riskBannerText}>
-              Total value at risk:{' '}
-              <Text style={styles.riskBannerBold}>€{totalValueAtRisk.toFixed(2)}</Text> in next 7 days
+              {t('expiration.totalRiskText', {
+                value: `€${totalValueAtRisk.toFixed(2)}`,
+                defaultValue: `Gesamter gefährdeter Wert: €${totalValueAtRisk.toFixed(2)} in den nächsten 7 Tagen`,
+              })}
             </Text>
           </View>
         )}
@@ -211,8 +215,8 @@ export default function ExpirationScreen() {
             <View style={styles.emptyIconCircle}>
               <VectorIcon name="Check" size={24} color={Colors.brand.primary} />
             </View>
-            <Text style={styles.emptyTitle}>No items in this category</Text>
-            <Text style={styles.emptySub}>All stock items in this range are healthy</Text>
+            <Text style={styles.emptyTitle}>{t('expiration.noItemsInCategory')}</Text>
+            <Text style={styles.emptySub}>{t('expiration.noItemsInCategorySub')}</Text>
           </View>
         ) : (
           filtered.map((item) => {

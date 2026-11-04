@@ -67,8 +67,8 @@ export default function DeliveryNoteDetailScreen() {
   if (!note) {
     return (
       <View style={[styles.screen, styles.center]}>
-        <Text style={styles.errorText}>Delivery Note not found</Text>
-        <Button label="Go Back" variant="outline" onPress={() => router.back()} />
+        <Text style={styles.errorText}>{t('deliveryNotes.deliveryNoteNotFound')}</Text>
+        <Button label={t('common.goBack')} variant="outline" onPress={() => router.back()} />
       </View>
     );
   }
@@ -76,13 +76,13 @@ export default function DeliveryNoteDetailScreen() {
   const getStatusBadge = (status: DeliveryNoteStatus): { label: string; variant: BadgeVariant } => {
     switch (status) {
       case 'received':
-        return { label: 'Received & Verified', variant: 'green' };
+        return { label: t('deliveryNotes.statuses.received'), variant: 'green' };
       case 'pending_inspection':
-        return { label: 'Pending Inspection', variant: 'amber' };
+        return { label: t('deliveryNotes.statuses.pendingInspection'), variant: 'amber' };
       case 'discrepancy':
-        return { label: 'Shortage / Variance', variant: 'red' };
+        return { label: t('deliveryNotes.statuses.variance'), variant: 'red' };
       case 'damaged':
-        return { label: 'Damaged / Rejected', variant: 'red' };
+        return { label: t('deliveryNotes.statuses.damaged'), variant: 'red' };
       default:
         return { label: status, variant: 'gray' };
     }
@@ -192,7 +192,7 @@ export default function DeliveryNoteDetailScreen() {
 
         {/* Received Items Inspection List */}
         <Text style={styles.sectionHeading}>
-          Received Items & Inspection ({note.items.length})
+          {t('deliveryNotes.receivedItemsInspection', { count: note.items.length })}
         </Text>
 
         <Card style={styles.itemsCard}>
@@ -211,8 +211,8 @@ export default function DeliveryNoteDetailScreen() {
                   <View style={styles.itemTitleBox}>
                     <Text style={styles.itemName}>{item.itemName}</Text>
                     <View style={styles.batchRow}>
-                      <Text style={styles.batchTag}>Batch: {item.batchNumber}</Text>
-                      <Text style={styles.bbdTag}>BBD: {item.bbd}</Text>
+                      <Text style={styles.batchTag}>{t('common.batch')}: {item.batchNumber}</Text>
+                      <Text style={styles.bbdTag}>MHD: {item.bbd}</Text>
                     </View>
                   </View>
 
@@ -221,7 +221,7 @@ export default function DeliveryNoteDetailScreen() {
                       {item.receivedQuantity} {item.unit}
                     </Text>
                     <Text style={styles.qtyOrdered}>
-                      Ordered: {item.orderedQuantity} {item.unit}
+                      {t('deliveryNotes.ordered')}: {item.orderedQuantity} {item.unit}
                     </Text>
                   </View>
                 </View>
@@ -230,7 +230,7 @@ export default function DeliveryNoteDetailScreen() {
                   <View style={styles.itemDiscrepancyRow}>
                     <VectorIcon name="AlertTriangle" size={12} color={Colors.critical.main} />
                     <Text style={styles.itemDiscrepancyText}>
-                      Variance: {item.discrepancyQuantity > 0 ? `+${item.discrepancyQuantity}` : item.discrepancyQuantity} {item.unit} ({item.condition})
+                      {t('deliveryNotes.variance')}: {item.discrepancyQuantity > 0 ? `+${item.discrepancyQuantity}` : item.discrepancyQuantity} {item.unit} ({item.condition})
                     </Text>
                   </View>
                 )}
@@ -243,7 +243,7 @@ export default function DeliveryNoteDetailScreen() {
         <View style={styles.actionsContainer}>
           {note.status !== 'received' && (
             <Button
-              label="Confirm Warehouse Receiving"
+              label={t('deliveryNotes.confirmReceiving')}
               variant="primary"
               size="md"
               icon="Check"
@@ -254,7 +254,7 @@ export default function DeliveryNoteDetailScreen() {
           )}
 
           <Button
-            label="Back to Delivery Notes"
+            label={t('deliveryNotes.backToList')}
             variant="outline"
             size="md"
             fullWidth

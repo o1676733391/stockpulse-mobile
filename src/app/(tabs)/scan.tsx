@@ -147,12 +147,12 @@ export default function ScanScreen() {
             <View style={styles.permissionIconCircle}>
               <VectorIcon name="Camera" size={36} color={Colors.brand.primary} />
             </View>
-            <Text style={styles.permissionHeading}>Camera Access Needed</Text>
+            <Text style={styles.permissionHeading}>{t('scan.cameraAccessNeeded')}</Text>
             <Text style={styles.permissionSub}>
-              StockPulse uses the camera to scan POS daily register receipts and supplier goods receipts with Gemini Vision.
+              {t('scan.cameraAccessDesc')}
             </Text>
             <Button
-              label="Enable Camera"
+              label={t('scan.enableCamera')}
               variant="primary"
               size="md"
               fullWidth
@@ -160,7 +160,7 @@ export default function ScanScreen() {
               style={{ marginBottom: Spacing.sm }}
             />
             <Button
-              label="Choose from Gallery"
+              label={t('scan.galleryButton')}
               variant="outline"
               size="md"
               fullWidth

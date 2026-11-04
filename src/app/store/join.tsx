@@ -274,7 +274,9 @@ export default function JoinStoreScreen() {
               <View style={styles.previewDetailRow}>
                 <Text style={styles.previewLabel}>{t('onboarding.roleLabel')}:</Text>
                 <Badge variant={getRoleBadgeVariant(validatedInvitation.role)}>
-                  {ROLES[validatedInvitation.role as UserRole]?.label || validatedInvitation.role}
+                  {t(`team.roles.${validatedInvitation.role}`, {
+                    defaultValue: ROLES[validatedInvitation.role as UserRole]?.label || validatedInvitation.role,
+                  })}
                 </Badge>
               </View>
 

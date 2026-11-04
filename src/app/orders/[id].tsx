@@ -497,7 +497,7 @@ export default function PurchaseOrderDetailScreen() {
                   onPress={() => setReceiveStep((s) => (s - 1) as any)}
                   style={styles.modalBackBtn}
                 >
-                  <Text style={styles.modalBackBtnText}>Back</Text>
+                  <Text style={styles.modalBackBtnText}>{t('common.back')}</Text>
                 </Pressable>
               )}
 

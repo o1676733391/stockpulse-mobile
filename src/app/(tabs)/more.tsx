@@ -311,9 +311,11 @@ export default function MoreScreen() {
             <Text style={styles.avatarText}>{user.avatarText}</Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user.name}</Text>
+            <Text style={styles.profileName}>{user.name.replace(/\s*\([^)]*\)/, '')}</Text>
             <View style={styles.roleRow}>
-              <Badge variant={activeRoleDef.badgeVariant}>{activeRoleDef.label}</Badge>
+              <Badge variant={activeRoleDef.badgeVariant}>
+                {t(`team.roles.${role}`, { defaultValue: activeRoleDef.label })}
+              </Badge>
               <Text style={styles.profileEmail}>{user.email}</Text>
             </View>
             <Text style={styles.profileStore}>{user.storeName}</Text>
@@ -367,7 +369,9 @@ export default function MoreScreen() {
           style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
         >
           <VectorIcon name="LogOut" size={18} color={Colors.critical.main} />
-          <Text style={styles.signOutBtnText}>Sign Out from {user.storeName}</Text>
+          <Text style={styles.signOutBtnText}>
+            {user.storeName ? t('auth.signOutFrom', { store: user.storeName }) : t('auth.signOut')}
+          </Text>
         </Pressable>
 
         {/* ── Version & Copyright ── */}

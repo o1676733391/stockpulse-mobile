@@ -81,8 +81,8 @@ export default function StockCountScreen() {
             <View style={styles.emptyIconCircle}>
               <VectorIcon name="ClipboardList" size={28} color={Colors.neutral.textTertiary} />
             </View>
-            <Text style={styles.emptyTitle}>No scheduled counts</Text>
-            <Text style={styles.emptySub}>All audit sessions have been completed or reconciled</Text>
+            <Text style={styles.emptyTitle}>{t('stockCount.noScheduledCounts')}</Text>
+            <Text style={styles.emptySub}>{t('stockCount.noScheduledCountsSub')}</Text>
           </View>
         )}
 
@@ -106,7 +106,9 @@ export default function StockCountScreen() {
 
                   <View style={styles.inProgressCountBox}>
                     <Text style={styles.inProgressCountNum}>{s.progress}</Text>
-                    <Text style={styles.inProgressCountTotal}>of {s.total}</Text>
+                    <Text style={styles.inProgressCountTotal}>
+                      {t('stockCount.ofTotal', { total: s.total })}
+                    </Text>
                   </View>
                 </View>
 

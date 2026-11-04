@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import {
   expirationService,
   INITIAL_EXPIRY_ITEMS,
@@ -21,17 +22,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-function daysLabel(days: number) {
-  if (days < 0) return 'Expired';
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  return `${days}d left`;
-}
-
 export default function ExpirationItemDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t } = useI18n();
+
+  const daysLabel = (days: number) => {
+    if (days < 0) return t('expiration.expired', { defaultValue: 'Abgelaufen' });
+    if (days === 0) return t('common.today');
+    if (days === 1) return t('common.tomorrow', { defaultValue: 'Morgen' });
+    return t('expiration.daysLeft', { count: days, defaultValue: `Noch ${days} Tage` });
+  };
 
   const [item, setItem] = useState<ExpiryItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,7 +126,7 @@ export default function ExpirationItemDetailScreen() {
         </View>
 
         <View style={styles.successTextBox}>
-          <Text style={styles.successTitle}>Marked as Used</Text>
+          <Text style={styles.successTitle}>{t('expiration.markedAsUsed', { defaultValue: 'Als verbraucht verbucht' })}</Text>
           <Text style={styles.successSub}>
             {adjustQty.toFixed(1)} {item.unit} of {item.name} has been recorded as used. Theoretical inventory updated.
           </Text>
@@ -134,7 +136,7 @@ export default function ExpirationItemDetailScreen() {
           onPress={() => router.replace('/expiration' as any)}
           style={({ pressed }) => [styles.successBackBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.successBackBtnText}>Back to Expiration Alerts</Text>
+          <Text style={styles.successBackBtnText}>{t('expiration.backToList')}</Text>
         </Pressable>
       </View>
     );

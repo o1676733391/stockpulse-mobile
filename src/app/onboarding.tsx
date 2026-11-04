@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
+import { LanguageQuickBar } from '@/components/ui/language-quick-bar';
 import { TopBar } from '@/components/ui/top-bar';
 import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
@@ -248,18 +249,21 @@ export default function OnboardingScreen() {
           setValidatedInvitation(null);
         }}
         right={
-          <Pressable
-            onPress={async () => {
-              await logout();
-              router.replace('/login' as any);
-            }}
-            hitSlop={8}
-            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.critical.main }}>
-              {t('settings.items.signOut')}
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+            <LanguageQuickBar compact />
+            <Pressable
+              onPress={async () => {
+                await logout();
+                router.replace('/login' as any);
+              }}
+              hitSlop={8}
+              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.critical.main }}>
+                {t('settings.items.signOut')}
+              </Text>
+            </Pressable>
+          </View>
         }
       />
 
@@ -447,7 +451,9 @@ export default function OnboardingScreen() {
                   <View style={styles.previewDetailRow}>
                     <Text style={styles.previewLabel}>{t('onboarding.roleLabel')}:</Text>
                     <Badge variant={getRoleBadgeVariant(validatedInvitation.role)}>
-                      {ROLES[validatedInvitation.role as UserRole]?.label || validatedInvitation.role}
+                      {t(`team.roles.${validatedInvitation.role}`, {
+                        defaultValue: ROLES[validatedInvitation.role as UserRole]?.label || validatedInvitation.role,
+                      })}
                     </Badge>
                   </View>
 

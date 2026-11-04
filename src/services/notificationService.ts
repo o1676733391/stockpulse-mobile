@@ -1,3 +1,6 @@
+import { formatTimestampRelative } from '@/i18n/formatters';
+import { i18n } from '@/i18n/manager';
+import { SupportedLanguage } from '@/i18n/types';
 import { AppNotification, NotificationFilter, NotificationType } from '@/types/notification';
 import { apiClient, logDebugFallback } from './apiClient';
 
@@ -117,17 +120,8 @@ export interface INotificationService {
 }
 
 function formatRelativeTime(timestamp: number): string {
-  const diffMs = Date.now() - timestamp;
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMinutes < 1) return 'Just now';
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return new Date(timestamp).toLocaleDateString();
+  const currentLang = typeof i18n !== 'undefined' ? i18n.getLanguage() : 'en';
+  return formatTimestampRelative(timestamp, currentLang);
 }
 
 export class RealNotificationService implements INotificationService {
@@ -280,3 +274,87 @@ export class RealNotificationService implements INotificationService {
 }
 
 export const notificationService: INotificationService = new RealNotificationService();
+
+export function localizeNotification(
+  notification: AppNotification,
+  language: SupportedLanguage = 'en'
+): { title: string; body: string; time: string } {
+  const time = notification.timestamp
+    ? formatTimestampRelative(notification.timestamp, language)
+    : notification.time || (language === 'de' ? 'Heute' : 'Today');
+
+  const rawTitle = notification.title || '';
+  const rawBody = notification.body || '';
+
+  if (language === 'de') {
+    let title = rawTitle;
+    let body = rawBody;
+
+    if (
+      rawTitle === 'Store System Online' ||
+      rawTitle.includes('System Online') ||
+      rawTitle.includes('Store System') ||
+      rawBody.includes('Store connection established') ||
+      rawBody.includes('Master Inventory')
+    ) {
+      title = 'Betriebssystem online';
+      body = 'Verbindung zum Betrieb hergestellt. Fügen Sie Zutaten im Inventar hinzu, um die Bestandsführung zu aktivieren.';
+    } else if (rawTitle === 'Daily Stock Count Due' || rawTitle.includes('Stock Count Due')) {
+      title = 'Tägliche Bestandszählung fällig';
+      body = 'Geplante Inventurzählung für Küchenprüfung und Kassenabgleich ist fällig.';
+    } else if (rawTitle === 'Low Stock Alert' || rawTitle.includes('Low Stock')) {
+      title = rawTitle.replace('Low Stock Alert', 'Niedriger Meldebestand').replace('Low Stock:', 'Niedriger Meldebestand:');
+      body = body.replace(/items? are below minimum threshold/i, 'Artikel liegen unter dem Meldebestand');
+    } else if (rawTitle === 'Expiring Stock' || rawTitle.includes('Expiring Soon') || rawTitle.includes('Expiring')) {
+      title = rawTitle.replace('Expiring Stock', 'Ablaufende Chargen').replace('Expiring Soon:', 'Läuft bald ab:');
+      body = body.replace(/batches expiring soon/i, 'Chargen laufen bald ab');
+    } else if (rawTitle.includes('Purchase Order') || rawTitle.includes('Goods Receipt') || rawTitle.includes('PO Approved')) {
+      title = 'Wareneingang verbucht';
+    } else if (rawTitle.includes('Variance')) {
+      title = 'Inventurabweichung festgestellt';
+    }
+
+    return { title, body, time };
+  }
+
+  if (language === 'fr') {
+    let title = rawTitle;
+    let body = rawBody;
+    if (rawTitle === 'Store System Online' || rawTitle.includes('System Online')) {
+      title = 'Système connecté';
+      body = 'Connexion à l’établissement établie. Ajoutez des ingrédients pour démarrer le suivi.';
+    } else if (rawTitle === 'Daily Stock Count Due' || rawTitle.includes('Stock Count Due')) {
+      title = 'Inventaire journalier requis';
+      body = 'L’inventaire prévu en cuisine est requis pour la conformité de caisse.';
+    }
+    return { title, body, time };
+  }
+
+  if (language === 'es') {
+    let title = rawTitle;
+    let body = rawBody;
+    if (rawTitle === 'Store System Online' || rawTitle.includes('System Online')) {
+      title = 'Sistema conectado';
+      body = 'Conexión con el local establecida. Añada ingredientes en inventario para iniciar el seguimiento.';
+    } else if (rawTitle === 'Daily Stock Count Due' || rawTitle.includes('Stock Count Due')) {
+      title = 'Inventario diario pendiente';
+      body = 'El recuento programado en cocina está pendiente para la auditoría de caja.';
+    }
+    return { title, body, time };
+  }
+
+  if (language === 'it') {
+    let title = rawTitle;
+    let body = rawBody;
+    if (rawTitle === 'Store System Online' || rawTitle.includes('System Online')) {
+      title = 'Sistema operativo online';
+      body = 'Connessione al locale stabilita. Aggiungi ingredienti per abilitare il tracciamento.';
+    } else if (rawTitle === 'Daily Stock Count Due' || rawTitle.includes('Stock Count Due')) {
+      title = 'Conteggio scorte giornaliero';
+      body = 'Il conteggio programmato delle scorte di chiusura è dovuto per la verifica.';
+    }
+    return { title, body, time };
+  }
+
+  return { title: rawTitle, body: rawBody, time };
+}

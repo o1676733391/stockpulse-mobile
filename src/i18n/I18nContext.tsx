@@ -25,6 +25,7 @@ interface I18nContextValue {
   formatDate: (date: Date | string | number, options?: Intl.DateTimeFormatOptions) => string;
   formatTime: (date: Date | string | number, options?: Intl.DateTimeFormatOptions) => string;
   formatRelativeTime: (value: number, unit: Intl.RelativeTimeFormatUnit) => string;
+  formatTimestampRelative: (timestamp: number) => string;
   isRTL: boolean;
 }
 
@@ -107,6 +108,13 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [language]
   );
 
+  const formatTimestampRelative = useCallback(
+    (timestamp: number) => {
+      return language ? i18n.formatTimestampRelative(timestamp) : i18n.formatTimestampRelative(timestamp);
+    },
+    [language]
+  );
+
   const metadata = useMemo(() => i18n.getLanguageMetadata(language), [language]);
   const availableLanguages = useMemo(() => i18n.getAvailableLanguages(), []);
   const isRTL = metadata.direction === 'rtl';
@@ -124,6 +132,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
       formatDate,
       formatTime,
       formatRelativeTime,
+      formatTimestampRelative,
       isRTL,
     }),
     [
@@ -138,6 +147,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
       formatDate,
       formatTime,
       formatRelativeTime,
+      formatTimestampRelative,
       isRTL,
     ]
   );
@@ -160,6 +170,7 @@ export function useI18n(): I18nContextValue {
       formatDate: (d, o) => i18n.formatDate(d, o),
       formatTime: (d, o) => i18n.formatTime(d, o),
       formatRelativeTime: (v, u) => i18n.formatRelativeTime(v, u),
+      formatTimestampRelative: (ts) => i18n.formatTimestampRelative(ts),
       isRTL: false,
     };
   }

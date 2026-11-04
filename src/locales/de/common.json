@@ -43,6 +43,8 @@
     "category": "Kategorie",
     "supplier": "Lieferant",
     "batch": "Charge",
+    "batches": "Chargen",
+    "items": "Artikel",
     "notes": "Notizen",
     "notAvailable": "k.A.",
     "savedSuccess": "Erfolgreich gespeichert",
@@ -56,7 +58,13 @@
     "requiredPermission": "Erforderliche Berechtigung: {{permission}}",
     "returnToDashboard": "Zurück zur Übersicht",
     "understood": "Verstanden",
-    "success": "Erfolg"
+    "success": "Erfolg",
+    "est": "Ca.",
+    "goBack": "Zurück",
+    "item": "Artikel",
+    "you": "DU",
+    "order": "Bestellung",
+    "orders": "Bestellungen"
   },
   "navigation": {
     "home": "Übersicht",
@@ -94,6 +102,8 @@
     "passwordPlaceholder": "Passwort eingeben",
     "signInButton": "Anmelden",
     "signingIn": "Wird angemeldet...",
+    "signOut": "Abmelden",
+    "signOutFrom": "Abmelden von {{store}}",
     "registerStore": "Betrieb registrieren",
     "registerSubtitle": "Starten Sie Ihre kostenlose Warenwirtschaft",
     "ownerNameLabel": "Ihr vollständiger Name",
@@ -157,7 +167,11 @@
       "totalValuation": "Gesamtlagerwert",
       "healthyRate": "Optimaler Bestand",
       "expiringSoon": "Ablauf in 48 Std.",
-      "openOrders": "Offene Bestellungen"
+      "openOrders": "Offene Bestellungen",
+      "activeStock": "Aktiver Bestand",
+      "targetRange": "Zielbereich",
+      "within7Days": "In ≤ 7 Tagen",
+      "inboundOrders": "Im Zulauf"
     },
     "stockHealthTitle": "Lagerbestand & Gesundheit",
     "stockHealth": {
@@ -173,8 +187,19 @@
       "expiringBrd": "{{count}} Chargen laufen heute ab",
       "expiringBrdSub": "Sofortige Verarbeitung oder Preisnachlass empfohlen",
       "poWaiting": "{{count}} Bestellungen warten auf Freigabe",
-      "poWaitingSub": "Lieferanten warten auf Auftragsbestätigung"
+      "poWaitingSub": "Lieferanten warten auf Auftragsbestätigung",
+      "expiringBatchesLabel": "Ablaufende MHD-Chargen",
+      "expiringBatchesSub": "{{count}} Chargen erfordern Aktionsrabatt oder Küchenpriorität",
+      "lowStockLabel": "Niedrige Meldebestände",
+      "lowStockSub": "{{count}} Artikel unter Mindestbestand",
+      "openDeliveriesLabel": "Offene Warenlieferungen",
+      "openDeliveriesSub": "{{count}} Bestellungen im Zulauf / Wareneingang ausstehend",
+      "dailyCountLabel": "Tägliche Bestandszählung",
+      "dailyCountSub": "IST-Bestand zählen und Abweichungen abgleichen",
+      "scheduledBadge": "Geplant"
     },
+    "noExpiringBatches": "Keine Chargen laufen in den nächsten 7 Tagen ab",
+    "noRecentActivities": "Keine kürzlichen Aktivitäten verzeichnet",
     "recentActivityTitle": "Letzte Lageraktivitäten",
     "quickActionButtons": {
       "count": "Inventur starten",
@@ -247,10 +272,17 @@
     "reorderPoint": "Meldebestand",
     "deleteConfirmTitle": "Inventarartikel löschen",
     "deleteConfirmMessage": "Möchten Sie „{{name}}“ wirklich löschen? Dadurch wird der Artikel archiviert und aus aktiven Zählungen entfernt.",
-    "deleteSuccess": "Artikel erfolgreich gelöscht"
+    "deleteSuccess": "Artikel erfolgreich gelöscht",
+    "backToList": "Zurück zum Inventar",
+    "physical": "Ist",
+    "target": "Soll",
+    "safety": "Sicherheit"
   },
   "stockCount": {
     "title": "Lagerprüfung & Inventur",
+    "noScheduledCounts": "Keine geplanten Inventuren",
+    "noScheduledCountsSub": "Alle Zählungen wurden abgeschlossen oder abgeglichen",
+    "ofTotal": "von {{total}}",
     "startSession": "Zählung starten",
     "sessionNumber": "Sitzung #{{sessionNumber}}",
     "blindAudit": "Blind-Inventur",
@@ -302,6 +334,9 @@
   },
   "orders": {
     "title": "Einkauf & Bestellungen",
+    "createFromPoq": "Aus Bestellvorschlägen (POQ) erstellen",
+    "noActiveOrders": "Keine aktiven Bestellungen",
+    "noOrderHistory": "Keine früheren Bestellungen",
     "draftPo": "Bestellvorschlag anlegen",
     "poNumber": "Bestellung #{{orderNumber}}",
     "supplier": "Lieferant: {{name}}",
@@ -327,13 +362,34 @@
       "sent": "Gesendet",
       "confirmed": "Bestätigt",
       "received": "Eingegangen"
-    }
+    },
+    "activeOrders": "Aktive Bestellungen",
+    "pastOrders": "Vergangene Bestellungen",
+    "totalValue": "Gesamtwert",
+    "totalSpent": "Gesamtausgaben",
+    "awaiting": "Ausstehend",
+    "cancelled": "Storniert",
+    "poqSubtitle": "{{selected}} von {{total}} ausgewählt",
+    "howCalculatedTitle": "Wie wird das berechnet?",
+    "howCalculatedFormula": "Empfohlene Menge = Soll-Bestand − Ist-Bestand + Sicherheitsbestand",
+    "howCalculatedExample": "35 kg Soll − 24,5 kg Ist + 5 kg Sicherheit = 15,5 kg",
+    "selected": "ausgewählt",
+    "recommended": "Empfohlen",
+    "supplierOne": "Lieferant",
+    "supplierOther": "Lieferanten",
+    "generatingOrders": "Bestellungen werden erstellt...",
+    "createPurchaseOrders": "Bestellung(en) erstellen",
+    "ordersCreatedTitle": "Bestellungen erstellt",
+    "ordersCreatedMsg": "{{count}} Bestellungen erfolgreich generiert.",
+    "creationFailed": "Fehler beim Erstellen"
   },
   "expiration": {
     "title": "MHD- & Frischekontrolle",
     "subtitle": "FEFO-Chargenverfolgung & Vermeidung von Lebensmittelverschwendung",
     "expiringSoonTitle": "Bald ablaufende Chargen",
     "wasteReductionTitle": "Intelligente Maßnahmen gegen Lebensmittelverschwendung",
+    "noItemsInCategory": "Keine Artikel in dieser Kategorie",
+    "noItemsInCategorySub": "Alle Lagerartikel in diesem Bereich sind einwandfrei",
     "triageActions": {
       "discount": "30 % Küchennachlass vorschlagen",
       "special": "Als Tagesempfehlung anbieten",
@@ -345,7 +401,8 @@
     "actions": {
       "reduceWaste": "Maßnahmen zur Abfallvermeidung",
       "triageBbd": "Ablaufende Chargen bearbeiten"
-    }
+    },
+    "backToList": "Zurück zu MHD-Warnungen"
   },
   "analytics": {
     "title": "Lageranalysen & Berichte",
@@ -358,7 +415,32 @@
     "exportCsv": "Bewertungsübersicht exportieren (CSV)",
     "trends": "Historische Trends",
     "reports": "Bewertungs- & Prüfberichte",
-    "suppliers": "Lieferanten-Performance"
+    "suppliers": "Lieferanten-Performance",
+    "reportsBtn": "Berichte",
+    "tabs": {
+      "overview": "Übersicht",
+      "valuation": "Bewertung",
+      "variance": "Abweichungen",
+      "waste": "Verderb & Schwund",
+      "purchasing": "Einkauf"
+    },
+    "healthScore": "Gesundheits-Score",
+    "avgTurnover": "Ø Umschlagshäufigkeit",
+    "totalValue": "Gesamtwert",
+    "netVariance": "Nettoabweichung",
+    "supplierScorecard": "Lieferanten-Performance",
+    "supplierScorecardSub": "Lieferzeiten, Pünktlichkeit & Einkaufsvolumen je Lieferant",
+    "totalValuation": "Gesamter Lagerwert",
+    "acrossCatalogItems": "Über {{count}} Katalogartikel",
+    "netDiscrepancyImpact": "Finanzieller Abweichungseffekt",
+    "monthlyWasteCost": "Monatliche Verderbkosten",
+    "wasteReductionSuggestions": "Aktive Vorschläge zur Abfallvermeidung",
+    "wasteReductionSuggestionsSub": "Rezepte mit bald ablaufenden Zutaten vor MHD bewerben",
+    "ytdTotalSpend": "Gesamtausgaben YTD",
+    "monthActual": "Ist-Monat",
+    "monthBudget": "Budget-Monat",
+    "poqReorderTitle": "Nachbestellung aus POQ-Empfehlungen",
+    "poqReorderSub": "Bestellvorschläge basierend auf Soll-Beständen berechnen"
   },
   "team": {
     "title": "Team & Berechtigungen",
@@ -408,7 +490,24 @@
     },
     "permissionsMatrix": "Rollen- und Rechtematrix",
     "roleAssigned": "Rolle: {{role}}",
-    "rolesDesc": "Mitarbeiterrollen und Filialzuweisungen verwalten"
+    "rolesDesc": "Mitarbeiterrollen und Filialzuweisungen verwalten",
+    "roleDescriptions": {
+      "admin": "Vollzugriff auf alle Betriebsbereiche, Finanzdaten, Rezepte und Teamverwaltung",
+      "manager": "Tagesbetrieb, Kassenbelegprüfung, Bestellvorschläge (POQ), Einkauf und Analysen",
+      "supervisor": "Schichtaufsicht, Zählungsfreigaben, Kassenbon-Scans und Schwundprüfung",
+      "staff": "Bestandszählungen, POS-Erfassung, Wareneingangsprüfung und MHD-Kontrollen",
+      "auditor": "Schreibgeschützter Prüfzugriff auf Inventarbewertungen, Abweichungen und Prüfprotokolle"
+    },
+    "modulePermissionsGranted": "{{count}} Modulrechte gewährt",
+    "selectRolePrompt": "Wählen Sie die betriebliche Rolle und Zugriffsrechte für dieses Mitglied aus.",
+    "fullNameOptional": "Vollständiger Name (optional)",
+    "validityDuration": "Gültigkeitsdauer",
+    "daysCount": "{{count}} Tage",
+    "invitationReady": "Einladung bereit",
+    "invitationReadySub": "Teilen Sie diesen 6-stelligen Code mit {{email}}, um dem Betrieb beizutreten.",
+    "invitationCode": "EINLADUNGSCODE",
+    "expiresInDaysToken": "Gültig für {{days}} Tage · Einmalig verwendbar",
+    "copyAndShareCode": "Code kopieren & teilen"
   },
   "onboarding": {
     "getStarted": "Wie möchten Sie starten?",
@@ -476,7 +575,9 @@
     "emptyStateDesc": "Alles erledigt! Warnungen und Bestandsmeldungen erscheinen hier.",
     "filterUnread": "Ungelesen",
     "filterUrgent": "Dringend",
-    "unreadCount": "{{count}} ungelesene Benachrichtigungen"
+    "unreadCount": "{{count}} ungelesene Benachrichtigungen",
+    "backToList": "Zurück zu Benachrichtigungen",
+    "detailTitle": "Benachrichtigungsdetails"
   },
   "settings": {
     "title": "Einstellungen",
@@ -540,7 +641,10 @@
       "phone": "Telefonnummer",
       "role": "Zugewiesene Rolle",
       "store": "Zugewiesener Betrieb",
-      "saveChanges": "Profil speichern"
+      "saveChanges": "Profil speichern",
+      "biometrics": "Biometrie / Face ID",
+      "fingerprint": "Fingerabdruck",
+      "biometricsSub": "Schnelle und sichere Anmeldung auf diesem Gerät"
     },
     "signOutConfirm": {
       "title": "Abmelden",
@@ -567,6 +671,9 @@
   "scan": {
     "title": "Kassenbon & Z-Bericht Scanner",
     "instructions": "Kassenbon oder Tagesabschluss im Rahmen ausrichten",
+    "cameraAccessNeeded": "Kamerazugriff erforderlich",
+    "cameraAccessDesc": "StockPulse benötigt Zugriff auf Ihre Kamera, um Kassenbons und Lieferscheine per KI zu erfassen.",
+    "enableCamera": "Kamera aktivieren",
     "galleryButton": "Aus Galerie wählen",
     "tip": "Achten Sie auf gute Ausleuchtung und scharfe Schrift",
     "processingTitle": "Kassenbon wird verarbeitet",
@@ -657,6 +764,12 @@
     "ingredientsBom": "Zutaten & Stückliste",
     "costPerServing": "Kosten / Portion",
     "portions": "Portionen",
+    "outOfStockBadge": "Zutat nicht vorrätig",
+    "lowStockBadge": "Niedriger Zutatenbestand",
+    "readyBadge": "Zutaten verfügbar",
+    "perServing": "/ Portion",
+    "ingredientOne": "Zutat",
+    "ingredientOther": "Zutaten",
     "addIngredient": "Zutat hinzufügen",
     "selectIngredient": "Lagerartikel auswählen",
     "qtyPerServing": "Menge / Portion",
@@ -670,6 +783,7 @@
     "noIngredientsYet": "Noch keine Zutaten hinzugefügt. Tippen Sie unten auf „Zutat hinzufügen“.",
     "howBomWorksTitle": "So funktioniert die Stückliste (BOM)",
     "howBomWorksDesc": "Wenn Verkäufe erfasst oder Abbuchungen ausgeführt werden, wird der Lagerbestand anhand der Zutatenmengen und Schwundquoten automatisch reduziert.",
+    "howBomDeductionsExplanation": "Jeder Verkauf von {{name}} zieht automatisch die hinterlegten Rohstoffe und Mengen (inkl. Schwundfaktor) vom Lagerbestand ab.",
     "deleteConfirmTitle": "Rezept löschen",
     "deleteConfirmMessage": "Möchten Sie „{{name}}“ wirklich löschen? Dadurch wird das Rezept aus den aktiven Stücklisten entfernt.",
     "deductModalTitle": "BOM-Abbuchung ausführen",
@@ -682,7 +796,8 @@
     "allCategories": "Alle Kategorien",
     "food": "Speisen",
     "drinks": "Getränke",
-    "searchPlaceholder": "Rezepte oder Speisen suchen..."
+    "searchPlaceholder": "Rezepte oder Speisen suchen...",
+    "recipeNotFound": "Rezept nicht gefunden"
   },
   "invoices": {
     "title": "Rechnungen & Abgleich",
@@ -709,7 +824,46 @@
     "paymentStatus": "Zahlungsstatus",
     "verifiedBy": "Geprüft von",
     "linkToDeliveryNote": "Verknüpften Lieferschein anzeigen",
-    "linkToPo": "Verknüpfte Bestellung anzeigen"
+    "linkToPo": "Verknüpfte Bestellung anzeigen",
+    "process": "Erfassen",
+    "all": "Alle",
+    "allCount": "Alle ({{count}})",
+    "supplierInvoicesCount": "Lieferantenrechnungen ({{count}})",
+    "orderReceiptsCount": "Kassenbelege ({{count}})",
+    "supplierDebtCount": "Lieferantenschulden ({{count}})",
+    "supplierDebt": "Offene Verbindlichkeiten",
+    "chooseDocToProcess": "Zu bearbeitendes Dokument wählen",
+    "invoiceDate": "Rechnungsdatum",
+    "dueDate": "Fälligkeitsdatum",
+    "backToList": "Zurück zu Rechnungen",
+    "invoiceNotFound": "Rechnung nicht gefunden",
+    "deliveryInvoiceSupplier": "Lieferantenrechnung",
+    "orderFormReceipt": "Kassenbeleg",
+    "statuses": {
+      "verified": "Verifiziert",
+      "discrepancy": "Abweichung",
+      "paid": "Bezahlt",
+      "pending": "Ausstehend",
+      "unpaidDebt": "Offene Verbindlichkeit"
+    },
+    "netDebt": "Netto-Verbindlichkeit",
+    "debt": "Offen",
+    "grossInvoiced": "Rechnungsbrutto",
+    "skipDeduction": "Schwund- & Kürzungsabzug",
+    "netDebtSupplier": "Netto-Verbindlichkeit an Lieferant",
+    "totalAmount": "Gesamtbetrag",
+    "markVerified": "Als geprüft markieren",
+    "recordPayment": "Zahlung erfassen ({{amount}})",
+    "linkedPo": "Verknüpfte Bestellung: {{po}}",
+    "linkedDeliveryNote": "Verknüpfter Lieferschein",
+    "tapToAddNotes": "+ Tippen für Anmerkungen / Notizen",
+    "skipControlTitle": "Kürzungskontrolle & Schuldenabzug",
+    "deductionApplied": "Abzug angewendet",
+    "skipControlDesc": "Lieferantenschulden für abgelehnte, beschädigte oder fehlende Ware direkt kürzen ohne bürokratischen Reklamationsaufwand.",
+    "deductedFromDebt": "Von Verbindlichkeit abgezogen:",
+    "reason": "Grund:",
+    "modifySkipDeduction": "Kürzungsabzug bearbeiten",
+    "addSkipDeduction": "+ Schwund / Transportschaden abziehen"
   },
   "deliveryNotes": {
     "title": "Lieferscheine",
@@ -718,6 +872,16 @@
     "received": "Empfangen",
     "pendingInspection": "Prüfung ausstehend",
     "discrepancies": "Fehlmengen & Beschädigungen",
+    "shortages": "Fehlmengen",
+    "inbound": "Wareneingang",
+    "totalDeliveries": "Gesamtlieferungen",
+    "awaitingInspection": "Prüfung ausstehend",
+    "statuses": {
+      "received": "Empfangen & Verifiziert",
+      "pendingInspection": "Prüfung ausstehend",
+      "variance": "Fehlmenge / Abweichung",
+      "damaged": "Beschädigt / Abgelehnt"
+    },
     "newDeliveryNote": "Lieferung erfassen",
     "temperatureCheck": "Temperaturprüfung",
     "storageZone": "Lagerbereich",
@@ -728,7 +892,21 @@
     "searchPlaceholder": "Nach Lieferscheinnr., Lieferant oder Artikeln suchen...",
     "emptyState": "Keine Lieferscheine gefunden",
     "emptyStateDesc": "Erfassen Sie Lieferscheine bei Warenanlieferung.",
-    "markVerified": "Wareneingang bestätigen"
+    "markVerified": "Wareneingang bestätigen",
+    "scanIntakeTitle": "Wareneingang erfassen / scannen",
+    "scanIntakeSub": "Lieferantenrechnung oder Lieferschein wählen",
+    "itemsReceived": "{{count}} Artikel empfangen: {{items}}",
+    "shortageNotice": "Abweichung: Auf diesem Lieferschein wurde weniger als bestellt geliefert.",
+    "backToList": "Zurück zu Lieferscheinen",
+    "deliveryNoteNotFound": "Lieferschein nicht gefunden",
+    "ordered": "Bestellt",
+    "variance": "Abweichung",
+    "confirmReceiving": "Wareneingang buchen",
+    "allNotesCount": "Alle Lieferscheine ({{count}})",
+    "receivedCount": "Empfangen ({{count}})",
+    "pendingCount": "Prüfung ausstehend ({{count}})",
+    "shortagesCount": "Fehlmengen ({{count}})",
+    "receivedItemsInspection": "Empfangene Artikel & Prüfung ({{count}})"
   },
   "events": {
     "title": "Veranstaltungen & Catering",
@@ -771,7 +949,23 @@
       "plowhorse": "Plowhorse (Geringe Marge, Hohe Beliebtheit)",
       "puzzle": "Puzzle (Hohe Marge, Geringe Beliebtheit)",
       "dog": "Dog (Geringe Marge, Geringe Beliebtheit)"
-    }
+    },
+    "selectRecipe": "Rezept / Gericht wählen",
+    "rawFoodCost": "Reine Wareneinsatzkosten",
+    "pricingTargets": "Preise & Zielmargen",
+    "menuSellingPrice": "Verkaufspreis (€)",
+    "targetFoodCostPct": "Soll-Wareneinsatz %",
+    "estMonthlyOrders": "Geschätzte Bestellungen / Monat",
+    "profitabilityAnalysis": "Margen- & Rentabilitätsanalyse",
+    "actualFoodCostPct": "Tatsächlicher Wareneinsatz %",
+    "grossMarginServing": "Deckungsbeitrag / Portion",
+    "profitPerDish": "Gewinn pro Portion",
+    "recommendedPrice": "Empfohlener Verkaufspreis",
+    "estMonthlyProfit": "Geschätzter Monatsgewinn",
+    "prepBatchScaleTarget": "Zielmenge für Chargenvorbereitung",
+    "portionsServings": "Portionen / Portionenanzahl",
+    "perPortion": "Pro Portion",
+    "shortage": "Fehlbestand"
   },
   "stockMetric": {
     "actualIs": "IST",
@@ -991,5 +1185,17 @@
     "backToLogin": "Zurück zur Anmeldung",
     "useDifferentEmail": "Andere E-Mail-Adresse verwenden",
     "verifiedContinue": "E-Mail bestätigt — Jetzt fortfahren"
+  },
+  "lossLogs": {
+    "title": "Schwund & Stornierungen",
+    "subtitle": "Küchenabfall, Verderb & stornierte Bons",
+    "logLoss": "Verlust erfassen",
+    "voidDish": "Gericht stornieren",
+    "foodLossSpoilage": "Lebensmittelverlust & Verderb",
+    "kitchenCancellations": "Küchenstornierungen",
+    "totalLossCost": "Gesamter Verlustwert",
+    "loggedLosses": "Erfasste Verluste",
+    "cancelledOrders": "Stornierte Bestellungen",
+    "preppedWaste": "Bereits zubereiteter Abfall"
   }
 }

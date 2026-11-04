@@ -86,7 +86,7 @@ export function logApiError(
   const msg = `[API Error] Service: ${serviceName} | Endpoint: ${endpoint} | Method: ${method} | Status: ${status} | Error: ${error?.message || error || 'Unknown'} | Time: ${timestamp}`;
   if (status === 'MOCK' || method === 'LOCAL_MOCK' || ENABLE_MOCK_FALLBACK) {
     if (DEBUG_API) {
-      console.warn(msg);
+      console.log(msg);
     }
     return;
   }
@@ -185,7 +185,7 @@ async function request<T>(endpoint: string, options: ApiRequestOptions = {}): Pr
     // Handle 401 Unauthorized with token refresh & single retry
     if (response.status === 401 && !options.skipAuth && retryCount === 0) {
       if (DEBUG_API) {
-        console.warn(`[API Client] Received 401 on ${endpoint}, attempting token refresh...`);
+        console.log(`[API Client] Received 401 on ${endpoint}, attempting token refresh...`);
       }
 
       try {
@@ -201,7 +201,7 @@ async function request<T>(endpoint: string, options: ApiRequestOptions = {}): Pr
         }
       } catch (refreshErr) {
         if (DEBUG_API) {
-          console.warn('[API Client] Refresh session failed:', refreshErr);
+          console.log('[API Client] Refresh session failed:', refreshErr);
         }
       }
 

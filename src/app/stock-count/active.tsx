@@ -2,6 +2,7 @@ import { VectorIcon } from '@/components/ui/icons';
 import { NumericKeypad } from '@/components/ui/numeric-keypad';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import { stockCountService } from '@/services/stockCountService';
 import { StockCountItem } from '@/types/inventory';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,6 +25,7 @@ export default function ActiveStockCountScreen() {
   const insets = useSafeAreaInsets();
   const isIOS = Platform.OS === 'ios';
   const params = useLocalSearchParams<{ sessionId?: string }>();
+  const { t } = useI18n();
 
   const [sessionId, setSessionId] = useState<string>(params.sessionId || '');
   const [items, setItems] = useState<StockCountItem[]>([]);
@@ -169,7 +171,7 @@ export default function ActiveStockCountScreen() {
               style={({ pressed }) => [styles.exitBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="ChevronLeft" size={20} color={Colors.brand.primary} strokeWidth={2.5} />
-              <Text style={styles.exitText}>Exit</Text>
+              <Text style={styles.exitText}>{t('common.cancel')}</Text>
             </Pressable>
           ) : (
             <Pressable
@@ -182,9 +184,9 @@ export default function ActiveStockCountScreen() {
 
           {/* Count Title & Index */}
           <View style={styles.headerCenter}>
-            <Text style={styles.headerCategory}>Daily Stock Count</Text>
+            <Text style={styles.headerCategory}>{t('stockCount.title')}</Text>
             <Text style={styles.headerProgressText}>
-              {idx + 1} of {total}
+              {idx + 1} {t('stockCount.ofTotal', { total })}
             </Text>
           </View>
 
@@ -219,7 +221,7 @@ export default function ActiveStockCountScreen() {
         <View style={styles.progressBarWrapper}>
           <ProgressBar value={idx + 42} max={68} variant="green" height={5} />
           <View style={styles.progressMeta}>
-            <Text style={styles.progressMetaLeft}>42 completed</Text>
+            <Text style={styles.progressMetaLeft}>{idx + 42} {t('common.completed', { defaultValue: 'abgeschlossen' })}</Text>
             <Text style={styles.progressMetaRight}>{progressPercentage}%</Text>
           </View>
         </View>
@@ -243,9 +245,9 @@ export default function ActiveStockCountScreen() {
           <View>
             <View style={styles.theoryHeaderRow}>
               <View style={styles.slateDot} />
-              <Text style={styles.theoryLabel}>THEORY / SHOULD BE</Text>
+              <Text style={styles.theoryLabel}>{t('stockMetric.targetShould')}</Text>
             </View>
-            <Text style={styles.theorySub}>System expected quantity</Text>
+            <Text style={styles.theorySub}>{t('stockCount.systemExpected', { defaultValue: 'Erwarteter Systembestand' })}</Text>
           </View>
           <View style={styles.theoryValueBox}>
             <Text style={styles.theoryValue}>{currentItem.expected}</Text>
@@ -257,7 +259,7 @@ export default function ActiveStockCountScreen() {
         <View style={styles.physicalSection}>
           <View style={styles.physicalHeaderRow}>
             <View style={styles.greenDot} />
-            <Text style={styles.physicalLabel}>PHYSICAL / IS</Text>
+            <Text style={styles.physicalLabel}>{t('stockMetric.actualIs')}</Text>
           </View>
 
           {/* Big Input Number Box */}
@@ -312,9 +314,9 @@ export default function ActiveStockCountScreen() {
                   }
                 />
                 <View>
-                  <Text style={styles.varianceHeading}>Variance</Text>
+                  <Text style={styles.varianceHeading}>{t('stockCount.variance')}</Text>
                   {isMajor && (
-                    <Text style={styles.varianceWarningText}>Major — review required</Text>
+                    <Text style={styles.varianceWarningText}>{t('stockCount.varianceWarning', { defaultValue: 'Große Abweichung — Prüfung erforderlich' })}</Text>
                   )}
                 </View>
               </View>
@@ -389,7 +391,7 @@ export default function ActiveStockCountScreen() {
           ]}
         >
           <VectorIcon name="ChevronLeft" size={16} color={Colors.neutral.textPrimary} />
-          <Text style={styles.secondaryBtnText}>Prev</Text>
+          <Text style={styles.secondaryBtnText}>{t('common.prev', { defaultValue: 'Zurück' })}</Text>
         </Pressable>
 
         <Pressable
@@ -402,7 +404,7 @@ export default function ActiveStockCountScreen() {
           ]}
         >
           <VectorIcon name="SkipForward" size={14} color={Colors.neutral.textSecondary} />
-          <Text style={styles.skipBtnText}>Skip</Text>
+          <Text style={styles.skipBtnText}>{t('stockCount.skip', { defaultValue: 'Überspringen' })}</Text>
         </Pressable>
 
         <Pressable
@@ -417,7 +419,11 @@ export default function ActiveStockCountScreen() {
         >
           <VectorIcon name="Check" size={18} color="#ffffff" strokeWidth={2.5} />
           <Text style={styles.primarySaveText}>
-            {isSubmitting ? 'Submitting...' : idx === total - 1 ? 'Finish Count' : 'Save & Next'}
+            {isSubmitting
+              ? t('common.submitting', { defaultValue: 'Wird übermittelt...' })
+              : idx === total - 1
+              ? t('stockCount.finishCount', { defaultValue: 'Zählung abschließen' })
+              : t('stockCount.saveNext', { defaultValue: 'Speichern & Weiter' })}
           </Text>
         </Pressable>
       </View>

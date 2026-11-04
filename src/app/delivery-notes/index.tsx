@@ -120,13 +120,13 @@ export default function DeliveryNotesListScreen() {
   const getStatusBadge = (status: DeliveryNoteStatus): { label: string; variant: BadgeVariant } => {
     switch (status) {
       case 'received':
-        return { label: 'Received & Verified', variant: 'green' };
+        return { label: t('deliveryNotes.statuses.received'), variant: 'green' };
       case 'pending_inspection':
-        return { label: 'Pending Inspection', variant: 'amber' };
+        return { label: t('deliveryNotes.statuses.pendingInspection'), variant: 'amber' };
       case 'discrepancy':
-        return { label: 'Shortage / Variance', variant: 'red' };
+        return { label: t('deliveryNotes.statuses.variance'), variant: 'red' };
       case 'damaged':
-        return { label: 'Damaged / Rejected', variant: 'red' };
+        return { label: t('deliveryNotes.statuses.damaged'), variant: 'red' };
       default:
         return { label: status, variant: 'gray' };
     }
@@ -153,7 +153,7 @@ export default function DeliveryNotesListScreen() {
               style={({ pressed }) => [styles.newBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="Plus" size={14} color="#ffffff" strokeWidth={2.5} />
-              <Text style={styles.newBtnText}>Inbound</Text>
+              <Text style={styles.newBtnText}>{t('deliveryNotes.inbound')}</Text>
             </Pressable>
           </View>
         }
@@ -167,7 +167,7 @@ export default function DeliveryNotesListScreen() {
             style={[styles.tabItem, selectedTab === 'all' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'all' && styles.tabTextActive]}>
-              All Notes ({notes.length})
+              {t('deliveryNotes.allNotesCount', { count: notes.length, defaultValue: `All Notes (${notes.length})` })}
             </Text>
           </Pressable>
 
@@ -176,7 +176,10 @@ export default function DeliveryNotesListScreen() {
             style={[styles.tabItem, selectedTab === 'received' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'received' && styles.tabTextActive]}>
-              Received ({notes.filter((n) => n.status === 'received').length})
+              {t('deliveryNotes.receivedCount', {
+                count: notes.filter((n) => n.status === 'received').length,
+                defaultValue: `Received (${notes.filter((n) => n.status === 'received').length})`,
+              })}
             </Text>
           </Pressable>
 
@@ -185,7 +188,10 @@ export default function DeliveryNotesListScreen() {
             style={[styles.tabItem, selectedTab === 'pending' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'pending' && styles.tabTextActive]}>
-              Pending Inspection ({metrics.pendingCount})
+              {t('deliveryNotes.pendingCount', {
+                count: metrics.pendingCount,
+                defaultValue: `Pending Inspection (${metrics.pendingCount})`,
+              })}
             </Text>
           </Pressable>
 
@@ -194,7 +200,10 @@ export default function DeliveryNotesListScreen() {
             style={[styles.tabItem, selectedTab === 'discrepancy' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'discrepancy' && styles.tabTextActive]}>
-              Shortages ({metrics.discrepancyCount})
+              {t('deliveryNotes.shortagesCount', {
+                count: metrics.discrepancyCount,
+                defaultValue: `Shortages (${metrics.discrepancyCount})`,
+              })}
             </Text>
           </Pressable>
         </ScrollView>
@@ -219,7 +228,7 @@ export default function DeliveryNotesListScreen() {
         <View style={styles.metricsGrid}>
           <Card style={styles.metricCard}>
             <Text style={styles.metricNum}>{loading ? '--' : metrics.totalDeliveries}</Text>
-            <Text style={styles.metricLabel}>Total Deliveries</Text>
+            <Text style={styles.metricLabel}>{t('deliveryNotes.totalDeliveries')}</Text>
           </Card>
 
           <Card style={styles.metricCard}>
@@ -231,7 +240,7 @@ export default function DeliveryNotesListScreen() {
             >
               {loading ? '--' : metrics.pendingCount}
             </Text>
-            <Text style={styles.metricLabel}>Awaiting Inspection</Text>
+            <Text style={styles.metricLabel}>{t('deliveryNotes.awaitingInspection')}</Text>
           </Card>
 
           <Card style={styles.metricCard}>
@@ -243,7 +252,7 @@ export default function DeliveryNotesListScreen() {
             >
               {loading ? '--' : metrics.discrepancyCount}
             </Text>
-            <Text style={styles.metricLabel}>Shortages / Issues</Text>
+            <Text style={styles.metricLabel}>{t('deliveryNotes.shortages')}</Text>
           </Card>
         </View>
 
@@ -276,9 +285,9 @@ export default function DeliveryNotesListScreen() {
             <VectorIcon name="Truck" size={20} color={Colors.brand.primary} />
           </View>
           <View style={styles.intakeInfo}>
-            <Text style={styles.intakeTitle}>Scan / Intake Inbound Delivery</Text>
+            <Text style={styles.intakeTitle}>{t('deliveryNotes.scanIntakeTitle')}</Text>
             <Text style={styles.intakeSubtitle}>
-              Choose: Delivery invoice from supplier vs Order form receipt
+              {t('deliveryNotes.scanIntakeSub')}
             </Text>
           </View>
           <VectorIcon name="ChevronRight" size={18} color={Colors.neutral.textTertiary} />
@@ -309,7 +318,7 @@ export default function DeliveryNotesListScreen() {
               onPress={() => setShowPickerModal(true)}
               style={styles.emptyActionBtn}
             >
-              <Text style={styles.emptyActionBtnText}>+ Log Delivery Note</Text>
+              <Text style={styles.emptyActionBtnText}>+ {t('deliveryNotes.newDeliveryNote')}</Text>
             </Pressable>
           </View>
         )}
@@ -357,8 +366,11 @@ export default function DeliveryNotesListScreen() {
               {/* Items summary */}
               <View style={styles.itemsRow}>
                 <Text style={styles.itemsSummary}>
-                  {note.itemCount} items received: {note.items.map((i) => `${i.receivedQuantity}${i.unit} ${i.itemName}`).slice(0, 2).join(', ')}
-                  {note.items.length > 2 ? '...' : ''}
+                  {t('deliveryNotes.itemsReceived', {
+                    count: note.itemCount,
+                    items: `${note.items.map((i) => `${i.receivedQuantity}${i.unit} ${i.itemName}`).slice(0, 2).join(', ')}${note.items.length > 2 ? '...' : ''}`,
+                    defaultValue: `${note.itemCount} items received`,
+                  })}
                 </Text>
               </View>
 
@@ -367,7 +379,7 @@ export default function DeliveryNotesListScreen() {
                 <View style={styles.shortageNotice}>
                   <VectorIcon name="AlertCircle" size={12} color={Colors.critical.main} />
                   <Text style={styles.shortageText}>
-                    Discrepancy: Received less than ordered quantity on this delivery slip.
+                    {t('deliveryNotes.shortageNotice')}
                   </Text>
                 </View>
               )}
@@ -375,10 +387,10 @@ export default function DeliveryNotesListScreen() {
               {/* Footer */}
               <View style={styles.cardFooter}>
                 <Text style={styles.receiverText}>
-                  Received by: <Text style={styles.bold}>{note.receivedBy}</Text>
+                  {t('deliveryNotes.receivedBy')}: <Text style={styles.bold}>{note.receivedBy}</Text>
                 </Text>
                 <Text style={styles.valueText}>
-                  Est. {formatCurrency(note.totalValue)}
+                  {t('common.est')} {formatCurrency(note.totalValue)}
                 </Text>
               </View>
             </Card>

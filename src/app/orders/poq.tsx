@@ -122,7 +122,10 @@ export default function POQScreen() {
       {/* ── TopBar ── */}
       <TopBar
         title={t('orders.poqTitle')}
-        subtitle={`${selectedIds.size} of ${totalNeedReorder} selected`}
+        subtitle={t('orders.poqSubtitle', {
+          selected: selectedIds.size,
+          total: totalNeedReorder,
+        })}
         showBack
       />
 
@@ -153,19 +156,19 @@ export default function POQScreen() {
         >
           <VectorIcon name="Info" size={16} color={Colors.info.main} />
           <View style={styles.formulaInfo}>
-            <Text style={styles.formulaTitle}>How is this calculated?</Text>
+            <Text style={styles.formulaTitle}>{t('orders.howCalculatedTitle')}</Text>
             {showFormula ? (
               <View style={styles.formulaContent}>
                 <Text style={styles.formulaMath}>
-                  Recommended Order = Target Stock − Physical Stock + Safety Stock
+                  {t('orders.howCalculatedFormula')}
                 </Text>
-                <Text style={styles.formulaExampleHeading}>Example (Chicken Breast):</Text>
+                <Text style={styles.formulaExampleHeading}>{t('common.details')}:</Text>
                 <Text style={styles.formulaExampleText}>
-                  35 kg target − 24.5 kg physical + 5 kg safety = <Text style={styles.bold}>15.5 kg</Text>
+                  {t('orders.howCalculatedExample')}
                 </Text>
               </View>
             ) : (
-              <Text style={styles.formulaTapText}>Tap to see formula explanation</Text>
+              <Text style={styles.formulaTapText}>{t('orders.howCalculatedTitle')}</Text>
             )}
           </View>
         </Pressable>
@@ -180,7 +183,7 @@ export default function POQScreen() {
                 <View style={styles.groupHeaderRow}>
                   <Text style={styles.groupSupplierName}>{group.supplierName}</Text>
                   <Badge variant="gray">
-                    {selectedInGroup}/{group.items.length} selected
+                    {selectedInGroup}/{group.items.length} {t('orders.selected')}
                   </Badge>
                 </View>
 
@@ -219,10 +222,10 @@ export default function POQScreen() {
                             <View style={styles.stockLevelContainer}>
                               <View style={styles.stockLevelLabels}>
                                 <Text style={styles.stockLevelText}>
-                                  Physical: <Text style={styles.stockLevelBold}>{item.physical} {item.unit}</Text>
+                                  {t('inventory.physical')}: <Text style={styles.stockLevelBold}>{item.physical} {item.unit}</Text>
                                 </Text>
                                 <Text style={styles.stockLevelText}>
-                                  Target: <Text style={styles.stockLevelBold}>{item.target} {item.unit}</Text>
+                                  {t('inventory.target')}: <Text style={styles.stockLevelBold}>{item.target} {item.unit}</Text>
                                 </Text>
                               </View>
                               <View style={styles.stockLevelTrack}>
@@ -238,15 +241,15 @@ export default function POQScreen() {
                             {/* Mini 3-Metric Grid */}
                             <View style={styles.metricsMiniGrid}>
                               <View style={styles.miniMetricBox}>
-                                <Text style={styles.miniMetricLabel}>Physical</Text>
+                                <Text style={styles.miniMetricLabel}>{t('inventory.physical')}</Text>
                                 <Text style={styles.miniMetricVal}>{item.physical} {item.unit}</Text>
                               </View>
                               <View style={styles.miniMetricBox}>
-                                <Text style={styles.miniMetricLabel}>Target</Text>
+                                <Text style={styles.miniMetricLabel}>{t('inventory.target')}</Text>
                                 <Text style={styles.miniMetricVal}>{item.target} {item.unit}</Text>
                               </View>
                               <View style={styles.miniMetricBox}>
-                                <Text style={styles.miniMetricLabel}>Safety</Text>
+                                <Text style={styles.miniMetricLabel}>{t('inventory.safety')}</Text>
                                 <Text style={styles.miniMetricVal}>{item.safety} {item.unit}</Text>
                               </View>
                             </View>
@@ -258,10 +261,10 @@ export default function POQScreen() {
                           <View style={styles.stepperContainerRow}>
                             <View>
                               <Text style={styles.recomLabel}>
-                                Recommended: <Text style={styles.recomVal}>{item.recommended} {item.unit}</Text>
+                                {t('orders.recommended')}: <Text style={styles.recomVal}>{item.recommended} {item.unit}</Text>
                               </Text>
                               <Text style={styles.priceEstimateText}>
-                                ≈ <Text style={styles.priceEstimateVal}>€{(qty * item.pricePerUnit).toFixed(2)}</Text>
+                                ≈ <Text style={styles.priceEstimateVal}>{formatCurrency(qty * item.pricePerUnit)}</Text>
                               </Text>
                             </View>
 
@@ -307,9 +310,9 @@ export default function POQScreen() {
       >
         <View style={styles.bottomSummaryRow}>
           <Text style={styles.bottomItemsCount}>
-            {selectedIds.size} items · {supplierCount} supplier{supplierCount !== 1 ? 's' : ''}
+            {selectedIds.size} {selectedIds.size === 1 ? t('common.item') : t('common.items')} · {supplierCount} {supplierCount === 1 ? t('orders.supplierOne') : t('orders.supplierOther')}
           </Text>
-          <Text style={styles.bottomTotalValue}>≈ €{totalValue.toFixed(2)}</Text>
+          <Text style={styles.bottomTotalValue}>≈ {formatCurrency(totalValue)}</Text>
         </View>
 
         <Pressable
@@ -323,8 +326,8 @@ export default function POQScreen() {
         >
           <Text style={styles.createOrderBtnText}>
             {isCreating
-              ? 'Generating Orders...'
-              : `Create Purchase Order${supplierCount > 1 ? 's' : ''}`}
+              ? t('orders.generatingOrders')
+              : t('orders.createPurchaseOrders')}
           </Text>
         </Pressable>
       </View>

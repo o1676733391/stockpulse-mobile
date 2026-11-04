@@ -96,7 +96,7 @@ export default function RecipeBatchScalerScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Recipe Picker */}
-        <Text style={styles.sectionLabel}>Select Recipe</Text>
+        <Text style={styles.sectionLabel}>{t('recipeTools.selectRecipe')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -129,7 +129,7 @@ export default function RecipeBatchScalerScreen() {
 
         {/* Scaler Controller Card */}
         <Card style={styles.controlCard}>
-          <Text style={styles.cardSectionTitle}>Prep Batch Scale Target</Text>
+          <Text style={styles.cardSectionTitle}>{t('recipeTools.prepBatchScaleTarget')}</Text>
 
           <View style={styles.stepperRow}>
             <Pressable
@@ -141,7 +141,7 @@ export default function RecipeBatchScalerScreen() {
 
             <View style={styles.portionDisplay}>
               <Text style={styles.portionNum}>{multiplier}</Text>
-              <Text style={styles.portionLabel}>Portions / Servings</Text>
+              <Text style={styles.portionLabel}>{t('recipeTools.portionsServings')}</Text>
             </View>
 
             <Pressable
@@ -180,12 +180,12 @@ export default function RecipeBatchScalerScreen() {
         <Card style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View>
-              <Text style={styles.summaryLabel}>Total Batch Food Cost</Text>
+              <Text style={styles.summaryLabel}>{t('recipeTools.totalBatchFoodCost')}</Text>
               <Text style={styles.summaryVal}>{formatCurrency(totalBatchCost)}</Text>
             </View>
 
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.summaryLabel}>Per Portion</Text>
+              <Text style={styles.summaryLabel}>{t('recipeTools.perPortion')}</Text>
               <Text style={styles.summaryPortionVal}>
                 {formatCurrency(totalBatchCost / (multiplier || 1))}
               </Text>
@@ -196,7 +196,7 @@ export default function RecipeBatchScalerScreen() {
             <View style={styles.shortageNotice}>
               <VectorIcon name="AlertTriangle" size={14} color={Colors.critical.main} />
               <Text style={styles.shortageNoticeText}>
-                Some ingredients exceed current on-hand stock. Replenishment needed.
+                {t('recipeTools.shortage')}
               </Text>
             </View>
           )}

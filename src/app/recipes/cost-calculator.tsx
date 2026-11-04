@@ -125,7 +125,7 @@ export default function MenuCostCalculatorScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Recipe Picker Carousel / Chips */}
-        <Text style={styles.sectionLabel}>Select Recipe / Dish</Text>
+        <Text style={styles.sectionLabel}>{t('recipeTools.selectRecipe')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -181,7 +181,7 @@ export default function MenuCostCalculatorScreen() {
                 <Text style={styles.dishCategory}>{selectedRecipe.category} · Code: {selectedRecipe.code}</Text>
               </View>
               <View style={styles.foodCostPill}>
-                <Text style={styles.foodCostPillLabel}>Raw Food Cost</Text>
+                <Text style={styles.foodCostPillLabel}>{t('recipeTools.rawFoodCost')}</Text>
                 <Text style={styles.foodCostPillVal}>{formatCurrency(foodCost)}</Text>
               </View>
             </View>
@@ -194,11 +194,11 @@ export default function MenuCostCalculatorScreen() {
 
         {/* Pricing Inputs */}
         <Card style={styles.inputCard}>
-          <Text style={styles.cardSectionTitle}>Pricing & Targets</Text>
+          <Text style={styles.cardSectionTitle}>{t('recipeTools.pricingTargets')}</Text>
 
           <View style={styles.inputRow}>
             <View style={styles.inputCol}>
-              <Text style={styles.inputLabel}>Menu Selling Price (€)</Text>
+              <Text style={styles.inputLabel}>{t('recipeTools.menuSellingPrice')}</Text>
               <TextInput
                 style={styles.textInput}
                 value={sellingPriceInput}
@@ -209,7 +209,7 @@ export default function MenuCostCalculatorScreen() {
             </View>
 
             <View style={styles.inputCol}>
-              <Text style={styles.inputLabel}>Target Food Cost %</Text>
+              <Text style={styles.inputLabel}>{t('recipeTools.targetFoodCostPct')}</Text>
               <TextInput
                 style={styles.textInput}
                 value={targetCostPctInput}
@@ -222,7 +222,7 @@ export default function MenuCostCalculatorScreen() {
 
           <View style={[styles.inputRow, { marginTop: Spacing.sm }]}>
             <View style={styles.inputCol}>
-              <Text style={styles.inputLabel}>Est. Monthly Orders (Portions)</Text>
+              <Text style={styles.inputLabel}>{t('recipeTools.estMonthlyOrders')}</Text>
               <TextInput
                 style={styles.textInput}
                 value={estimatedMonthlyOrders}
@@ -236,11 +236,11 @@ export default function MenuCostCalculatorScreen() {
 
         {/* Results Metrics Card */}
         <Card style={styles.resultsCard}>
-          <Text style={styles.cardSectionTitle}>Profitability Analysis</Text>
+          <Text style={styles.cardSectionTitle}>{t('recipeTools.profitabilityAnalysis')}</Text>
 
           <View style={styles.resultsGrid}>
             <View style={styles.resultItem}>
-              <Text style={styles.resultLabel}>Actual Food Cost %</Text>
+              <Text style={styles.resultLabel}>{t('recipeTools.actualFoodCostPct')}</Text>
               <Text
                 style={[
                   styles.resultVal,
@@ -260,21 +260,21 @@ export default function MenuCostCalculatorScreen() {
             </View>
 
             <View style={styles.resultItem}>
-              <Text style={styles.resultLabel}>Gross Margin / Serving</Text>
+              <Text style={styles.resultLabel}>{t('recipeTools.grossMarginServing')}</Text>
               <Text style={[styles.resultVal, { color: Colors.brand.dark }]}>
                 {formatCurrency(grossMargin)}
               </Text>
-              <Text style={styles.resultSub}>Profit per dish</Text>
+              <Text style={styles.resultSub}>{t('recipeTools.profitPerDish')}</Text>
             </View>
 
             <View style={styles.resultItem}>
-              <Text style={styles.resultLabel}>Recommended Price</Text>
+              <Text style={styles.resultLabel}>{t('recipeTools.recommendedPrice')}</Text>
               <Text style={styles.resultVal}>{formatCurrency(recommendedPrice)}</Text>
               <Text style={styles.resultSub}>To achieve {targetCostPct}% food cost</Text>
             </View>
 
             <View style={styles.resultItem}>
-              <Text style={styles.resultLabel}>Est. Monthly Profit</Text>
+              <Text style={styles.resultLabel}>{t('recipeTools.estMonthlyProfit')}</Text>
               <Text style={[styles.resultVal, { color: '#047857' }]}>
                 {formatCurrency(monthlyGrossProfit)}
               </Text>

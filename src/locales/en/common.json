@@ -43,6 +43,8 @@
     "category": "Category",
     "supplier": "Supplier",
     "batch": "Batch",
+    "batches": "Batches",
+    "items": "Items",
     "notes": "Notes",
     "notAvailable": "N/A",
     "savedSuccess": "Saved successfully",
@@ -56,7 +58,13 @@
     "requiredPermission": "Required Permission: {{permission}}",
     "returnToDashboard": "Return to Dashboard",
     "understood": "Understood",
-    "success": "Success"
+    "success": "Success",
+    "est": "Est.",
+    "goBack": "Go Back",
+    "item": "Item",
+    "you": "YOU",
+    "order": "Order",
+    "orders": "Orders"
   },
   "navigation": {
     "home": "Home",
@@ -94,6 +102,8 @@
     "passwordPlaceholder": "Enter your password",
     "signInButton": "Sign In",
     "signingIn": "Signing In...",
+    "signOut": "Sign Out",
+    "signOutFrom": "Sign Out from {{store}}",
     "registerStore": "Register Store",
     "registerSubtitle": "Start Your Free Inventory Setup",
     "ownerNameLabel": "Your Full Name",
@@ -157,7 +167,11 @@
       "totalValuation": "Total Stock Valuation",
       "healthyRate": "Healthy Stock Rate",
       "expiringSoon": "Expiring in 48h",
-      "openOrders": "Open Purchase Orders"
+      "openOrders": "Open Purchase Orders",
+      "activeStock": "Active Stock",
+      "targetRange": "Target Range",
+      "within7Days": "In ≤ 7 Days",
+      "inboundOrders": "Inbound"
     },
     "stockHealthTitle": "Stock Health & Inventory Balance",
     "stockHealth": {
@@ -173,8 +187,19 @@
       "expiringBrd": "{{count}} Batches Expiring Today",
       "expiringBrdSub": "Immediate triage or discount recommended",
       "poWaiting": "{{count}} POs Awaiting Approval",
-      "poWaitingSub": "Suppliers awaiting order confirmation"
+      "poWaitingSub": "Suppliers awaiting order confirmation",
+      "expiringBatchesLabel": "Expiring Stock Items",
+      "expiringBatchesSub": "{{count}} batches require promotional or kitchen priority",
+      "lowStockLabel": "Low Stock Safety Thresholds",
+      "lowStockSub": "{{count}} SKUs below minimum reorder points",
+      "openDeliveriesLabel": "Awaiting Purchase Deliveries",
+      "openDeliveriesSub": "{{count}} purchase orders in transit / awaiting receipt",
+      "dailyCountLabel": "Daily Stock Count Audit",
+      "dailyCountSub": "Conduct physical inventory audit and resolve discrepancies",
+      "scheduledBadge": "Scheduled"
     },
+    "noExpiringBatches": "No batches expiring within the next 7 days",
+    "noRecentActivities": "No recent activities recorded",
     "recentActivityTitle": "Recent Inventory Activity",
     "quickActionButtons": {
       "count": "Start Stock Count",
@@ -247,10 +272,17 @@
     "reorderPoint": "Reorder Point",
     "deleteConfirmTitle": "Delete Inventory Item",
     "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This will archive the item and remove it from active stock counts.",
-    "deleteSuccess": "Item deleted successfully"
+    "deleteSuccess": "Item deleted successfully",
+    "backToList": "Back to Inventory",
+    "physical": "Physical",
+    "target": "Target",
+    "safety": "Safety"
   },
   "stockCount": {
     "title": "Stock Audit & Count",
+    "noScheduledCounts": "No scheduled counts",
+    "noScheduledCountsSub": "All audit sessions have been completed or reconciled",
+    "ofTotal": "of {{total}}",
     "startSession": "Start Count Session",
     "sessionNumber": "Session #{{sessionNumber}}",
     "blindAudit": "Blind Stocktake",
@@ -302,6 +334,9 @@
   },
   "orders": {
     "title": "Purchase Orders",
+    "createFromPoq": "Create from POQ Recommendations",
+    "noActiveOrders": "No active orders",
+    "noOrderHistory": "No order history",
     "draftPo": "Draft Purchase Order",
     "poNumber": "PO #{{orderNumber}}",
     "supplier": "Supplier: {{name}}",
@@ -327,13 +362,34 @@
       "sent": "Sent",
       "confirmed": "Confirmed",
       "received": "Received"
-    }
+    },
+    "activeOrders": "Active Orders",
+    "pastOrders": "Past Orders",
+    "totalValue": "Total Value",
+    "totalSpent": "Total Spent",
+    "awaiting": "Awaiting",
+    "cancelled": "Cancelled",
+    "poqSubtitle": "{{selected}} of {{total}} selected",
+    "howCalculatedTitle": "How is this calculated?",
+    "howCalculatedFormula": "Recommended Order = Target Stock − Physical Stock + Safety Stock",
+    "howCalculatedExample": "35 kg target − 24.5 kg physical + 5 kg safety = 15.5 kg",
+    "selected": "selected",
+    "recommended": "Recommended",
+    "supplierOne": "supplier",
+    "supplierOther": "suppliers",
+    "generatingOrders": "Generating Orders...",
+    "createPurchaseOrders": "Create Purchase Order(s)",
+    "ordersCreatedTitle": "Orders Created",
+    "ordersCreatedMsg": "{{count}} orders successfully generated.",
+    "creationFailed": "Creation Failed"
   },
   "expiration": {
     "title": "BBD & Expiry Intelligence",
     "subtitle": "FEFO lot tracking & food waste reduction",
     "expiringSoonTitle": "Batches Expiring Soon",
     "wasteReductionTitle": "Smart Waste Reduction Actions",
+    "noItemsInCategory": "No items in this category",
+    "noItemsInCategorySub": "All stock items in this range are healthy",
     "triageActions": {
       "discount": "Suggest 30% Kitchen Markdown",
       "special": "Feature as Chef's Daily Special",
@@ -345,7 +401,8 @@
     "actions": {
       "reduceWaste": "Waste Reduction Strategy",
       "triageBbd": "Action Expiring Batches"
-    }
+    },
+    "backToList": "Back to Expiration Alerts"
   },
   "analytics": {
     "title": "Inventory Analytics & Reports",
@@ -358,7 +415,32 @@
     "exportCsv": "Export Valuation (CSV)",
     "trends": "Historical Trends",
     "reports": "Audit & Valuation Reports",
-    "suppliers": "Supplier Performance"
+    "suppliers": "Supplier Performance",
+    "reportsBtn": "Reports",
+    "tabs": {
+      "overview": "Overview",
+      "valuation": "Valuation",
+      "variance": "Variance",
+      "waste": "Waste",
+      "purchasing": "Purchasing"
+    },
+    "healthScore": "Health Score",
+    "avgTurnover": "Avg Turnover",
+    "totalValue": "Total Value",
+    "netVariance": "Net Variance",
+    "supplierScorecard": "Supplier Performance Scorecard",
+    "supplierScorecardSub": "View lead times, on-time rates & spend per vendor",
+    "totalValuation": "Total Inventory Valuation",
+    "acrossCatalogItems": "Across {{count}} catalog items",
+    "netDiscrepancyImpact": "Net Discrepancy Impact",
+    "monthlyWasteCost": "Monthly Waste Cost",
+    "wasteReductionSuggestions": "Active Waste Reduction Suggestions",
+    "wasteReductionSuggestionsSub": "Promote recipes with expiring stock before BBD",
+    "ytdTotalSpend": "YTD Total Spend",
+    "monthActual": "Month Actual",
+    "monthBudget": "Month Budget",
+    "poqReorderTitle": "Reorder from POQ Recommendations",
+    "poqReorderSub": "Auto-calculate orders based on target stock"
   },
   "team": {
     "title": "Team & Access",
@@ -408,7 +490,24 @@
     },
     "permissionsMatrix": "Role Permissions Matrix",
     "roleAssigned": "Role: {{role}}",
-    "rolesDesc": "Manage staff roles and store assignment permissions"
+    "rolesDesc": "Manage staff roles and store assignment permissions",
+    "roleDescriptions": {
+      "admin": "Full unrestricted access across operations, financials, recipes, and team management",
+      "manager": "Day-to-day operations, POS reviews, POQ recommendations, purchasing, and analytics",
+      "supervisor": "Shift supervision, count execution & approval, POS scan reviews, and waste triage",
+      "staff": "Physical inventory counts, POS scanning, goods intake receipts, and BBD warnings",
+      "auditor": "Read-only compliance and audit access for inventory valuation, variances, and trail logs"
+    },
+    "modulePermissionsGranted": "{{count}} module permissions granted",
+    "selectRolePrompt": "Select the operational role and permissions for this member.",
+    "fullNameOptional": "Full Name (Optional)",
+    "validityDuration": "Validity Duration",
+    "daysCount": "{{count}} Days",
+    "invitationReady": "Invitation Ready",
+    "invitationReadySub": "Share this 6-character code with {{email}} to join the kitchen store.",
+    "invitationCode": "INVITATION CODE",
+    "expiresInDaysToken": "Expires in {{days}} days · Single-use secure token",
+    "copyAndShareCode": "Copy & Share Code"
   },
   "onboarding": {
     "getStarted": "How do you want to get started?",
@@ -476,7 +575,9 @@
     "emptyStateDesc": "You're all caught up! Alerts and inventory notices will appear here.",
     "filterUnread": "Unread",
     "filterUrgent": "Urgent",
-    "unreadCount": "{{count}} unread notifications"
+    "unreadCount": "{{count}} unread notifications",
+    "backToList": "Back to Notifications",
+    "detailTitle": "Notification Detail"
   },
   "settings": {
     "title": "Settings",
@@ -540,7 +641,10 @@
       "phone": "Phone Number",
       "role": "Assigned Role",
       "store": "Assigned Store",
-      "saveChanges": "Save Profile"
+      "saveChanges": "Save Profile",
+      "biometrics": "Biometrics / Face ID",
+      "fingerprint": "Fingerprint",
+      "biometricsSub": "Fast and secure sign in on this device"
     },
     "signOutConfirm": {
       "title": "Sign Out",
@@ -567,6 +671,9 @@
   "scan": {
     "title": "POS Receipt Scanner",
     "instructions": "Align the daily POS Z-report or register receipt within the frame",
+    "cameraAccessNeeded": "Camera Access Needed",
+    "cameraAccessDesc": "StockPulse uses the camera to scan POS daily register receipts and supplier goods receipts.",
+    "enableCamera": "Enable Camera",
     "galleryButton": "Choose from Gallery",
     "tip": "Ensure receipt numbers, line items, and quantities are clearly lit and visible",
     "processingTitle": "Processing POS Receipt",
@@ -657,6 +764,12 @@
     "ingredientsBom": "Ingredients & Bill of Materials",
     "costPerServing": "Cost / Serving",
     "portions": "Portions",
+    "outOfStockBadge": "Ingredient Out of Stock",
+    "lowStockBadge": "Low Stock Warning",
+    "readyBadge": "Ingredients Ready",
+    "perServing": "/ serving",
+    "ingredientOne": "ingredient",
+    "ingredientOther": "ingredients",
     "addIngredient": "Add Ingredient",
     "selectIngredient": "Select Inventory Item",
     "qtyPerServing": "Qty / Serving",
@@ -670,6 +783,7 @@
     "noIngredientsYet": "No ingredients added yet. Tap \"Add Ingredient\" below.",
     "howBomWorksTitle": "How Bill of Materials (BOM) Works",
     "howBomWorksDesc": "When sales are recorded or deductions executed, inventory is automatically depleted according to ingredient quantities and waste ratios.",
+    "howBomDeductionsExplanation": "Each sale of {{name}} automatically deducts configured raw materials from inventory according to recipe quantities and waste factors.",
     "deleteConfirmTitle": "Delete Recipe",
     "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This will remove the recipe from active BOM deductions.",
     "deductModalTitle": "Execute BOM Deduction",
@@ -682,7 +796,8 @@
     "allCategories": "All Categories",
     "food": "Food",
     "drinks": "Drinks",
-    "searchPlaceholder": "Search recipes or menu items..."
+    "searchPlaceholder": "Search recipes or menu items...",
+    "recipeNotFound": "Recipe not found"
   },
   "invoices": {
     "title": "Invoices & Receipts",
@@ -709,7 +824,46 @@
     "paymentStatus": "Payment Status",
     "verifiedBy": "Verified By",
     "linkToDeliveryNote": "View Linked Delivery Note",
-    "linkToPo": "View Linked Purchase Order"
+    "linkToPo": "View Linked Purchase Order",
+    "process": "Process",
+    "all": "All",
+    "allCount": "All ({{count}})",
+    "supplierInvoicesCount": "Supplier Deliveries ({{count}})",
+    "orderReceiptsCount": "Sales Receipts ({{count}})",
+    "supplierDebtCount": "Supplier Debt ({{count}})",
+    "supplierDebt": "Supplier Debt",
+    "chooseDocToProcess": "Choose Document to Process",
+    "invoiceDate": "Invoice Date",
+    "dueDate": "Due Date",
+    "backToList": "Back to Invoices",
+    "invoiceNotFound": "Invoice not found",
+    "deliveryInvoiceSupplier": "Delivery invoice from supplier",
+    "orderFormReceipt": "Order form receipt",
+    "statuses": {
+      "verified": "Verified",
+      "discrepancy": "Discrepancy",
+      "paid": "Paid",
+      "pending": "Pending",
+      "unpaidDebt": "Unpaid Debt"
+    },
+    "netDebt": "Net Debt",
+    "debt": "Debt",
+    "grossInvoiced": "Gross Invoiced",
+    "skipDeduction": "Skip / Shortage Deduction",
+    "netDebtSupplier": "Net Debt to Supplier",
+    "totalAmount": "Total Amount",
+    "markVerified": "Mark as Verified",
+    "recordPayment": "Record Payment ({{amount}})",
+    "linkedPo": "Linked PO: {{po}}",
+    "linkedDeliveryNote": "Linked Delivery Note",
+    "tapToAddNotes": "+ Tap to add remarks / notes",
+    "skipControlTitle": "Skip Control & Debt Deduction",
+    "deductionApplied": "Deduction Applied",
+    "skipControlDesc": "Directly deduct supplier debt for rejected, damaged, or short-delivered goods without complex reconciliation paperwork.",
+    "deductedFromDebt": "Deducted from Debt:",
+    "reason": "Reason:",
+    "modifySkipDeduction": "Modify Skip Deduction",
+    "addSkipDeduction": "+ Deduct Skip / Damaged Goods"
   },
   "deliveryNotes": {
     "title": "Delivery Notes",
@@ -728,7 +882,31 @@
     "searchPlaceholder": "Search by delivery note #, supplier, or items...",
     "emptyState": "No Delivery Notes Found",
     "emptyStateDesc": "Log incoming delivery slips when suppliers drop off goods.",
-    "markVerified": "Confirm Warehouse Receiving"
+    "markVerified": "Confirm Warehouse Receiving",
+    "shortages": "Shortages",
+    "inbound": "Inbound",
+    "totalDeliveries": "Total Deliveries",
+    "awaitingInspection": "Awaiting Inspection",
+    "scanIntakeTitle": "Scan / Intake Inbound Delivery",
+    "scanIntakeSub": "Choose: Delivery invoice from supplier vs Order form receipt",
+    "itemsReceived": "{{count}} items received: {{items}}",
+    "shortageNotice": "Discrepancy: Received less than ordered quantity on this delivery slip.",
+    "backToList": "Back to Delivery Notes",
+    "deliveryNoteNotFound": "Delivery Note not found",
+    "ordered": "Ordered",
+    "variance": "Variance",
+    "confirmReceiving": "Confirm Warehouse Receiving",
+    "allNotesCount": "All Notes ({{count}})",
+    "receivedCount": "Received ({{count}})",
+    "pendingCount": "Pending Inspection ({{count}})",
+    "shortagesCount": "Shortages ({{count}})",
+    "statuses": {
+      "received": "Received & Verified",
+      "pendingInspection": "Pending Inspection",
+      "variance": "Shortage / Variance",
+      "damaged": "Damaged / Rejected"
+    },
+    "receivedItemsInspection": "Received Items & Inspection ({{count}})"
   },
   "events": {
     "title": "Events & Catering",
@@ -771,7 +949,23 @@
       "plowhorse": "Plowhorse (Low Margin, High Popularity)",
       "puzzle": "Puzzle (High Margin, Low Popularity)",
       "dog": "Dog (Low Margin, Low Popularity)"
-    }
+    },
+    "selectRecipe": "Select Recipe / Dish",
+    "rawFoodCost": "Raw Food Cost",
+    "pricingTargets": "Pricing & Targets",
+    "menuSellingPrice": "Menu Selling Price (€)",
+    "targetFoodCostPct": "Target Food Cost %",
+    "estMonthlyOrders": "Est. Monthly Orders (Portions)",
+    "profitabilityAnalysis": "Profitability Analysis",
+    "actualFoodCostPct": "Actual Food Cost %",
+    "grossMarginServing": "Gross Margin / Serving",
+    "profitPerDish": "Profit per dish",
+    "recommendedPrice": "Recommended Price",
+    "estMonthlyProfit": "Est. Monthly Profit",
+    "prepBatchScaleTarget": "Prep Batch Scale Target",
+    "portionsServings": "Portions / Servings",
+    "perPortion": "Per Portion",
+    "shortage": "Shortage"
   },
   "stockMetric": {
     "actualIs": "IS",
@@ -991,5 +1185,17 @@
     "backToLogin": "Back to Sign In",
     "useDifferentEmail": "Use a different email",
     "verifiedContinue": "I've Verified My Email — Continue"
+  },
+  "lossLogs": {
+    "title": "Loss & Cancellations",
+    "subtitle": "Kitchen spoilage, waste & voided tickets",
+    "logLoss": "Log Loss",
+    "voidDish": "Void Dish",
+    "foodLossSpoilage": "Food Loss & Spoilage",
+    "kitchenCancellations": "Kitchen Cancellations",
+    "totalLossCost": "Total Loss Cost",
+    "loggedLosses": "Logged Losses",
+    "cancelledOrders": "Cancelled Orders",
+    "preppedWaste": "Prepped Food Wasted"
   }
 }

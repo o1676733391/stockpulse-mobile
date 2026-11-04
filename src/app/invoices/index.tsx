@@ -133,13 +133,13 @@ export default function InvoicesListScreen() {
   const getStatusBadge = (status: InvoiceStatus): { label: string; variant: BadgeVariant } => {
     switch (status) {
       case 'verified':
-        return { label: 'Verified', variant: 'green' };
+        return { label: t('invoices.statuses.verified'), variant: 'green' };
       case 'discrepancy':
-        return { label: 'Discrepancy', variant: 'red' };
+        return { label: t('invoices.statuses.discrepancy'), variant: 'red' };
       case 'paid':
-        return { label: 'Paid', variant: 'blue' };
+        return { label: t('invoices.statuses.paid'), variant: 'blue' };
       case 'pending':
-        return { label: 'Pending', variant: 'amber' };
+        return { label: t('invoices.statuses.pending'), variant: 'amber' };
       default:
         return { label: status, variant: 'gray' };
     }
@@ -166,7 +166,7 @@ export default function InvoicesListScreen() {
               style={({ pressed }) => [styles.newBtn, pressed && styles.pressed]}
             >
               <VectorIcon name="Plus" size={14} color="#ffffff" strokeWidth={2.5} />
-              <Text style={styles.newBtnText}>Process</Text>
+              <Text style={styles.newBtnText}>{t('invoices.process')}</Text>
             </Pressable>
           </View>
         }
@@ -180,7 +180,7 @@ export default function InvoicesListScreen() {
             style={[styles.tabItem, selectedTab === 'all' && styles.tabItemActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'all' && styles.tabTextActive]}>
-              All ({invoices.length})
+              {t('invoices.allCount', { count: invoices.length, defaultValue: `All (${invoices.length})` })}
             </Text>
           </Pressable>
 
@@ -194,7 +194,10 @@ export default function InvoicesListScreen() {
               color={selectedTab === 'supplier' ? Colors.brand.primary : Colors.neutral.textSecondary}
             />
             <Text style={[styles.tabText, selectedTab === 'supplier' && styles.tabTextActive]}>
-              Supplier Deliveries ({metrics.supplierCount})
+              {t('invoices.supplierInvoicesCount', {
+                count: metrics.supplierCount,
+                defaultValue: `Supplier Deliveries (${metrics.supplierCount})`,
+              })}
             </Text>
           </Pressable>
 
@@ -208,7 +211,10 @@ export default function InvoicesListScreen() {
               color={selectedTab === 'order' ? Colors.brand.primary : Colors.neutral.textSecondary}
             />
             <Text style={[styles.tabText, selectedTab === 'order' && styles.tabTextActive]}>
-              Sales Receipts ({metrics.orderCount})
+              {t('invoices.orderReceiptsCount', {
+                count: metrics.orderCount,
+                defaultValue: `Sales Receipts (${metrics.orderCount})`,
+              })}
             </Text>
           </Pressable>
 
@@ -222,7 +228,10 @@ export default function InvoicesListScreen() {
               color={selectedTab === 'debt' ? '#d97706' : Colors.neutral.textSecondary}
             />
             <Text style={[styles.tabText, selectedTab === 'debt' && styles.tabTextActive]}>
-              Supplier Debt ({metrics.unpaidDebtCount})
+              {t('invoices.supplierDebtCount', {
+                count: metrics.unpaidDebtCount,
+                defaultValue: `Supplier Debt (${metrics.unpaidDebtCount})`,
+              })}
             </Text>
           </Pressable>
         </ScrollView>
@@ -249,14 +258,14 @@ export default function InvoicesListScreen() {
             <Text style={[styles.metricNum, { color: Colors.brand.dark }]}>
               {loading ? '--' : formatCurrency(metrics.totalVal)}
             </Text>
-            <Text style={styles.metricLabel}>Total Invoiced</Text>
+            <Text style={styles.metricLabel}>{t('invoices.totalInvoiced')}</Text>
           </Card>
 
           <Card style={styles.metricCard}>
             <Text style={styles.metricNum}>
               {loading ? '--' : metrics.supplierCount}
             </Text>
-            <Text style={styles.metricLabel}>Supplier Deliveries</Text>
+            <Text style={styles.metricLabel}>{t('invoices.supplierInvoices')}</Text>
           </Card>
 
           <Card style={styles.metricCard}>
@@ -268,7 +277,7 @@ export default function InvoicesListScreen() {
             >
               {loading ? '--' : formatCurrency(metrics.unpaidDebtVal)}
             </Text>
-            <Text style={styles.metricLabel}>Supplier Debt</Text>
+            <Text style={styles.metricLabel}>{t('invoices.supplierDebt')}</Text>
           </Card>
         </View>
 
@@ -301,9 +310,9 @@ export default function InvoicesListScreen() {
             <VectorIcon name="Scan" size={20} color={Colors.brand.primary} />
           </View>
           <View style={styles.intakeInfo}>
-            <Text style={styles.intakeTitle}>Choose Document to Process</Text>
+            <Text style={styles.intakeTitle}>{t('invoices.chooseDocToProcess')}</Text>
             <Text style={styles.intakeSubtitle}>
-              Delivery invoice from supplier vs Order form receipt
+              {t('invoices.chooseTypePrompt')}
             </Text>
           </View>
           <VectorIcon name="ChevronRight" size={18} color={Colors.neutral.textTertiary} />
@@ -334,7 +343,7 @@ export default function InvoicesListScreen() {
               onPress={() => setShowPickerModal(true)}
               style={styles.emptyActionBtn}
             >
-              <Text style={styles.emptyActionBtnText}>+ Choose Document to Add</Text>
+              <Text style={styles.emptyActionBtnText}>+ {t('invoices.chooseDocToProcess')}</Text>
             </Pressable>
           </View>
         )}
@@ -371,8 +380,8 @@ export default function InvoicesListScreen() {
                       ]}
                     >
                       {isSupplierDoc
-                        ? 'Delivery invoice from supplier'
-                        : 'Order form receipt'}
+                        ? t('invoices.deliveryInvoiceSupplier')
+                        : t('invoices.orderFormReceipt')}
                     </Text>
                   </View>
                   <Text style={styles.invoiceNum}>{inv.invoiceNumber}</Text>
@@ -394,7 +403,7 @@ export default function InvoicesListScreen() {
               {/* Items summary */}
               <View style={styles.itemsRow}>
                 <Text style={styles.itemsCountText}>
-                  {inv.itemCount} items · {inv.items.map((i) => i.description).slice(0, 2).join(', ')}
+                  {inv.itemCount} {inv.itemCount === 1 ? t('common.item') : t('common.items')} · {inv.items.map((i) => i.description).slice(0, 2).join(', ')}
                   {inv.items.length > 2 ? '...' : ''}
                 </Text>
               </View>
@@ -431,7 +440,9 @@ export default function InvoicesListScreen() {
                       },
                     ]}
                   >
-                    {inv.paymentStatus === 'paid' ? 'Paid' : 'Unpaid Debt'}
+                    {inv.paymentStatus === 'paid'
+                      ? t('invoices.statuses.paid')
+                      : t('invoices.statuses.unpaidDebt')}
                   </Text>
                 </View>
 
@@ -441,11 +452,11 @@ export default function InvoicesListScreen() {
                       <Text style={{ fontSize: 10, color: Colors.warning.dark, fontWeight: '700' }}>
                         Skip -{formatCurrency(inv.skipDeductionAmount)}
                       </Text>
-                      <Text style={styles.totalLabel}>Net Debt</Text>
+                      <Text style={styles.totalLabel}>{t('invoices.netDebt')}</Text>
                     </View>
                   ) : (
                     <Text style={styles.totalLabel}>
-                      {isSupplierDoc && inv.paymentStatus !== 'paid' ? 'Debt' : 'Total'}
+                      {isSupplierDoc && inv.paymentStatus !== 'paid' ? t('invoices.debt') : t('invoices.total')}
                     </Text>
                   )}
                   <Text style={styles.totalAmount}>

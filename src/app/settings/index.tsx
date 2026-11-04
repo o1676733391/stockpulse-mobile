@@ -74,7 +74,7 @@ export default function SettingsHubScreen() {
 
   const getRoleLabel = (userRole?: string) => {
     const r = (userRole || 'staff') as UserRole;
-    return ROLES[r]?.label || r.toUpperCase();
+    return t(`team.roles.${r}`, { defaultValue: ROLES[r]?.label || r.toUpperCase() });
   };
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'User';

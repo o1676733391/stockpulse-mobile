@@ -14,7 +14,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import { analyticsService } from '@/services/analyticsService';
 import { expirationService } from '@/services/expirationService';
 import { inventoryService } from '@/services/inventoryService';
-import { notificationService } from '@/services/notificationService';
+import { notificationService, localizeNotification } from '@/services/notificationService';
 import { procurementService } from '@/services/procurementService';
 import { DashboardExpiryItem, DashboardKpi, StockHealthSegment } from '@/types/inventory';
 import { useRouter } from 'expo-router';
@@ -241,28 +241,28 @@ export default function DashboardScreen() {
         {
           label: t('dashboard.kpis.totalValuation'),
           value: formatCurrency(totalVal),
-          sub: isDe ? 'Aktiver Bestand' : 'Active stock',
+          sub: t('dashboard.kpis.activeStock'),
           variant: 'green',
           trend: { dir: 'up', label: '+3.4%' },
         },
         {
           label: t('dashboard.kpis.healthyRate'),
           value: `${healthyPct}%`,
-          sub: isDe ? 'Zielbereich' : 'Target range',
+          sub: t('dashboard.kpis.targetRange'),
           variant: 'blue',
           trend: { dir: healthyPct >= 90 ? 'up' : 'down', label: `${healthyPct}%` },
         },
         {
           label: t('dashboard.kpis.expiringSoon'),
           value: `${expiringData.length}`,
-          sub: isDe ? 'In ≤ 7 Tagen' : 'In ≤7 days',
+          sub: t('dashboard.kpis.within7Days'),
           variant: 'amber',
           trend: { dir: expiringData.length > 0 ? 'down' : 'flat', label: `${expiringData.length}` },
         },
         {
           label: t('dashboard.kpis.openOrders'),
           value: `${openOrders}`,
-          sub: isDe ? 'Im Zulauf' : 'Inbound',
+          sub: t('dashboard.kpis.inboundOrders'),
           variant: 'purple',
           trend: { dir: 'flat', label: `${openOrders}` },
         },
@@ -289,11 +289,9 @@ export default function DashboardScreen() {
           iconName: 'AlertTriangle',
           color: Colors.critical.main,
           bg: Colors.critical.subtle,
-          label: isDe ? 'Ablaufende MHD-Chargen' : 'Expiring Stock Items',
-          sub: isDe
-            ? `${expiringData.length} Chargen erfordern Aktionsrabatt oder Küchenpriorität`
-            : `${expiringData.length} batches require promotional or kitchen priority`,
-          badge: `${expiringData.length} ${isDe ? 'Chargen' : 'Batches'}`,
+          label: t('dashboard.tasks.expiringBatchesLabel'),
+          sub: t('dashboard.tasks.expiringBatchesSub', { count: expiringData.length }),
+          badge: `${expiringData.length} ${t('common.batches')}`,
           badgeVariant: 'red',
           route: '/expiration',
         });
@@ -305,11 +303,9 @@ export default function DashboardScreen() {
           iconName: 'Package',
           color: Colors.warning.main,
           bg: Colors.warning.subtle,
-          label: isDe ? 'Niedrige Meldebestände' : 'Low Stock Safety Thresholds',
-          sub: isDe
-            ? `${lowCount + criticalCount} Artikel unter Mindestbestand`
-            : `${lowCount + criticalCount} SKUs below minimum reorder points`,
-          badge: `${lowCount + criticalCount} ${isDe ? 'Artikel' : 'SKUs'}`,
+          label: t('dashboard.tasks.lowStockLabel'),
+          sub: t('dashboard.tasks.lowStockSub', { count: lowCount + criticalCount }),
+          badge: `${lowCount + criticalCount} ${t('common.items')}`,
           badgeVariant: 'amber',
           route: '/inventory/overview',
         });
@@ -321,11 +317,9 @@ export default function DashboardScreen() {
           iconName: 'Truck',
           color: Colors.brand.primary,
           bg: Colors.brand.subtle,
-          label: isDe ? 'Offene Warenlieferungen' : 'Awaiting Purchase Deliveries',
-          sub: isDe
-            ? `${openOrders} Bestellungen im Zulauf / Wareneingang ausstehend`
-            : `${openOrders} purchase orders in transit / awaiting receipt`,
-          badge: `${openOrders} ${isDe ? 'Bestellungen' : 'Orders'}`,
+          label: t('dashboard.tasks.openDeliveriesLabel'),
+          sub: t('dashboard.tasks.openDeliveriesSub', { count: openOrders }),
+          badge: `${openOrders} ${openOrders === 1 ? t('common.order') : t('common.orders')}`,
           badgeVariant: 'green',
           route: '/orders',
         });
@@ -336,11 +330,9 @@ export default function DashboardScreen() {
         iconName: 'ClipboardList',
         color: '#6d28d9',
         bg: '#ede9fe',
-        label: isDe ? 'Tägliche Bestandszählung' : 'Daily Stock Count Audit',
-        sub: isDe
-          ? 'IST-Bestand zählen und Abweichungen abgleichen'
-          : 'Conduct physical inventory audit and resolve discrepancies',
-        badge: isDe ? 'Geplant' : 'Scheduled',
+        label: t('dashboard.tasks.dailyCountLabel'),
+        sub: t('dashboard.tasks.dailyCountSub'),
+        badge: t('dashboard.tasks.scheduledBadge'),
         badgeVariant: 'purple',
         route: '/stock-count',
       });
@@ -353,14 +345,17 @@ export default function DashboardScreen() {
 
       if (notifications.length > 0) {
         setRecentActivities(
-          notifications.slice(0, 5).map((n) => ({
-            id: n.id,
-            iconName: n.type === 'expiring_soon' ? 'AlertTriangle' : n.type === 'variance' ? 'TrendingDown' : n.type === 'goods_receipt_update' ? 'Truck' : n.type === 'ocr_complete' ? 'ScanLine' : 'Info',
-            label: n.title,
-            sub: n.body,
-            time: n.time || 'Today',
-            dotColor: n.urgent ? Colors.critical.main : Colors.brand.primary,
-          }))
+          notifications.slice(0, 5).map((n) => {
+            const loc = localizeNotification(n, language);
+            return {
+              id: n.id,
+              iconName: n.type === 'expiring_soon' ? 'AlertTriangle' : n.type === 'variance' ? 'TrendingDown' : n.type === 'goods_receipt_update' ? 'Truck' : n.type === 'ocr_complete' ? 'ScanLine' : 'Info',
+              label: loc.title,
+              sub: loc.body,
+              time: loc.time,
+              dotColor: n.urgent ? Colors.critical.main : Colors.brand.primary,
+            };
+          })
         );
       } else {
         setRecentActivities([]);
@@ -370,7 +365,7 @@ export default function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  }, [formatCurrency, hasNoStore, t]);
+  }, [formatCurrency, hasNoStore, language, t]);
 
   useEffect(() => {
     loadData();
@@ -706,7 +701,7 @@ export default function DashboardScreen() {
           <View style={styles.expiryStack}>
             {expiryItems.length === 0 && !loading && (
               <Card style={styles.emptyCard}>
-                <Text style={styles.emptyCardText}>No batches expiring within the next 7 days</Text>
+                <Text style={styles.emptyCardText}>{t('dashboard.noExpiringBatches')}</Text>
               </Card>
             )}
 
@@ -785,7 +780,7 @@ export default function DashboardScreen() {
           <Card noPadding style={styles.activityCard}>
             {recentActivities.length === 0 && !loading && (
               <View style={{ padding: Spacing.md, alignItems: 'center' }}>
-                <Text style={styles.emptyCardText}>No recent activities recorded</Text>
+                <Text style={styles.emptyCardText}>{t('dashboard.noRecentActivities')}</Text>
               </View>
             )}
 

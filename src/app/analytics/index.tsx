@@ -6,6 +6,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import {
   INITIAL_HEALTH_DATA,
   INITIAL_PURCHASE_DATA,
@@ -27,12 +28,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const TABS = ['Overview', 'Valuation', 'Variance', 'Waste', 'Purchasing'] as const;
 type AnalyticsTab = (typeof TABS)[number];
 
+const TAB_CONFIG: { id: AnalyticsTab; labelKey: string }[] = [
+  { id: 'Overview', labelKey: 'analytics.tabs.overview' },
+  { id: 'Valuation', labelKey: 'analytics.tabs.valuation' },
+  { id: 'Variance', labelKey: 'analytics.tabs.variance' },
+  { id: 'Waste', labelKey: 'analytics.tabs.waste' },
+  { id: 'Purchasing', labelKey: 'analytics.tabs.purchasing' },
+];
+
 const VALUATION_RANGES = ['7D', '30D', '3M'] as const;
 type ValuationRange = (typeof VALUATION_RANGES)[number];
 
 export default function AnalyticsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('Overview');
   const [valRange, setValRange] = useState<ValuationRange>('7D');
@@ -50,11 +60,14 @@ export default function AnalyticsScreen() {
       ? valuation.trend30D
       : valuation.trend3M;
 
+  const activeOption = t(TAB_CONFIG.find((c) => c.id === activeTab)?.labelKey || 'analytics.tabs.overview');
+  const options = TAB_CONFIG.map((c) => t(c.labelKey));
+
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       {/* ── TopBar ── */}
       <TopBar
-        title="Analytics & Trends"
+        title={t('analytics.title', { defaultValue: 'Analytics & Trends' })}
         large
         showBack
         right={
@@ -63,7 +76,7 @@ export default function AnalyticsScreen() {
             style={({ pressed }) => [styles.reportsHeaderBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="FileText" size={14} color="#ffffff" />
-            <Text style={styles.reportsHeaderBtnText}>Reports</Text>
+            <Text style={styles.reportsHeaderBtnText}>{t('analytics.reportsBtn', { defaultValue: 'Reports' })}</Text>
           </Pressable>
         }
       />
@@ -71,9 +84,12 @@ export default function AnalyticsScreen() {
       {/* ── Segmented Control Bar ── */}
       <View style={styles.segmentBar}>
         <SegmentedControl
-          options={[...TABS]}
-          value={activeTab}
-          onChange={(val) => setActiveTab(val as AnalyticsTab)}
+          options={options}
+          value={activeOption}
+          onChange={(val) => {
+            const found = TAB_CONFIG.find((c) => t(c.labelKey) === val);
+            if (found) setActiveTab(found.id);
+          }}
         />
       </View>
 
@@ -95,62 +111,62 @@ export default function AnalyticsScreen() {
                 <Text style={[styles.kpiNum, { color: Colors.brand.dark }]}>
                   {health.healthScore}%
                 </Text>
-                <Text style={styles.kpiLabel}>Health Score</Text>
+                <Text style={styles.kpiLabel}>{t('analytics.healthScore')}</Text>
               </Card>
 
               <Card style={styles.kpiCard}>
                 <Text style={styles.kpiNum}>{health.turnoverDays}d</Text>
-                <Text style={styles.kpiLabel}>Avg Turnover</Text>
+                <Text style={styles.kpiLabel}>{t('analytics.avgTurnover')}</Text>
               </Card>
 
               <Card style={styles.kpiCard}>
                 <Text style={[styles.kpiNum, { color: Colors.brand.primary }]}>
                   €{Math.round(valuation.totalValuation).toLocaleString()}
                 </Text>
-                <Text style={styles.kpiLabel}>Total Value</Text>
+                <Text style={styles.kpiLabel}>{t('analytics.totalValue')}</Text>
               </Card>
 
               <Card style={styles.kpiCard}>
                 <Text style={[styles.kpiNum, { color: Colors.warning.dark }]}>
                   {variance.overallVarianceRate}%
                 </Text>
-                <Text style={styles.kpiLabel}>Net Variance</Text>
+                <Text style={styles.kpiLabel}>{t('analytics.netVariance')}</Text>
               </Card>
             </View>
 
             {/* Stock Health Distribution Donut */}
             <Card style={styles.chartCard}>
-              <SectionHeader title="Inventory Health Distribution" />
+              <SectionHeader title={t('dashboard.stockHealth')} />
               <View style={styles.donutRow}>
                 <DonutChart
                   size={100}
                   strokeWidth={10}
                   centerNumber={`${health.totalItems}`}
-                  centerLabel="Items"
+                  centerLabel={t('common.items')}
                   segments={[
-                    { value: health.optimalCount, color: Colors.brand.primary, label: 'Optimal' },
-                    { value: health.lowStockCount, color: Colors.warning.main, label: 'Low Stock' },
-                    { value: health.overstockCount, color: Colors.info.main, label: 'Overstock' },
-                    { value: health.outOfStockCount, color: Colors.critical.main, label: 'Out of Stock' },
+                    { value: health.optimalCount, color: Colors.brand.primary, label: t('dashboard.kpis.optimal') },
+                    { value: health.lowStockCount, color: Colors.warning.main, label: t('dashboard.kpis.low') },
+                    { value: health.overstockCount, color: Colors.info.main, label: t('dashboard.kpis.overstock') },
+                    { value: health.outOfStockCount, color: Colors.critical.main, label: t('dashboard.kpis.critical') },
                   ]}
                 />
 
                 <View style={styles.donutLegend}>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.brand.primary }]} />
-                    <Text style={styles.legendText}>Optimal: <Text style={styles.bold}>{health.optimalCount}</Text> items</Text>
+                    <Text style={styles.legendText}>{t('dashboard.kpis.optimal')}: <Text style={styles.bold}>{health.optimalCount}</Text> {t('common.items')}</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.warning.main }]} />
-                    <Text style={styles.legendText}>Low stock: <Text style={styles.bold}>{health.lowStockCount}</Text> items</Text>
+                    <Text style={styles.legendText}>{t('dashboard.kpis.low')}: <Text style={styles.bold}>{health.lowStockCount}</Text> {t('common.items')}</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.info.main }]} />
-                    <Text style={styles.legendText}>Overstock: <Text style={styles.bold}>{health.overstockCount}</Text> items</Text>
+                    <Text style={styles.legendText}>{t('dashboard.kpis.overstock')}: <Text style={styles.bold}>{health.overstockCount}</Text> {t('common.items')}</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.critical.main }]} />
-                    <Text style={styles.legendText}>Out of stock: <Text style={styles.bold}>{health.outOfStockCount}</Text> items</Text>
+                    <Text style={styles.legendText}>{t('dashboard.kpis.critical')}: <Text style={styles.bold}>{health.outOfStockCount}</Text> {t('common.items')}</Text>
                   </View>
                 </View>
               </View>
@@ -165,8 +181,8 @@ export default function AnalyticsScreen() {
                 <VectorIcon name="Truck" size={20} color={Colors.brand.primary} />
               </View>
               <View style={styles.linkBannerInfo}>
-                <Text style={styles.linkBannerTitle}>Supplier Performance Scorecard</Text>
-                <Text style={styles.linkBannerSub}>View lead times, on-time rates & spend per vendor</Text>
+                <Text style={styles.linkBannerTitle}>{t('analytics.supplierScorecard')}</Text>
+                <Text style={styles.linkBannerSub}>{t('analytics.supplierScorecardSub')}</Text>
               </View>
               <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
             </Pressable>
@@ -180,11 +196,11 @@ export default function AnalyticsScreen() {
           <View style={styles.tabSection}>
             {/* Total Valuation Banner */}
             <Card style={styles.valuationHeaderCard}>
-              <Text style={styles.valHeaderLabel}>Total Inventory Valuation</Text>
+              <Text style={styles.valHeaderLabel}>{t('analytics.totalValuation')}</Text>
               <Text style={styles.valHeaderAmount}>€{valuation.totalValuation.toFixed(2)}</Text>
               <View style={styles.valHeaderBadgeRow}>
                 <Badge variant="green">+2.1% vs last week</Badge>
-                <Text style={styles.valHeaderSub}>Across 68 catalog items</Text>
+                <Text style={styles.valHeaderSub}>{t('analytics.acrossCatalogItems', { count: 68 })}</Text>
               </View>
 
               {/* Timeframe Chips */}
@@ -262,10 +278,10 @@ export default function AnalyticsScreen() {
             <Card style={styles.varianceSummaryCard}>
               <View style={styles.varTopRow}>
                 <View>
-                  <Text style={styles.varLabel}>Net Discrepancy Impact</Text>
+                  <Text style={styles.varLabel}>{t('analytics.netDiscrepancyImpact')}</Text>
                   <Text style={styles.varNumRed}>€{variance.netVarianceValue.toFixed(2)}</Text>
                 </View>
-                <Badge variant="amber">Shrinkage Rate: {variance.overallVarianceRate}%</Badge>
+                <Badge variant="amber">{t('analytics.shrinkageRate')}: {variance.overallVarianceRate}%</Badge>
               </View>
 
               <Text style={styles.varSub}>
@@ -285,13 +301,13 @@ export default function AnalyticsScreen() {
 
             {/* Top Variance Items List */}
             <Card style={styles.chartCard}>
-              <SectionHeader title="Top Discrepancies Requiring Review" />
+              <SectionHeader title={t('dashboard.varianceTitle')} />
               <View style={styles.discrepanciesList}>
                 {variance.topDiscrepancies.map((item) => (
                   <View key={item.name} style={styles.discrepancyRow}>
                     <View style={styles.discInfo}>
                       <Text style={styles.discName}>{item.name}</Text>
-                      <Text style={styles.discSub}>Variance: {item.variancePct}%</Text>
+                      <Text style={styles.discSub}>{t('stockCount.variance')}: {item.variancePct}%</Text>
                     </View>
                     <View style={styles.discRight}>
                       <Badge variant={item.isNegative ? 'red' : 'green'}>
@@ -314,7 +330,7 @@ export default function AnalyticsScreen() {
             <Card style={styles.wasteHeaderCard}>
               <View style={styles.wasteTopRow}>
                 <View>
-                  <Text style={styles.wasteLabel}>Monthly Waste Cost</Text>
+                  <Text style={styles.wasteLabel}>{t('analytics.monthlyWasteCost')}</Text>
                   <Text style={styles.wasteNum}>€{waste.monthlyWasteCost.toFixed(2)}</Text>
                 </View>
                 <Badge variant="green">-{waste.wasteReductionPct}% vs last month</Badge>
@@ -331,7 +347,7 @@ export default function AnalyticsScreen() {
 
             {/* Waste Breakdown by Cause */}
             <Card style={styles.chartCard}>
-              <SectionHeader title="Waste Causes Breakdown" />
+              <SectionHeader title={t('analytics.wasteLoss')} />
               <View style={styles.wasteCausesList}>
                 {waste.breakdown.map((b) => (
                   <View key={b.reason} style={styles.wasteCauseItem}>
@@ -361,8 +377,8 @@ export default function AnalyticsScreen() {
                 <VectorIcon name="Lightbulb" size={20} color="#b45309" />
               </View>
               <View style={styles.linkBannerInfo}>
-                <Text style={styles.linkBannerTitle}>Active Waste Reduction Suggestions</Text>
-                <Text style={styles.linkBannerSub}>Promote recipes with expiring stock before BBD</Text>
+                <Text style={styles.linkBannerTitle}>{t('analytics.wasteReductionSuggestions')}</Text>
+                <Text style={styles.linkBannerSub}>{t('analytics.wasteReductionSuggestionsSub')}</Text>
               </View>
               <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
             </Pressable>
@@ -380,27 +396,27 @@ export default function AnalyticsScreen() {
                 <Text style={[styles.kpiNum, { color: Colors.brand.dark }]}>
                   €{purchase.ytdSpend.toLocaleString()}
                 </Text>
-                <Text style={styles.kpiLabel}>YTD Total Spend</Text>
+                <Text style={styles.kpiLabel}>{t('analytics.ytdTotalSpend')}</Text>
               </Card>
 
               <Card style={styles.kpiCard}>
                 <Text style={styles.kpiNum}>
                   €{purchase.monthlyActual.toLocaleString()}
                 </Text>
-                <Text style={styles.kpiLabel}>Month Actual</Text>
+                <Text style={styles.kpiLabel}>{t('analytics.monthActual')}</Text>
               </Card>
 
               <Card style={styles.kpiCard}>
                 <Text style={[styles.kpiNum, { color: Colors.neutral.textSecondary }]}>
                   €{purchase.monthlyBudget.toLocaleString()}
                 </Text>
-                <Text style={styles.kpiLabel}>Month Budget</Text>
+                <Text style={styles.kpiLabel}>{t('analytics.monthBudget')}</Text>
               </Card>
             </View>
 
             {/* Monthly Spend Bar Chart */}
             <Card style={styles.chartCard}>
-              <SectionHeader title="Monthly Procurement Spend" />
+              <SectionHeader title={t('analytics.supplierLeadTimes')} />
               <BarChart
                 data={purchase.monthlyTrend.labels.map((lbl: string, idx: number) => ({
                   label: lbl,
@@ -422,8 +438,8 @@ export default function AnalyticsScreen() {
                 <VectorIcon name="ShoppingCart" size={20} color="#15803d" />
               </View>
               <View style={styles.linkBannerInfo}>
-                <Text style={styles.linkBannerTitle}>Reorder from POQ Recommendations</Text>
-                <Text style={styles.linkBannerSub}>Auto-calculate orders based on target stock</Text>
+                <Text style={styles.linkBannerTitle}>{t('analytics.poqReorderTitle')}</Text>
+                <Text style={styles.linkBannerSub}>{t('analytics.poqReorderSub')}</Text>
               </View>
               <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
             </Pressable>

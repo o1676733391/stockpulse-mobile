@@ -46,7 +46,7 @@ export default function RecipeDetailScreen() {
       if (data) {
         setRecipe(data);
       } else {
-        setErrorMsg('Recipe not found');
+        setErrorMsg(t('recipes.recipeNotFound'));
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to load recipe');
@@ -136,10 +136,10 @@ export default function RecipeDetailScreen() {
   if (errorMsg || !recipe) {
     return (
       <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-        <TopBar title="Error" showBack />
+        <TopBar title={t('common.error')} showBack />
         <View style={styles.centerContainer}>
           <VectorIcon name="AlertCircle" size={40} color={Colors.critical.main} />
-          <Text style={styles.errorText}>{errorMsg || 'Recipe not found'}</Text>
+          <Text style={styles.errorText}>{errorMsg || t('recipes.recipeNotFound')}</Text>
           <Pressable
             onPress={() => router.back()}
             style={styles.backButton}
@@ -185,7 +185,9 @@ export default function RecipeDetailScreen() {
             <Text style={[styles.kpiValue, { color: Colors.neutral.textPrimary }]}>
               {recipe.ingredients.length}
             </Text>
-            <Text style={styles.kpiLabel}>{isDe ? 'Zutaten' : 'Ingredients'}</Text>
+            <Text style={styles.kpiLabel}>
+              {recipe.ingredients.length === 1 ? t('recipes.ingredientOne') : t('recipes.ingredientOther')}
+            </Text>
           </Card>
 
           <Card style={styles.kpiCard}>
@@ -203,7 +205,7 @@ export default function RecipeDetailScreen() {
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>{t('recipes.portionYield')}:</Text>
             <Text style={styles.metaValue}>
-              {recipe.portionYield || 1} {isDe ? 'Portionen' : 'portions'}
+              {recipe.portionYield || 1} {t('recipes.portions')}
             </Text>
           </View>
           {recipe.posItemName ? (
@@ -219,7 +221,7 @@ export default function RecipeDetailScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t('recipes.ingredientsBom')}</Text>
             <Text style={styles.sectionSub}>
-              {isDe ? 'Echtzeit-Bestand aus dem Artikelstamm' : 'Live stock from inventory catalog'}
+              {t('recipes.howBomWorksDesc')}
             </Text>
           </View>
 
@@ -246,11 +248,11 @@ export default function RecipeDetailScreen() {
                   <Text style={styles.ingredientName}>{ing.itemName}</Text>
                   <View style={styles.ingredientSubRow}>
                     <Text style={styles.ingredientSku}>
-                      {isDe ? 'Art.-Nr.' : 'SKU'}: {ing.itemSku || 'N/A'}
+                      {t('inventory.sku', { sku: ing.itemSku || 'N/A' })}
                     </Text>
                     {ing.wastePercentage ? (
                       <Text style={styles.wasteText}>
-                        · {ing.wastePercentage}% {isDe ? 'Schwund' : 'loss'}
+                        · {ing.wastePercentage}% {t('recipes.wastePercentage')}
                       </Text>
                     ) : null}
                   </View>
@@ -287,7 +289,7 @@ export default function RecipeDetailScreen() {
                   <Text style={styles.qtyText}>
                     {ing.quantity} {ing.unit}
                   </Text>
-                  <Text style={styles.qtySubText}>{isDe ? '/ Portion' : '/ serving'}</Text>
+                  <Text style={styles.qtySubText}>{t('recipes.perServing')}</Text>
                   {ing.lineCost ? (
                     <Text style={styles.costText}>{formatCurrency(ing.lineCost)}</Text>
                   ) : null}
@@ -304,15 +306,7 @@ export default function RecipeDetailScreen() {
             <Text style={styles.eduTitle}>{t('recipes.howBomWorksTitle')}</Text>
           </View>
           <Text style={styles.eduBody}>
-            {isDe ? (
-              <>
-                Jeder Verkauf von <Text style={{ fontWeight: '700' }}>{recipe.name}</Text> zieht automatisch die hinterlegten Rohstoffe und Mengen (inkl. Schwundfaktor) vom Lagerbestand ab.
-              </>
-            ) : (
-              <>
-                Each sale of <Text style={{ fontWeight: '700' }}>{recipe.name}</Text> automatically deducts the configured raw materials from inventory according to recipe quantities and waste factors.
-              </>
-            )}
+            {t('recipes.howBomDeductionsExplanation', { name: recipe.name })}
           </Text>
         </View>
 
