@@ -247,8 +247,8 @@ export default function TeamScreen() {
               accessibilityLabel={t('team.inviteMember')}
               style={({ pressed }) => [styles.inviteHeaderBtn, pressed && styles.pressed]}
             >
-              <VectorIcon name="Plus" size={16} color="#ffffff" />
-              <Text style={styles.inviteHeaderBtnText}>{t('team.inviteMember')}</Text>
+              <VectorIcon name="Plus" size={15} color="#ffffff" strokeWidth={2.5} />
+              <Text style={styles.inviteHeaderBtnText}>{t('team.invite') || 'Invite'}</Text>
             </Pressable>
           ) : undefined
         }
@@ -321,7 +321,7 @@ export default function TeamScreen() {
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder={t('common.searchPlaceholder')}
+                placeholder={t('team.searchPlaceholder') || 'Search by name, role, or email...'}
                 placeholderTextColor={Colors.neutral.textTertiary}
                 style={styles.searchInput}
               />

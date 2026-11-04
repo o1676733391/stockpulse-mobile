@@ -1,5 +1,6 @@
 import { VectorIcon } from '@/components/ui/icons';
 import { Colors, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import { useRouter } from 'expo-router';
 import React, { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -26,6 +27,7 @@ export function TopBar({
 }: TopBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const isIOS = Platform.OS === 'ios';
 
   const handleBack = onBack ?? (showBack ? () => router.back() : undefined);
@@ -51,7 +53,7 @@ export function TopBar({
                 style={({ pressed }) => [styles.iosBackButton, pressed && styles.pressed]}
               >
                 <VectorIcon name="ChevronLeft" size={22} color={Colors.brand.primary} strokeWidth={2.5} />
-                <Text style={styles.iosBackText}>Back</Text>
+                <Text style={styles.iosBackText}>{t('common.back')}</Text>
               </Pressable>
             )}
           </View>
@@ -199,11 +201,14 @@ const styles = StyleSheet.create({
   androidTitleContainer: {
     flex: 1,
     justifyContent: 'center',
+    marginRight: Spacing.xs,
   },
   androidRightSlot: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
+    zIndex: 10,
+    flexShrink: 0,
   },
   subtitleText: {
     ...Typography.caption,

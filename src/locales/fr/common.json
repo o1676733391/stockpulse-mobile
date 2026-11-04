@@ -55,7 +55,8 @@
     "accessDeniedMessage": "Vous ne disposez pas des autorisations nécessaires pour accéder à ce module.",
     "requiredPermission": "Autorisation requise : {{permission}}",
     "returnToDashboard": "Retour au tableau de bord",
-    "understood": "Compris"
+    "understood": "Compris",
+    "success": "Succès"
   },
   "navigation": {
     "home": "Accueil",
@@ -68,7 +69,11 @@
     "stockCount": "Inventaire physique",
     "expiration": "DLC & Péremption",
     "analytics": "Analyses",
-    "team": "Équipe & Accès"
+    "team": "Équipe & Accès",
+    "invoices": "Factures",
+    "deliveryNotes": "Bons de livraison",
+    "events": "Événements & Traiteur",
+    "recipeTools": "Outils recettes & menus"
   },
   "auth": {
     "welcomeBack": "Bon retour",
@@ -338,7 +343,9 @@
   "team": {
     "title": "Équipe & Droits d'accès",
     "subtitle": "Gérer les rôles et affectations aux établissements",
+    "invite": "Inviter",
     "inviteMember": "Inviter un collaborateur",
+    "searchPlaceholder": "Rechercher par nom, rôle ou e-mail...",
     "membersList": "Membres actifs ({{count}})",
     "tabs": {
       "members": "Membres",
@@ -418,7 +425,8 @@
     "noStoreSelected": "Aucun établissement sélectionné",
     "noStoreDesc": "Rejoignez ou créez un établissement pour accéder aux stocks, recettes, commandes et scans de caisse.",
     "noStoreBannerTitle": "Aucun établissement connecté",
-    "noStoreBannerSub": "Vous êtes actuellement en mode non affecté."
+    "noStoreBannerSub": "Vous êtes actuellement en mode non affecté.",
+    "welcomeToStore": "Bienvenue chez {{storeName}} !"
   },
   "invitationErrors": {
     "invalidCode": "Ce code d'invitation n'est pas valide.",
@@ -655,5 +663,94 @@
     "food": "Nourriture",
     "drinks": "Boissons",
     "searchPlaceholder": "Rechercher des recettes ou plats..."
+  },
+  "invoices": {
+    "title": "Factures & Rapprochement",
+    "subtitle": "Factures fournisseurs & reçus de caisse POS",
+    "allInvoices": "Toutes les factures",
+    "supplierInvoices": "Factures fournisseurs",
+    "orderReceipts": "Reçus de commande / caisse",
+    "pendingReview": "En attente de révision",
+    "verified": "Vérifié",
+    "discrepancy": "Écart / Anomalie",
+    "newInvoice": "Nouvelle facture / Scan",
+    "chooseTypePrompt": "Choisir le type de document : Facture de livraison fournisseur ou Reçu de commande",
+    "totalInvoiced": "Total facturé",
+    "awaitingReview": "En attente",
+    "discrepancies": "Écarts",
+    "searchPlaceholder": "Rechercher par n° de facture, fournisseur ou article...",
+    "emptyState": "Aucune facture trouvée",
+    "emptyStateDesc": "Scannez votre première facture de livraison ou reçu de commande.",
+    "invoiceDetails": "Détails de la facture",
+    "lineItems": "Lignes d'articles",
+    "subtotal": "Sous-total",
+    "vatTax": "TVA",
+    "total": "Montant total",
+    "paymentStatus": "Statut du paiement",
+    "verifiedBy": "Vérifié par",
+    "linkToDeliveryNote": "Voir le bon de livraison associé",
+    "linkToPo": "Voir la commande associée"
+  },
+  "deliveryNotes": {
+    "title": "Bons de livraison",
+    "subtitle": "Bons de réception fournisseurs & journal des arrivages",
+    "allNotes": "Tous les bons",
+    "received": "Reçu",
+    "pendingInspection": "En attente d'inspection",
+    "discrepancies": "Manquants & Endommagés",
+    "newDeliveryNote": "Réceptionner la livraison",
+    "temperatureCheck": "Contrôle de température",
+    "storageZone": "Zone de stockage",
+    "receivedBy": "Réceptionné par",
+    "carrierDriver": "Livreur / Transporteur",
+    "orderedVsReceived": "Commandé vs Reçu",
+    "bbdLogged": "DLC enregistrée",
+    "searchPlaceholder": "Rechercher par n° de bon, fournisseur ou article...",
+    "emptyState": "Aucun bon de livraison trouvé",
+    "emptyStateDesc": "Enregistrez les bons lors de la réception des marchandises.",
+    "markVerified": "Confirmer la réception en stock"
+  },
+  "events": {
+    "title": "Événements & Traiteur",
+    "subtitle": "Banquets, préparation & prévision des besoins en ingrédients",
+    "allEvents": "Tous les événements",
+    "upcoming": "À venir",
+    "inPrep": "En préparation",
+    "completed": "Terminé",
+    "newEvent": "Nouvel événement",
+    "guestCount": "Invités",
+    "eventDate": "Date de l'événement",
+    "location": "Lieu / Salle",
+    "contactPerson": "Personne de contact",
+    "menuSelection": "Sélection des menus & plats",
+    "estimatedFoodCost": "Coût estimé des matières",
+    "ingredientRequirements": "Matières premières requises (BOM)",
+    "stockShortage": "Rupture de stock",
+    "noShortage": "Stock suffisant",
+    "pushToPoq": "Transférer les manques dans le formulaire de commande (POQ)",
+    "pushToPoqSuccess": "Manques ajoutés aux recommandations de commande !",
+    "searchPlaceholder": "Rechercher des événements par titre ou lieu...",
+    "emptyState": "Aucun événement prévu",
+    "emptyStateDesc": "Planifiez des banquets pour calculer automatiquement les besoins en ingrédients."
+  },
+  "recipeTools": {
+    "title": "Outils Recettes & Menus",
+    "subtitle": "Menu engineering, calcul des marges & mise à l'échelle des lots",
+    "costCalculator": "Calculateur de marge & coût matière",
+    "costCalculatorDesc": "Analyser le ratio coût matière %, la marge brute & la matrice BCG",
+    "batchScaler": "Mise à l'échelle des lots de recettes",
+    "batchScalerDesc": "Ajuster les portions pour les banquets, buffets & préparations du jour",
+    "sellingPrice": "Prix de vente",
+    "foodCostPercent": "% Coût matière",
+    "grossProfit": "Marge brute",
+    "targetPortions": "Portions cibles",
+    "scaleFactor": "Facteur d'échelle",
+    "batchTotalCost": "Coût total du lot",
+    "quadrants": {
+      "star": "Étoile (Marge élevée, Forte popularité)",
+      "plowhorse": "Cheval de trait (Faible marge, Forte popularité)",
+      "puzzle": "Dilemme (Marge élevée, Faible popularité)",
+      "dog": "Poids mort (Faible marge, Faible popularité)"
+    }
   }
 }

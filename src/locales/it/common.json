@@ -55,7 +55,8 @@
     "accessDeniedMessage": "Non disponi delle autorizzazioni necessarie per accedere a questo modulo.",
     "requiredPermission": "Permesso richiesto: {{permission}}",
     "returnToDashboard": "Torna alla dashboard",
-    "understood": "Ho capito"
+    "understood": "Ho capito",
+    "success": "Successo"
   },
   "navigation": {
     "home": "Home",
@@ -68,7 +69,11 @@
     "stockCount": "Inventario fisico",
     "expiration": "Scadenze & TMC",
     "analytics": "Analisi",
-    "team": "Team & Accessi"
+    "team": "Team & Accessi",
+    "invoices": "Fatture",
+    "deliveryNotes": "Bolle di consegna",
+    "events": "Eventi & Catering",
+    "recipeTools": "Strumenti ricette e menu"
   },
   "auth": {
     "welcomeBack": "Bentornato",
@@ -338,7 +343,9 @@
   "team": {
     "title": "Team & Permessi di accesso",
     "subtitle": "Gestisci i ruoli dello staff e le assegnazioni ai locali",
+    "invite": "Invita",
     "inviteMember": "Invita membro del team",
+    "searchPlaceholder": "Cerca per nome, ruolo o email...",
     "membersList": "Membri attivi ({{count}})",
     "tabs": {
       "members": "Membri",
@@ -418,7 +425,8 @@
     "noStoreSelected": "Nessun locale selezionato",
     "noStoreDesc": "Unisciti a un locale o creane uno nuovo per accedere a inventario, ricette, ordini e scansione POS.",
     "noStoreBannerTitle": "Nessun locale collegato",
-    "noStoreBannerSub": "Attualmente sei in modalità non assegnata."
+    "noStoreBannerSub": "Attualmente sei in modalità non assegnata.",
+    "welcomeToStore": "Benvenuto in {{storeName}}!"
   },
   "invitationErrors": {
     "invalidCode": "Questo codice di invito non è valido.",
@@ -655,5 +663,94 @@
     "food": "Cibo",
     "drinks": "Bevande",
     "searchPlaceholder": "Cerca ricette o piatti..."
+  },
+  "invoices": {
+    "title": "Fatture & Riconciliazione",
+    "subtitle": "Fatture fornitori e scontrini di cassa POS",
+    "allInvoices": "Tutte le fatture",
+    "supplierInvoices": "Fatture fornitori",
+    "orderReceipts": "Ricevute d'ordine / cassa",
+    "pendingReview": "In attesa di revisione",
+    "verified": "Verificato",
+    "discrepancy": "Discrepanza",
+    "newInvoice": "Nuova fattura / Scansione",
+    "chooseTypePrompt": "Scegli tipo di documento: Fattura di consegna fornitore o Ricevuta ordine",
+    "totalInvoiced": "Totale fatturato",
+    "awaitingReview": "In attesa",
+    "discrepancies": "Discrepanze",
+    "searchPlaceholder": "Cerca per n° fattura, fornitore o articolo...",
+    "emptyState": "Nessuna fattura trovata",
+    "emptyStateDesc": "Scansiona la prima fattura fornitore o ricevuta di cassa.",
+    "invoiceDetails": "Dettagli fattura",
+    "lineItems": "Voci di dettaglio",
+    "subtotal": "Subtotale",
+    "vatTax": "IVA",
+    "total": "Importo totale",
+    "paymentStatus": "Stato pagamento",
+    "verifiedBy": "Verificato da",
+    "linkToDeliveryNote": "Visualizza bolla collegata",
+    "linkToPo": "Visualizza ordine collegato"
+  },
+  "deliveryNotes": {
+    "title": "Bolle di consegna",
+    "subtitle": "Documenti di trasporto fornitori e registro entrate",
+    "allNotes": "Tutte le bolle",
+    "received": "Ricevuto",
+    "pendingInspection": "In attesa di ispezione",
+    "discrepancies": "Mancanti & Danneggiati",
+    "newDeliveryNote": "Registra consegna",
+    "temperatureCheck": "Controllo temperatura",
+    "storageZone": "Zona di stoccaggio",
+    "receivedBy": "Ricevuto da",
+    "carrierDriver": "Autista / Corriere",
+    "orderedVsReceived": "Ordinato vs Ricevuto",
+    "bbdLogged": "Scadenza registrata",
+    "searchPlaceholder": "Cerca per n° bolla, fornitore o articolo...",
+    "emptyState": "Nessuna bolla trovata",
+    "emptyStateDesc": "Registra i documenti di trasporto all'arrivo delle merci.",
+    "markVerified": "Conferma entrata in magazzino"
+  },
+  "events": {
+    "title": "Eventi & Catering",
+    "subtitle": "Banchetti, preparazione & previsione fabbisogno ingredienti",
+    "allEvents": "Tutti gli eventi",
+    "upcoming": "In arrivo",
+    "inPrep": "In preparazione",
+    "completed": "Completato",
+    "newEvent": "Nuovo evento",
+    "guestCount": "Ospiti",
+    "eventDate": "Data evento",
+    "location": "Luogo / Sala",
+    "contactPerson": "Persona di contatto",
+    "menuSelection": "Selezione menu & portate",
+    "estimatedFoodCost": "Costo stimato materie prime",
+    "ingredientRequirements": "Ingredienti richiesti (distinta base)",
+    "stockShortage": "Carenza di scorte",
+    "noShortage": "Scorte sufficienti",
+    "pushToPoq": "Invia carenze al modulo d'ordine (POQ)",
+    "pushToPoqSuccess": "Carenze aggiunte alle raccomandazioni d'ordine!",
+    "searchPlaceholder": "Cerca eventi per titolo o contatto...",
+    "emptyState": "Nessun evento programmato",
+    "emptyStateDesc": "Pianifica eventi per calcolare automaticamente il fabbisogno ingredienti."
+  },
+  "recipeTools": {
+    "title": "Strumenti Ricette & Menu",
+    "subtitle": "Menu engineering, calcolo food cost & dosaggio lotti",
+    "costCalculator": "Calcolatore food cost & margini",
+    "costCalculatorDesc": "Analizza % food cost, margine di contribuzione & matrice BCG",
+    "batchScaler": "Dosatore lotti di ricette",
+    "batchScalerDesc": "Scala porzioni per banchetti, buffet & preparazioni giornaliere",
+    "sellingPrice": "Prezzo di vendita",
+    "foodCostPercent": "% Food Cost",
+    "grossProfit": "Margine lordo",
+    "targetPortions": "Porzioni obiettivo",
+    "scaleFactor": "Moltiplicatore di scala",
+    "batchTotalCost": "Costo totale del lotto",
+    "quadrants": {
+      "star": "Stella (Alto margine, Alta popolarità)",
+      "plowhorse": "Cavallo da tiro (Basso margine, Alta popolarità)",
+      "puzzle": "Rebus (Alto margine, Bassa popolarità)",
+      "dog": "Cane (Basso margine, Bassa popolarità)"
+    }
   }
 }

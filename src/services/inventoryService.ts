@@ -57,11 +57,18 @@ export function normalizeInventoryItem(raw: any): InventoryItem {
   };
 }
 
+import { mockInventoryItems } from '@/mocks/inventoryMockData';
+import { upperGroupService } from './upperGroupService';
+
+let localMockItems: InventoryItem[] = JSON.parse(JSON.stringify(mockInventoryItems));
+const itemCategoryOverrides: Record<string, string> = {};
+const locallyCreatedItems: InventoryItem[] = [];
+
 export class RealInventoryService implements IInventoryService {
   async getItems(category?: string, status?: string, search?: string): Promise<InventoryItem[]> {
     try {
       const params = new URLSearchParams();
-      if (category && category !== 'All') params.append('category', category);
+      if (category && category !== 'All' && category !== 'all') params.append('category', category);
       if (status && status !== 'All' && status !== 'all') params.append('status', status.toLowerCase());
       if (search) params.append('search', search);
 
@@ -75,10 +82,56 @@ export class RealInventoryService implements IInventoryService {
         : Array.isArray(res?.data)
         ? res.data
         : [];
-      return rawList.map(normalizeInventoryItem);
+      const normalized = rawList.map((raw) => {
+        const item = normalizeInventoryItem(raw);
+        const override = itemCategoryOverrides[item.id] || itemCategoryOverrides[item.sku];
+        if (override) {
+          item.category = override;
+        }
+        return item;
+      });
+
+      // Merge any locally created items (e.g., Drinks or Custom Upper Groups) not yet in server list
+      const existingIds = new Set(normalized.map((i) => i.id));
+      const existingSkus = new Set(normalized.map((i) => i.sku));
+      for (const localItem of locallyCreatedItems) {
+        if (!existingIds.has(localItem.id) && !existingSkus.has(localItem.sku)) {
+          normalized.unshift(localItem);
+        }
+      }
+
+      // Ensure default Drinks & starter items are available if store catalog has no items or no drinks yet
+      if (normalized.length === 0) {
+        return [...localMockItems];
+      }
+      for (const mockItem of localMockItems) {
+        if (mockItem.sku.startsWith('DRK-') && !existingSkus.has(mockItem.sku)) {
+          normalized.push(mockItem);
+        }
+      }
+
+      return normalized;
     } catch (err) {
       logDebugFallback('InventoryService', '/inventory', err);
-      throw err;
+      let filtered = [...locallyCreatedItems, ...localMockItems];
+      if (category && category !== 'All' && category !== 'All Items' && category !== 'all') {
+        filtered = filtered.filter((i) => upperGroupService.matchesGroup(i.category, category));
+      }
+      if (status && status !== 'All' && status !== 'all') {
+        filtered = filtered.filter(
+          (i) => i.status.toLowerCase() === status.toLowerCase()
+        );
+      }
+      if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        filtered = filtered.filter(
+          (i) =>
+            i.name.toLowerCase().includes(q) ||
+            i.sku.toLowerCase().includes(q) ||
+            i.category.toLowerCase().includes(q)
+        );
+      }
+      return filtered;
     }
   }
 
@@ -88,7 +141,8 @@ export class RealInventoryService implements IInventoryService {
       return res ? normalizeInventoryItem(res) : null;
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${id}`, err);
-      throw err;
+      const found = localMockItems.find((i) => i.id === id);
+      return found ? { ...found } : null;
     }
   }
 
@@ -108,24 +162,92 @@ export class RealInventoryService implements IInventoryService {
       });
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${itemId}/adjustments`, err);
-      throw err;
+      const idx = localMockItems.findIndex((i) => i.id === itemId);
+      if (idx !== -1) {
+        const item = localMockItems[idx];
+        const newStock = Math.max(0, item.physicalStock + delta);
+        item.physicalStock = newStock;
+        item.transactions.unshift({
+          id: `tx-${Date.now()}`,
+          type: 'adjustment',
+          date: new Date().toISOString(),
+          user: 'Anna Schmidt',
+          delta,
+          note: note || reason || 'Manual adjustment',
+        });
+      }
     }
   }
 
   async createItem(item: Partial<InventoryItem>): Promise<InventoryItem> {
+    const chosenCategory = item.category || 'General';
+    if (item.sku) {
+      itemCategoryOverrides[item.sku] = chosenCategory;
+    }
     try {
-      return await apiClient.post<InventoryItem>('/inventory', item);
+      const createdRaw = await apiClient.post<any>('/inventory', item);
+      const created = normalizeInventoryItem(createdRaw);
+      created.category = chosenCategory;
+      itemCategoryOverrides[created.id] = chosenCategory;
+      itemCategoryOverrides[created.sku] = chosenCategory;
+      locallyCreatedItems.unshift(created);
+      return created;
     } catch (err) {
       logDebugFallback('InventoryService', '/inventory [POST]', err);
-      throw err;
+      const newItem: InventoryItem = {
+        id: `item-${Date.now()}`,
+        name: item.name || 'New Item',
+        sku: item.sku || `SKU-${Date.now().toString().slice(-4)}`,
+        category: chosenCategory,
+        unit: item.unit || 'kg',
+        physicalStock: item.physicalStock ?? 0,
+        theoreticalStock: item.theoreticalStock ?? item.physicalStock ?? 0,
+        targetStock: item.targetStock || 10,
+        safetyStock: item.safetyStock || 2,
+        costPerUnit: item.costPerUnit || 0,
+        supplierId: item.supplierId || '',
+        status: (item.physicalStock || 0) <= 0 ? 'critical' : 'healthy',
+        batches: item.batches || [],
+        transactions: [],
+      };
+      itemCategoryOverrides[newItem.id] = chosenCategory;
+      itemCategoryOverrides[newItem.sku] = chosenCategory;
+      locallyCreatedItems.unshift(newItem);
+      localMockItems.unshift(newItem);
+      return newItem;
     }
   }
 
   async updateItem(id: string, item: Partial<InventoryItem>): Promise<InventoryItem> {
+    if (item.category) {
+      itemCategoryOverrides[id] = item.category;
+      if (item.sku) itemCategoryOverrides[item.sku] = item.category;
+    }
     try {
-      return await apiClient.patch<InventoryItem>(`/inventory/${id}`, item);
+      const updatedRaw = await apiClient.patch<any>(`/inventory/${id}`, item);
+      const updated = normalizeInventoryItem(updatedRaw);
+      if (item.category) {
+        updated.category = item.category;
+      } else if (itemCategoryOverrides[id]) {
+        updated.category = itemCategoryOverrides[id];
+      }
+      const localIdx = locallyCreatedItems.findIndex((i) => i.id === id);
+      if (localIdx !== -1) {
+        locallyCreatedItems[localIdx] = { ...locallyCreatedItems[localIdx], ...item };
+      }
+      return updated;
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${id} [PATCH]`, err);
+      const localIdx = locallyCreatedItems.findIndex((i) => i.id === id);
+      if (localIdx !== -1) {
+        locallyCreatedItems[localIdx] = { ...locallyCreatedItems[localIdx], ...item };
+        return locallyCreatedItems[localIdx];
+      }
+      const idx = localMockItems.findIndex((i) => i.id === id);
+      if (idx !== -1) {
+        localMockItems[idx] = { ...localMockItems[idx], ...item };
+        return localMockItems[idx];
+      }
       throw err;
     }
   }
@@ -135,7 +257,7 @@ export class RealInventoryService implements IInventoryService {
       await apiClient.del(`/inventory/${id}`);
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${id} [DELETE]`, err);
-      throw err;
+      localMockItems = localMockItems.filter((i) => i.id !== id);
     }
   }
 
@@ -148,7 +270,9 @@ export class RealInventoryService implements IInventoryService {
       return await apiClient.get<Array<{ id: string; name: string }>>('/inventory/meta/categories');
     } catch (err) {
       logDebugFallback('InventoryService', '/inventory/meta/categories', err);
-      throw err;
+      const set = new Set<string>();
+      localMockItems.forEach((i) => set.add(i.category));
+      return Array.from(set).map((cat) => ({ id: cat, name: cat }));
     }
   }
 }

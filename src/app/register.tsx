@@ -1,13 +1,16 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DesktopAccessNotice } from '@/components/ui/desktop-access-notice';
 import { VectorIcon } from '@/components/ui/icons';
-import { TopBar } from '@/components/ui/top-bar';
-import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { LanguageQuickBar } from '@/components/ui/language-quick-bar';
+import { Colors, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { setLanguageFromCodeOrLabel, SupportedLanguage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nContext';
+import { settingsService } from '@/services/settingsService';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -32,13 +35,13 @@ interface TeamInvite {
 }
 
 const COUNTRIES = [
-  { code: 'DE', label: 'Germany' },
-  { code: 'AT', label: 'Austria' },
-  { code: 'CH', label: 'Switzerland' },
-  { code: 'FR', label: 'France' },
-  { code: 'IT', label: 'Italy' },
-  { code: 'GB', label: 'United Kingdom' },
-  { code: 'US', label: 'United States' },
+  { code: 'DE', labelDe: 'Deutschland', labelEn: 'Germany' },
+  { code: 'AT', labelDe: 'Österreich', labelEn: 'Austria' },
+  { code: 'CH', labelDe: 'Schweiz', labelEn: 'Switzerland' },
+  { code: 'FR', labelDe: 'Frankreich', labelEn: 'France' },
+  { code: 'IT', labelDe: 'Italien', labelEn: 'Italy' },
+  { code: 'GB', labelDe: 'Vereinigtes Königreich', labelEn: 'United Kingdom' },
+  { code: 'US', labelDe: 'Vereinigte Staaten', labelEn: 'United States' },
 ];
 
 const CURRENCIES = [
@@ -48,11 +51,12 @@ const CURRENCIES = [
   { code: 'CHF', label: 'CHF (CHF)' },
 ];
 
-const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'de', label: 'German (Deutsch)' },
-  { code: 'fr', label: 'French (Français)' },
-  { code: 'it', label: 'Italian (Italiano)' },
+const LANGUAGES: Array<{ code: SupportedLanguage; label: string }> = [
+  { code: 'de', label: 'Deutsch (German)' },
+  { code: 'en', label: 'English (Englisch)' },
+  { code: 'fr', label: 'Français (French)' },
+  { code: 'es', label: 'Español (Spanish)' },
+  { code: 'it', label: 'Italiano (Italian)' },
 ];
 
 const TIMEZONES = [
@@ -64,28 +68,35 @@ const TIMEZONES = [
   { code: 'America/New_York', label: 'America/New York (UTC-5)' },
 ];
 
-const SCHEDULE_OPTIONS: { id: ScheduleId; label: string; desc: string; badge?: string }[] = [
-  { id: 'daily', label: 'Daily', badge: 'Recommended', desc: 'Best for high-volume kitchens — count every day' },
-  { id: 'weekly', label: 'Weekly', desc: 'Count every week — suitable for most restaurants' },
-  { id: 'monthly', label: 'Monthly', desc: 'Full monthly inventory — lower frequency operations' },
-  { id: 'quarterly', label: 'Quarterly', desc: 'Quarterly audit — for low-turnover inventory' },
-];
-
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { register, registerRestaurant } = useAuth();
   const [registrationType, setRegistrationType] = React.useState('RESTAURANT');
-  const { t } = useI18n();
+  const { t, language: appLanguage, setLanguage: setAppLanguage } = useI18n();
 
   const [step, setStep] = useState(0);
 
   // Step 0: Restaurant Information
   const [storeName, setStoreName] = useState('');
-  const [country, setCountry] = useState('Germany');
+  const [country, setCountry] = useState(appLanguage === 'de' ? 'Deutschland' : 'Germany');
   const [currency, setCurrency] = useState('EUR');
-  const [language, setLanguage] = useState('English');
+  const [languageLabel, setLanguageLabel] = useState(
+    LANGUAGES.find((l) => l.code === appLanguage)?.label || 'Deutsch (German)'
+  );
   const [timezone, setTimezone] = useState('Europe/Berlin');
+
+  // Keep languageLabel & country synced when global appLanguage changes (e.g. via LanguageQuickBar)
+  useEffect(() => {
+    const found = LANGUAGES.find((l) => l.code === appLanguage);
+    if (found) {
+      setLanguageLabel(found.label);
+    }
+    setCountry((prev) => {
+      const matched = COUNTRIES.find((c) => c.labelDe === prev || c.labelEn === prev);
+      return matched ? (appLanguage === 'de' ? matched.labelDe : matched.labelEn) : prev;
+    });
+  }, [appLanguage]);
 
   // Step 1: Inventory Preferences
   const [schedule, setSchedule] = useState<ScheduleId>('daily');
@@ -115,7 +126,43 @@ export default function RegisterScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [emailNeedsVerification, setEmailNeedsVerification] = useState(false);
 
-  const STEPS = ['Restaurant', 'Inventory', 'Admin', 'Team', 'Done'];
+  const STEPS = useMemo(
+    () => [
+      t('registerWizard.steps.restaurant'),
+      t('registerWizard.steps.inventory'),
+      t('registerWizard.steps.admin'),
+      t('registerWizard.steps.team'),
+      t('registerWizard.steps.done'),
+    ],
+    [t]
+  );
+
+  const SCHEDULE_OPTIONS: { id: ScheduleId; label: string; desc: string; badge?: string }[] = useMemo(
+    () => [
+      {
+        id: 'daily',
+        label: t('registerWizard.schedules.daily.label'),
+        badge: t('registerWizard.schedules.daily.badge'),
+        desc: t('registerWizard.schedules.daily.desc'),
+      },
+      {
+        id: 'weekly',
+        label: t('registerWizard.schedules.weekly.label'),
+        desc: t('registerWizard.schedules.weekly.desc'),
+      },
+      {
+        id: 'monthly',
+        label: t('registerWizard.schedules.monthly.label'),
+        desc: t('registerWizard.schedules.monthly.desc'),
+      },
+      {
+        id: 'quarterly',
+        label: t('registerWizard.schedules.quarterly.label'),
+        desc: t('registerWizard.schedules.quarterly.desc'),
+      },
+    ],
+    [t]
+  );
 
   const isPasswordValid =
     adminPassword.length >= 8 &&
@@ -139,6 +186,14 @@ export default function RegisterScreen() {
       : step === 3
       ? true
       : true;
+
+  const handleSelectLanguage = (code: SupportedLanguage, label: string) => {
+    setLanguageLabel(label);
+    setAppLanguage(code);
+    setLanguageFromCodeOrLabel(code);
+    void settingsService.updateStoreSettings({ language: label });
+    setPickerType(null);
+  };
 
   const handleAddMember = () => {
     if (!newMemberName.trim() || !newMemberEmail.trim() || !newMemberEmail.includes('@')) {
@@ -165,6 +220,9 @@ export default function RegisterScreen() {
     if (loading) return;
     setErrorMsg(null);
 
+    // Ensure selected language is persisted continuously
+    setLanguageFromCodeOrLabel(appLanguage);
+
     if (registrationType === 'STAFF_INVITATION') {
       try {
         setLoading(true);
@@ -183,7 +241,7 @@ export default function RegisterScreen() {
           router.replace('/onboarding' as any);
         }
       } catch (err: any) {
-        setErrorMsg(err.message || 'Failed to register account');
+        setErrorMsg(err.message || t('errors.serverError'));
       } finally {
         setLoading(false);
       }
@@ -198,7 +256,7 @@ export default function RegisterScreen() {
           storeName: storeName.trim(),
           country,
           currency,
-          language,
+          language: appLanguage,
           timezone,
           countSchedule: schedule,
           adminName: adminName.trim(),
@@ -215,7 +273,7 @@ export default function RegisterScreen() {
         setEmailNeedsVerification(res.emailNeedsVerification);
         setStep(4);
       } catch (err: any) {
-        setErrorMsg(err.message || 'Failed to complete restaurant onboarding');
+        setErrorMsg(err.message || t('errors.serverError'));
       } finally {
         setLoading(false);
       }
@@ -261,24 +319,26 @@ export default function RegisterScreen() {
           {step < 4 ? (
             <Pressable onPress={handleBack} style={styles.backBtn}>
               <VectorIcon name="ArrowLeft" size={18} color={Colors.brand.primary} />
-              <Text style={styles.backText}>{step === 0 ? 'Cancel' : 'Back'}</Text>
+              <Text style={styles.backText}>
+                {step === 0 ? t('common.cancel') : t('common.back')}
+              </Text>
             </Pressable>
           ) : (
             <View style={{ width: 60 }} />
           )}
 
-          <Text style={styles.headerTitleText}>StockPulse</Text>
+          <Text style={styles.headerTitleText}>{t('common.appName')}</Text>
 
-          {step < 4 ? (
-            <Pressable onPress={() => router.push('/login' as any)}>
-              <Text style={styles.skipText}>Sign In</Text>
-            </Pressable>
-          ) : (
-            <View style={{ width: 60 }} />
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <LanguageQuickBar compact />
+            {step < 4 && (
+              <Pressable onPress={() => router.push('/login' as any)}>
+                <Text style={styles.skipText}>{t('auth.signInButton')}</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
 
-        
         {/* Progress Indicator */}
         {registrationType === 'RESTAURANT' ? (
           <View style={styles.progressContainer}>
@@ -307,13 +367,13 @@ export default function RegisterScreen() {
               ))}
             </View>
             <Text style={styles.stepCountText}>
-              Step {step + 1} of {STEPS.length}: {STEPS[step]}
+              {t('registerWizard.stepOf', { step: step + 1, total: STEPS.length })}: {STEPS[step]}
             </Text>
           </View>
         ) : (
           <View style={styles.progressContainer}>
             <Text style={styles.stepCountText}>
-              Staff Registration Flow
+              {t('registerWizard.staffRegistrationFlow')}
             </Text>
           </View>
         )}
@@ -336,8 +396,9 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <DesktopAccessNotice compact />
+
         {/* ── STEP 0: Restaurant Info ── */}
-        
         {step === 0 && (
           <View style={styles.stepBody}>
             {/* Onboarding Path Segmented Tab Selector */}
@@ -363,7 +424,7 @@ export default function RegisterScreen() {
                     registrationType === 'RESTAURANT' && styles.tabButtonTextActive,
                   ]}
                 >
-                  Create New Store
+                  {t('registerWizard.createNewStore')}
                 </Text>
               </Pressable>
 
@@ -388,7 +449,7 @@ export default function RegisterScreen() {
                     registrationType === 'STAFF_INVITATION' && styles.tabButtonTextActive,
                   ]}
                 >
-                  Join Existing Store
+                  {t('registerWizard.joinExistingStore')}
                 </Text>
               </Pressable>
             </View>
@@ -396,18 +457,37 @@ export default function RegisterScreen() {
             {registrationType === 'RESTAURANT' ? (
               <>
                 <View style={styles.stepTitleBox}>
-                  <Text style={styles.stepMainTitle}>Restaurant Information</Text>
-                  <Text style={styles.stepSubTitle}>Tell us about your kitchen & store to get started</Text>
+                  <Text style={styles.stepMainTitle}>{t('registerWizard.step2Title')}</Text>
+                  <Text style={styles.stepSubTitle}>{t('registerWizard.step2Sub')}</Text>
                 </View>
 
+                {/* Highlighted Language Selector right at the top so language applies immediately & continuously */}
+                <Pressable
+                  onPress={() => setPickerType('language')}
+                  style={[styles.selectRow, { borderColor: Colors.brand.primary, backgroundColor: Colors.brand.subtle }]}
+                >
+                  <View style={styles.selectLeft}>
+                    <VectorIcon name="Languages" size={18} color={Colors.brand.primary} />
+                    <Text style={[styles.selectLabel, { color: Colors.brand.dark }]}>
+                      {t('registerWizard.systemLanguage')}
+                    </Text>
+                  </View>
+                  <View style={styles.selectRight}>
+                    <Text style={[styles.selectValue, { color: Colors.brand.dark, fontWeight: '700' }]}>
+                      {languageLabel.split(' ')[0]}
+                    </Text>
+                    <VectorIcon name="ChevronRight" size={16} color={Colors.brand.primary} />
+                  </View>
+                </Pressable>
+
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Store / Restaurant Name *</Text>
+                  <Text style={styles.fieldLabel}>{t('registerWizard.businessName')}</Text>
                   <View style={styles.inputBox}>
                     <VectorIcon name="Store" size={18} color={Colors.neutral.textMuted} />
                     <TextInput
                       value={storeName}
                       onChangeText={setStoreName}
-                      placeholder="e.g. Bella Cucina Restaurant"
+                      placeholder={t('registerWizard.businessNamePlaceholder')}
                       placeholderTextColor={Colors.neutral.textMuted}
                       style={styles.textInput}
                       autoCapitalize="words"
@@ -421,7 +501,7 @@ export default function RegisterScreen() {
                 >
                   <View style={styles.selectLeft}>
                     <VectorIcon name="Globe" size={18} color={Colors.neutral.textMuted} />
-                    <Text style={styles.selectLabel}>Country</Text>
+                    <Text style={styles.selectLabel}>{t('registerWizard.country')}</Text>
                   </View>
                   <View style={styles.selectRight}>
                     <Text style={styles.selectValue}>{country}</Text>
@@ -435,24 +515,10 @@ export default function RegisterScreen() {
                 >
                   <View style={styles.selectLeft}>
                     <VectorIcon name="Coins" size={18} color={Colors.neutral.textMuted} />
-                    <Text style={styles.selectLabel}>Operating Currency</Text>
+                    <Text style={styles.selectLabel}>{t('registerWizard.currency')}</Text>
                   </View>
                   <View style={styles.selectRight}>
                     <Text style={styles.selectValue}>{currency}</Text>
-                    <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textMuted} />
-                  </View>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setPickerType('language')}
-                  style={styles.selectRow}
-                >
-                  <View style={styles.selectLeft}>
-                    <VectorIcon name="Languages" size={18} color={Colors.neutral.textMuted} />
-                    <Text style={styles.selectLabel}>Language</Text>
-                  </View>
-                  <View style={styles.selectRight}>
-                    <Text style={styles.selectValue}>{language}</Text>
                     <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textMuted} />
                   </View>
                 </Pressable>
@@ -463,7 +529,7 @@ export default function RegisterScreen() {
                 >
                   <View style={styles.selectLeft}>
                     <VectorIcon name="Clock" size={18} color={Colors.neutral.textMuted} />
-                    <Text style={styles.selectLabel}>Time Zone</Text>
+                    <Text style={styles.selectLabel}>{t('registerWizard.timezone')}</Text>
                   </View>
                   <View style={styles.selectRight}>
                     <Text style={styles.selectValue}>{timezone}</Text>
@@ -474,27 +540,31 @@ export default function RegisterScreen() {
             ) : (
               <>
                 <View style={styles.stepTitleBox}>
-                  <Text style={styles.stepMainTitle}>Staff Registration</Text>
-                  <Text style={styles.stepSubTitle}>Create your personal account to join an existing kitchen</Text>
+                  <Text style={styles.stepMainTitle}>
+                    {t('registerWizard.staffRegistrationTitle')}
+                  </Text>
+                  <Text style={styles.stepSubTitle}>
+                    {t('registerWizard.staffRegistrationSub')}
+                  </Text>
                 </View>
 
                 <Card style={styles.roleCard}>
                   <View style={styles.roleHeaderRow}>
-                    <Badge variant="green">Store Staff</Badge>
+                    <Badge variant="green">{t('team.roles.staff')}</Badge>
                   </View>
                   <Text style={styles.roleDesc}>
-                    Register your work account here. Once registered, you'll be prompted to enter your staff invitation code to join your restaurant.
+                    {t('registerWizard.staffAccountDesc')}
                   </Text>
                 </Card>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Full Name *</Text>
+                  <Text style={styles.fieldLabel}>{t('registerWizard.fullName')}</Text>
                   <View style={styles.inputBox}>
                     <VectorIcon name="User" size={18} color={Colors.neutral.textMuted} />
                     <TextInput
                       value={adminName}
                       onChangeText={setAdminName}
-                      placeholder="e.g. Elena Cook"
+                      placeholder={t('registerWizard.fullNamePlaceholder')}
                       placeholderTextColor={Colors.neutral.textMuted}
                       style={styles.textInput}
                       autoCapitalize="words"
@@ -503,13 +573,13 @@ export default function RegisterScreen() {
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Work Email *</Text>
+                  <Text style={styles.fieldLabel}>{t('registerWizard.workEmail')}</Text>
                   <View style={styles.inputBox}>
                     <VectorIcon name="Mail" size={18} color={Colors.neutral.textMuted} />
                     <TextInput
                       value={adminEmail}
                       onChangeText={setAdminEmail}
-                      placeholder="cook@restaurant.com"
+                      placeholder={t('registerWizard.workEmailPlaceholder')}
                       placeholderTextColor={Colors.neutral.textMuted}
                       style={styles.textInput}
                       keyboardType="email-address"
@@ -520,13 +590,13 @@ export default function RegisterScreen() {
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Phone Number (Optional)</Text>
+                  <Text style={styles.fieldLabel}>{t('registerWizard.phone')}</Text>
                   <View style={styles.inputBox}>
                     <VectorIcon name="Phone" size={18} color={Colors.neutral.textMuted} />
                     <TextInput
                       value={adminPhone}
                       onChangeText={setAdminPhone}
-                      placeholder="+49 30 1234567"
+                      placeholder={t('registerWizard.phonePlaceholder')}
                       placeholderTextColor={Colors.neutral.textMuted}
                       style={styles.textInput}
                       keyboardType="phone-pad"
@@ -535,13 +605,15 @@ export default function RegisterScreen() {
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Password (min 8 chars, A-Z, 0-9) *</Text>
+                  <Text style={styles.fieldLabel}>
+                    {t('registerWizard.passwordRules')}
+                  </Text>
                   <View style={styles.inputBox}>
                     <VectorIcon name="Lock" size={18} color={Colors.neutral.textMuted} />
                     <TextInput
                       value={adminPassword}
                       onChangeText={setAdminPassword}
-                      placeholder="Min. 8 characters"
+                      placeholder={t('registerWizard.passwordPlaceholder')}
                       placeholderTextColor={Colors.neutral.textMuted}
                       secureTextEntry={!showPassword}
                       style={styles.textInput}
@@ -557,7 +629,7 @@ export default function RegisterScreen() {
                   </View>
                   {adminPassword.length > 0 && !isPasswordValid && (
                     <Text style={styles.passwordHint}>
-                      Password must be at least 8 characters and include uppercase, lowercase, and numbers.
+                      {t('registerWizard.passwordErrorHint')}
                     </Text>
                   )}
                 </View>
@@ -570,8 +642,12 @@ export default function RegisterScreen() {
         {step === 1 && (
           <View style={styles.stepBody}>
             <View style={styles.stepTitleBox}>
-              <Text style={styles.stepMainTitle}>Inventory Preferences</Text>
-              <Text style={styles.stepSubTitle}>Set your default stock count frequency schedule</Text>
+              <Text style={styles.stepMainTitle}>
+                {t('registerWizard.inventoryPreferencesTitle')}
+              </Text>
+              <Text style={styles.stepSubTitle}>
+                {t('registerWizard.inventoryPreferencesSub')}
+              </Text>
             </View>
 
             <View style={styles.scheduleList}>
@@ -615,27 +691,29 @@ export default function RegisterScreen() {
         {step === 2 && (
           <View style={styles.stepBody}>
             <View style={styles.stepTitleBox}>
-              <Text style={styles.stepMainTitle}>Administrator Account</Text>
-              <Text style={styles.stepSubTitle}>Create the owner account for this store location</Text>
+              <Text style={styles.stepMainTitle}>
+                {t('registerWizard.adminAccountTitle')}
+              </Text>
+              <Text style={styles.stepSubTitle}>
+                {t('registerWizard.adminAccountSub')}
+              </Text>
             </View>
 
             <Card style={styles.roleCard}>
               <View style={styles.roleHeaderRow}>
-                <Badge variant="purple">Store Owner</Badge>
+                <Badge variant="purple">{t('team.roles.admin')}</Badge>
               </View>
-              <Text style={styles.roleDesc}>
-                The store owner has full administrator access to all features including inventory, costs, recipes, suppliers, audit logs, and team access.
-              </Text>
+              <Text style={styles.roleDesc}>{t('registerWizard.roleOwnerDesc')}</Text>
             </Card>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Full Name *</Text>
+              <Text style={styles.fieldLabel}>{t('registerWizard.fullName')}</Text>
               <View style={styles.inputBox}>
                 <VectorIcon name="User" size={18} color={Colors.neutral.textMuted} />
                 <TextInput
                   value={adminName}
                   onChangeText={setAdminName}
-                  placeholder="e.g. Gordon Ramsay"
+                  placeholder={t('registerWizard.fullNamePlaceholder')}
                   placeholderTextColor={Colors.neutral.textMuted}
                   style={styles.textInput}
                   autoCapitalize="words"
@@ -644,13 +722,13 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Work Email *</Text>
+              <Text style={styles.fieldLabel}>{t('registerWizard.workEmail')}</Text>
               <View style={styles.inputBox}>
                 <VectorIcon name="Mail" size={18} color={Colors.neutral.textMuted} />
                 <TextInput
                   value={adminEmail}
                   onChangeText={setAdminEmail}
-                  placeholder="chef@restaurant.com"
+                  placeholder={t('registerWizard.workEmailPlaceholder')}
                   placeholderTextColor={Colors.neutral.textMuted}
                   style={styles.textInput}
                   keyboardType="email-address"
@@ -661,13 +739,13 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Phone Number (Optional)</Text>
+              <Text style={styles.fieldLabel}>{t('registerWizard.phone')}</Text>
               <View style={styles.inputBox}>
                 <VectorIcon name="Phone" size={18} color={Colors.neutral.textMuted} />
                 <TextInput
                   value={adminPhone}
                   onChangeText={setAdminPhone}
-                  placeholder="+49 30 1234567"
+                  placeholder={t('registerWizard.phonePlaceholder')}
                   placeholderTextColor={Colors.neutral.textMuted}
                   style={styles.textInput}
                   keyboardType="phone-pad"
@@ -676,13 +754,15 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Password (min 8 chars, A-Z, 0-9) *</Text>
+              <Text style={styles.fieldLabel}>
+                {t('registerWizard.passwordRules')}
+              </Text>
               <View style={styles.inputBox}>
                 <VectorIcon name="Lock" size={18} color={Colors.neutral.textMuted} />
                 <TextInput
                   value={adminPassword}
                   onChangeText={setAdminPassword}
-                  placeholder="Min. 8 characters"
+                  placeholder={t('registerWizard.passwordPlaceholder')}
                   placeholderTextColor={Colors.neutral.textMuted}
                   secureTextEntry={!showPassword}
                   style={styles.textInput}
@@ -698,7 +778,7 @@ export default function RegisterScreen() {
               </View>
               {adminPassword.length > 0 && !isPasswordValid && (
                 <Text style={styles.passwordHint}>
-                  Password must be at least 8 characters and include uppercase, lowercase, and numbers.
+                  {t('registerWizard.passwordErrorHint')}
                 </Text>
               )}
             </View>
@@ -709,8 +789,12 @@ export default function RegisterScreen() {
         {step === 3 && (
           <View style={styles.stepBody}>
             <View style={styles.stepTitleBox}>
-              <Text style={styles.stepMainTitle}>Invite Your Team</Text>
-              <Text style={styles.stepSubTitle}>Add managers, supervisors, and kitchen staff</Text>
+              <Text style={styles.stepMainTitle}>
+                {t('registerWizard.inviteTeamTitle')}
+              </Text>
+              <Text style={styles.stepSubTitle}>
+                {t('registerWizard.inviteTeamSub')}
+              </Text>
             </View>
 
             <View style={styles.teamList}>
@@ -742,7 +826,7 @@ export default function RegisterScreen() {
                           : 'gray'
                       }
                     >
-                      {member.role.toUpperCase()}
+                      {t(`team.roles.${member.role}`)}
                     </Badge>
                     <Pressable
                       onPress={() => handleRemoveMember(member.id)}
@@ -759,13 +843,15 @@ export default function RegisterScreen() {
                 style={styles.addMemberBtn}
               >
                 <VectorIcon name="UserPlus" size={18} color={Colors.brand.primary} />
-                <Text style={styles.addMemberBtnText}>Invite another team member</Text>
+                <Text style={styles.addMemberBtnText}>
+                  {t('registerWizard.addAnotherMember')}
+                </Text>
               </Pressable>
             </View>
 
             <Card style={styles.inviteNoticeCard}>
               <Text style={styles.inviteNoticeText}>
-                Team members will receive an activation email. You can also assign permissions and add more members anytime in <Text style={{ fontWeight: '700' }}>Settings → Team & Roles</Text>.
+                {t('registerWizard.inviteNotice')}
               </Text>
             </Card>
           </View>
@@ -778,33 +864,34 @@ export default function RegisterScreen() {
               <VectorIcon name="CheckCircle" size={48} color={Colors.brand.primary} />
             </View>
 
-            <Text style={styles.readyTitle}>{storeName || 'Your Restaurant'} is ready!</Text>
+            <Text style={styles.readyTitle}>
+              {t('registerWizard.restaurantReady', {
+                name: storeName || (appLanguage === 'de' ? 'Ihr Betrieb' : 'Your Restaurant'),
+              })}
+            </Text>
             <Text style={styles.readySub}>
-              Your restaurant workspace has been configured in PostgreSQL. You can start logging stock counts or scanning supplier invoices immediately.
+              {t('registerWizard.restaurantReadySub')}
             </Text>
 
             <View style={styles.checklistCard}>
               <View style={styles.checkItem}>
                 <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
-                <Text style={styles.checkText}>Restaurant workspace & location configured</Text>
-              </View>
-
-              <View style={styles.checkItem}>
-                <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
                 <Text style={styles.checkText}>
-                  {schedule.charAt(0).toUpperCase() + schedule.slice(1)} stock count schedule activated
+                  {t('registerWizard.workspaceSaved', { lang: languageLabel })}
                 </Text>
               </View>
 
               <View style={styles.checkItem}>
                 <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
-                <Text style={styles.checkText}>Administrator account created ({adminEmail})</Text>
+                <Text style={styles.checkText}>
+                  {t('registerWizard.scheduleActivated')}
+                </Text>
               </View>
 
               <View style={styles.checkItem}>
                 <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
                 <Text style={styles.checkText}>
-                  {teamMembers.length} team member invitations recorded
+                  {t('registerWizard.adminCreated', { email: adminEmail })}
                 </Text>
               </View>
             </View>
@@ -833,7 +920,13 @@ export default function RegisterScreen() {
           ) : (
             <View style={styles.btnInner}>
               <Text style={styles.btnInnerText}>
-                {registrationType === 'STAFF_INVITATION' ? 'Sign Up & Join Store' : step === 4 ? 'Go to Dashboard' : step === 3 ? 'Complete & Create Restaurant' : 'Continue'}
+                {registrationType === 'STAFF_INVITATION'
+                  ? t('registerWizard.signUpAndJoin')
+                  : step === 4
+                  ? t('registerWizard.goToDashboard')
+                  : step === 3
+                  ? t('registerWizard.completeButton')
+                  : t('registerWizard.continueButton')}
               </Text>
               <VectorIcon name="ArrowRight" size={18} color="#fff" />
             </View>
@@ -846,19 +939,21 @@ export default function RegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Invite Team Member</Text>
+              <Text style={styles.modalTitle}>
+                {t('registerWizard.inviteModalTitle')}
+              </Text>
               <Pressable onPress={() => setShowInviteModal(false)}>
                 <VectorIcon name="X" size={20} color={Colors.neutral.textPrimary} />
               </Pressable>
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Member Full Name</Text>
+              <Text style={styles.fieldLabel}>{t('registerWizard.fullName')}</Text>
               <View style={styles.inputBox}>
                 <TextInput
                   value={newMemberName}
                   onChangeText={setNewMemberName}
-                  placeholder="e.g. Maria Rossi"
+                  placeholder="z. B. Maria Rossi"
                   placeholderTextColor={Colors.neutral.textMuted}
                   style={styles.textInput}
                 />
@@ -866,12 +961,12 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Work Email</Text>
+              <Text style={styles.fieldLabel}>{t('registerWizard.workEmail')}</Text>
               <View style={styles.inputBox}>
                 <TextInput
                   value={newMemberEmail}
                   onChangeText={setNewMemberEmail}
-                  placeholder="maria@restaurant.com"
+                  placeholder="maria@restaurant.de"
                   placeholderTextColor={Colors.neutral.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -881,7 +976,7 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Role</Text>
+              <Text style={styles.fieldLabel}>{t('registerWizard.yourRole')}</Text>
               <View style={styles.roleSelectRow}>
                 {(['manager', 'supervisor', 'staff', 'auditor'] as const).map((r) => (
                   <Pressable
@@ -898,7 +993,7 @@ export default function RegisterScreen() {
                         newMemberRole === r && styles.roleChoiceTextSelected,
                       ]}
                     >
-                      {r.toUpperCase()}
+                      {t(`team.roles.${r}`)}
                     </Text>
                   </Pressable>
                 ))}
@@ -912,7 +1007,7 @@ export default function RegisterScreen() {
               onPress={handleAddMember}
               style={{ marginTop: 16 }}
             >
-              Add to Invites
+              {t('registerWizard.addToInvites')}
             </Button>
           </View>
         </View>
@@ -924,14 +1019,13 @@ export default function RegisterScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Select{' '}
                 {pickerType === 'country'
-                  ? 'Country'
+                  ? t('registerWizard.country')
                   : pickerType === 'currency'
-                  ? 'Currency'
+                  ? t('registerWizard.currency')
                   : pickerType === 'language'
-                  ? 'Language'
-                  : 'Time Zone'}
+                  ? t('registerWizard.systemLanguage')
+                  : t('registerWizard.timezone')}
               </Text>
               <Pressable onPress={() => setPickerType(null)}>
                 <VectorIcon name="X" size={20} color={Colors.neutral.textPrimary} />
@@ -940,21 +1034,24 @@ export default function RegisterScreen() {
 
             <ScrollView style={{ maxHeight: 300 }}>
               {pickerType === 'country' &&
-                COUNTRIES.map((c) => (
-                  <Pressable
-                    key={c.code}
-                    onPress={() => {
-                      setCountry(c.label);
-                      setPickerType(null);
-                    }}
-                    style={styles.pickerOption}
-                  >
-                    <Text style={styles.pickerOptionText}>{c.label}</Text>
-                    {country === c.label && (
-                      <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
-                    )}
-                  </Pressable>
-                ))}
+                COUNTRIES.map((c) => {
+                  const label = appLanguage === 'de' ? c.labelDe : c.labelEn;
+                  return (
+                    <Pressable
+                      key={c.code}
+                      onPress={() => {
+                        setCountry(label);
+                        setPickerType(null);
+                      }}
+                      style={styles.pickerOption}
+                    >
+                      <Text style={styles.pickerOptionText}>{label}</Text>
+                      {country === label && (
+                        <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
+                      )}
+                    </Pressable>
+                  );
+                })}
 
               {pickerType === 'currency' &&
                 CURRENCIES.map((c) => (
@@ -977,14 +1074,11 @@ export default function RegisterScreen() {
                 LANGUAGES.map((l) => (
                   <Pressable
                     key={l.code}
-                    onPress={() => {
-                      setLanguage(l.label);
-                      setPickerType(null);
-                    }}
+                    onPress={() => handleSelectLanguage(l.code, l.label)}
                     style={styles.pickerOption}
                   >
                     <Text style={styles.pickerOptionText}>{l.label}</Text>
-                    {language === l.label && (
+                    {appLanguage === l.code && (
                       <VectorIcon name="Check" size={16} color={Colors.brand.primary} />
                     )}
                   </Pressable>
@@ -1038,9 +1132,11 @@ const styles = StyleSheet.create({
     ...Shadows.sm,
   },
   tabButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.neutral.textMuted,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   tabButtonTextActive: {
     color: Colors.neutral.textPrimary,
@@ -1187,11 +1283,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
   },
   selectLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.neutral.textPrimary,
+    flexShrink: 1,
   },
   selectRight: {
     flexDirection: 'row',
@@ -1437,6 +1537,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
+    flex: 1,
+    marginRight: Spacing.sm,
   },
   roleSelectRow: {
     flexDirection: 'row',

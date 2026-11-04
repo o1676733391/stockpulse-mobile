@@ -1,0 +1,11 @@
+item_sku,item_name,category,storage_location,preferred_supplier,supplier_sku,purchase_pack_unit,pack_size_qty,inventory_unit,unit_cost_eur,par_level,safety_stock,moq_packs,lead_time_days,review_cycle_days,avg_daily_usage,current_on_hand,event_reserved_qty,poq_suggested_order_qty,est_order_total_eur,order_notes
+CHK-001,Chicken Breast (Fresh),Meat & Poultry,Cold Room 1,Metro Foods GmbH,MF-CHK-8842,Case (10kg),10,kg,48.00,35.0,5.0,2,2,3,4.5,8.2,12.0,30,144.00,Includes banquet reservation buffer
+SAL-002,Norwegian Fresh Salmon,Fish & Seafood,Fish Cooling Bin,Nordic Seafoods AG,NS-SAL-102,Styro Box (5kg),5,kg,81.00,10.0,2.0,1,1,2,2.0,2.1,5.0,10,162.00,HACCP critical probe check required
+POT-003,Russet Potatoes,Produce,Dry Storage Bin A,BioFrisch Berlin,BF-POT-009,Bag (25kg),25,kg,28.50,50.0,10.0,1,3,7,6.0,14.0,20.0,50,57.00,Weekly bulk delivery
+OIL-004,Extra Virgin Olive Oil,Pantry & Oils,Dry Storage Shelf 3,ItalFood Supplies,IT-OIL-505,Canister (5L),5,L,36.00,20.0,5.0,1,5,14,0.8,6.5,0.0,15,108.00,Bi-weekly pantry replenishment
+MLK-005,Whole Milk 3.5%,Dairy,Walk-in Cooler 2,Metro Foods GmbH,MF-MLK-301,Crate (12x1L),12,L,16.80,36.0,8.0,2,1,2,9.0,7.0,10.0,36,50.40,Check 14-day BBD window on receiving
+CHS-006,Aged Gouda Cheese,Dairy,Cheese Chiller,BioFrisch Berlin,BF-CHS-112,Wheel (4kg),4,kg,42.00,12.0,2.0,1,4,7,1.2,3.8,4.0,8,84.00,Pre-portioned vacuum packs preferred
+TOM-007,Roma Vine Tomatoes,Produce,Cold Room 2,BioFrisch Berlin,BF-TOM-221,Crate (6kg),6,kg,13.50,18.0,3.0,1,2,3,3.5,4.0,6.0,18,40.50,High spoilage turnover item
+LET-008,Romaine Lettuce Hearts,Produce,Crisper Chiller 1,BioFrisch Berlin,BF-LET-404,Box (12 heads),12,pcs,18.00,24.0,4.0,1,2,3,5.0,3.0,12.0,24,36.00,Short shelf-life BBD alert
+BEEF-009,Black Angus Ground Beef,Meat & Poultry,Cold Room 1,Metro Foods GmbH,MF-BEEF-771,Tray (5kg),5,kg,42.50,25.0,5.0,2,2,3,4.0,5.0,10.0,25,212.50,Vacuum packed fresh ground
+FLR-010,Organic Wheat Flour Type 550,Bakery & Dry,Dry Storage Bin B,ItalFood Supplies,IT-FLR-901,Sack (25kg),25,kg,27.50,50.0,10.0,1,7,14,2.5,22.0,0.0,25,27.50,Monthly dry goods replenishment

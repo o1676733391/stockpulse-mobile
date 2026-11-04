@@ -1,8 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { DonutChart, Sparkline, StockBar } from '@/components/ui/charts';
+import { DesktopAccessNotice } from '@/components/ui/desktop-access-notice';
 import { VectorIcon } from '@/components/ui/icons';
 import { KpiCard } from '@/components/ui/kpi-card';
+import { LanguageQuickBar } from '@/components/ui/language-quick-bar';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SectionHeader } from '@/components/ui/section-header';
 import { NoStoreState } from '@/components/ui/no-store-state';
@@ -73,7 +75,7 @@ const DEFAULT_QUICK_ACTIONS: QuickActionItem[] = [
   {
     id: 'scan',
     iconName: 'ScanLine',
-    label: 'Scan POS Receipt',
+    label: 'Scan POS',
     route: '/scan',
     bg: '#dbeafe',
     iconColor: '#1d4ed8',
@@ -97,17 +99,56 @@ const DEFAULT_QUICK_ACTIONS: QuickActionItem[] = [
 ];
 
 const INITIAL_ADMIN_KPIS: DashboardKpi[] = [
-  { label: 'Total Valuation', value: '--', sub: 'Active inventory value', variant: 'green', trend: { dir: 'up', label: '+3.4%' } },
-  { label: 'Healthy Rate', value: '--', sub: 'Optimal stock vs min/max', variant: 'blue', trend: { dir: 'flat', label: '0%' } },
-  { label: 'Expiring Soon', value: '--', sub: 'Items expiring in ≤7 days', variant: 'amber', trend: { dir: 'down', label: 'Critical' } },
-  { label: 'Open Orders', value: '--', sub: 'Pending supplier deliveries', variant: 'purple', trend: { dir: 'flat', label: 'Pending' } },
+  { label: 'Total Valuation', value: '--', sub: 'Active stock', variant: 'green', trend: { dir: 'up', label: '+3.4%' } },
+  { label: 'Healthy Rate', value: '--', sub: 'Target range', variant: 'blue', trend: { dir: 'flat', label: '0%' } },
+  { label: 'Expiring Soon', value: '--', sub: 'In ≤7 days', variant: 'amber', trend: { dir: 'down', label: 'Critical' } },
+  { label: 'Open Orders', value: '--', sub: 'Inbound', variant: 'purple', trend: { dir: 'flat', label: 'Pending' } },
 ];
 
 export default function DashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { t, formatDate, formatCurrency } = useI18n();
+  const { t, language, formatDate, formatCurrency } = useI18n();
+  const isDe = language === 'de';
+
+  const quickActions: QuickActionItem[] = useMemo(
+    () => [
+      {
+        id: 'count',
+        iconName: 'ClipboardList',
+        label: t('dashboard.actions.stockCount'),
+        route: '/stock-count',
+        bg: '#ede9fe',
+        iconColor: '#6d28d9',
+      },
+      {
+        id: 'scan',
+        iconName: 'ScanLine',
+        label: t('dashboard.actions.scanReceipt'),
+        route: '/scan',
+        bg: '#dbeafe',
+        iconColor: '#1d4ed8',
+      },
+      {
+        id: 'order',
+        iconName: 'ShoppingCart',
+        label: t('dashboard.actions.createPo'),
+        route: '/orders',
+        bg: '#d1fae5',
+        iconColor: '#047857',
+      },
+      {
+        id: 'expiry',
+        iconName: 'AlertTriangle',
+        label: t('dashboard.actions.expiryAlerts'),
+        route: '/expiration',
+        bg: '#fee2e2',
+        iconColor: '#dc2626',
+      },
+    ],
+    [t]
+  );
 
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -200,30 +241,30 @@ export default function DashboardScreen() {
         {
           label: t('dashboard.kpis.totalValuation'),
           value: formatCurrency(totalVal),
-          sub: 'Active inventory value',
+          sub: isDe ? 'Aktiver Bestand' : 'Active stock',
           variant: 'green',
           trend: { dir: 'up', label: '+3.4%' },
         },
         {
           label: t('dashboard.kpis.healthyRate'),
           value: `${healthyPct}%`,
-          sub: 'Optimal stock vs min/max',
+          sub: isDe ? 'Zielbereich' : 'Target range',
           variant: 'blue',
           trend: { dir: healthyPct >= 90 ? 'up' : 'down', label: `${healthyPct}%` },
         },
         {
           label: t('dashboard.kpis.expiringSoon'),
           value: `${expiringData.length}`,
-          sub: 'Items expiring in ≤7 days',
+          sub: isDe ? 'In ≤ 7 Tagen' : 'In ≤7 days',
           variant: 'amber',
           trend: { dir: expiringData.length > 0 ? 'down' : 'flat', label: `${expiringData.length}` },
         },
         {
           label: t('dashboard.kpis.openOrders'),
           value: `${openOrders}`,
-          sub: 'Pending supplier deliveries',
+          sub: isDe ? 'Im Zulauf' : 'Inbound',
           variant: 'purple',
-          trend: { dir: 'flat', label: `${openOrders} active` },
+          trend: { dir: 'flat', label: `${openOrders}` },
         },
       ]);
 
@@ -248,9 +289,11 @@ export default function DashboardScreen() {
           iconName: 'AlertTriangle',
           color: Colors.critical.main,
           bg: Colors.critical.subtle,
-          label: 'Expiring Stock Items',
-          sub: `${expiringData.length} batches require promotional or kitchen priority`,
-          badge: `${expiringData.length} Batches`,
+          label: isDe ? 'Ablaufende MHD-Chargen' : 'Expiring Stock Items',
+          sub: isDe
+            ? `${expiringData.length} Chargen erfordern Aktionsrabatt oder Küchenpriorität`
+            : `${expiringData.length} batches require promotional or kitchen priority`,
+          badge: `${expiringData.length} ${isDe ? 'Chargen' : 'Batches'}`,
           badgeVariant: 'red',
           route: '/expiration',
         });
@@ -262,11 +305,13 @@ export default function DashboardScreen() {
           iconName: 'Package',
           color: Colors.warning.main,
           bg: Colors.warning.subtle,
-          label: 'Low Stock Safety Thresholds',
-          sub: `${lowCount + criticalCount} SKUs below minimum reorder points`,
-          badge: `${lowCount + criticalCount} SKUs`,
+          label: isDe ? 'Niedrige Meldebestände' : 'Low Stock Safety Thresholds',
+          sub: isDe
+            ? `${lowCount + criticalCount} Artikel unter Mindestbestand`
+            : `${lowCount + criticalCount} SKUs below minimum reorder points`,
+          badge: `${lowCount + criticalCount} ${isDe ? 'Artikel' : 'SKUs'}`,
           badgeVariant: 'amber',
-          route: '/inventory',
+          route: '/inventory/overview',
         });
       }
 
@@ -276,9 +321,11 @@ export default function DashboardScreen() {
           iconName: 'Truck',
           color: Colors.brand.primary,
           bg: Colors.brand.subtle,
-          label: 'Awaiting Purchase Deliveries',
-          sub: `${openOrders} purchase orders in transit / awaiting receipt`,
-          badge: `${openOrders} Orders`,
+          label: isDe ? 'Offene Warenlieferungen' : 'Awaiting Purchase Deliveries',
+          sub: isDe
+            ? `${openOrders} Bestellungen im Zulauf / Wareneingang ausstehend`
+            : `${openOrders} purchase orders in transit / awaiting receipt`,
+          badge: `${openOrders} ${isDe ? 'Bestellungen' : 'Orders'}`,
           badgeVariant: 'green',
           route: '/orders',
         });
@@ -289,9 +336,11 @@ export default function DashboardScreen() {
         iconName: 'ClipboardList',
         color: '#6d28d9',
         bg: '#ede9fe',
-        label: 'Daily Stock Count Audit',
-        sub: 'Conduct physical inventory audit and resolve discrepancies',
-        badge: 'Scheduled',
+        label: isDe ? 'Tägliche Bestandszählung' : 'Daily Stock Count Audit',
+        sub: isDe
+          ? 'IST-Bestand zählen und Abweichungen abgleichen'
+          : 'Conduct physical inventory audit and resolve discrepancies',
+        badge: isDe ? 'Geplant' : 'Scheduled',
         badgeVariant: 'purple',
         route: '/stock-count',
       });
@@ -373,6 +422,8 @@ export default function DashboardScreen() {
 
           {/* Right Header Actions */}
           <View style={styles.headerRight}>
+            <LanguageQuickBar compact />
+
             <View style={styles.dateBadge}>
               <VectorIcon name="Calendar" size={12} color={Colors.neutral.textSecondary} />
               <Text style={styles.dateText}>
@@ -410,6 +461,8 @@ export default function DashboardScreen() {
           />
         }
       >
+        <DesktopAccessNotice compact />
+
         {/* Guard for unassigned store */}
         {hasNoStore && (
           <NoStoreState style={{ marginHorizontal: 0, marginBottom: Spacing.lg }} />
@@ -557,7 +610,7 @@ export default function DashboardScreen() {
         <View style={styles.section}>
           <SectionHeader title={t('dashboard.quickActions')} />
           <View style={styles.quickActionGrid}>
-            {DEFAULT_QUICK_ACTIONS.map((action) => (
+            {quickActions.map((action) => (
               <Pressable
                 key={action.id}
                 onPress={() => router.push(action.route as any)}
@@ -566,7 +619,9 @@ export default function DashboardScreen() {
                 <View style={[styles.actionIconBox, { backgroundColor: action.bg }]}>
                   <VectorIcon name={action.iconName as any} size={20} color={action.iconColor} />
                 </View>
-                <Text style={styles.actionLabel}>{action.label}</Text>
+                <Text style={styles.actionLabel} numberOfLines={2}>
+                  {action.label}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -994,31 +1049,34 @@ const styles = StyleSheet.create({
   },
   quickActionGrid: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   quickActionCard: {
     flex: 1,
     backgroundColor: Colors.neutral.card,
     borderRadius: Radius.lg,
-    padding: Spacing.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: 4,
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 6,
     borderWidth: 1,
     borderColor: Colors.neutral.borderLight,
     ...Shadows.card,
   },
   actionIconBox: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.neutral.textPrimary,
     textAlign: 'center',
+    lineHeight: 12,
+    minHeight: 24,
   },
   stockHealthCard: {
     padding: Spacing.lg,

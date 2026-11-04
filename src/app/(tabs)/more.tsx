@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { DesktopAccessNotice } from '@/components/ui/desktop-access-notice';
 import { VectorIcon } from '@/components/ui/icons';
+import { LanguageQuickBar } from '@/components/ui/language-quick-bar';
 import { TopBar } from '@/components/ui/top-bar';
 import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
@@ -117,8 +119,49 @@ export default function MoreScreen() {
         ],
       },
       {
+        title: t('invoices.title'),
+        items: [
+          {
+            icon: 'FileText',
+            label: t('invoices.title'),
+            sub: t('invoices.subtitle'),
+            route: '/invoices',
+            iconBg: '#dcfce7',
+            iconColor: Colors.brand.primary,
+            permission: 'procurement:view_poq',
+          },
+          {
+            icon: 'Truck',
+            label: t('deliveryNotes.title'),
+            sub: t('deliveryNotes.subtitle'),
+            route: '/deliveryNotes' === '/deliveryNotes' ? '/delivery-notes' : '/delivery-notes',
+            iconBg: '#ede9fe',
+            iconColor: '#6d28d9',
+            permission: 'procurement:goods_receipt',
+          },
+          {
+            icon: 'AlertTriangle',
+            label: t('lossLogs.title'),
+            sub: t('lossLogs.subtitle'),
+            route: '/loss-logs',
+            iconBg: '#fee2e2',
+            iconColor: '#b91c1c',
+            permission: 'inventory:view',
+          },
+        ],
+      },
+      {
         title: t('settings.groups.storeOperations'),
         items: [
+          {
+            icon: 'Calendar',
+            label: t('events.title'),
+            sub: t('events.subtitle'),
+            route: '/events',
+            iconBg: '#e0e7ff',
+            iconColor: '#4338ca',
+            permission: 'inventory:view',
+          },
           {
             icon: 'History',
             label: t('scan.scanHistory'),
@@ -135,6 +178,15 @@ export default function MoreScreen() {
             route: '/recipes',
             iconBg: '#fef3c7',
             iconColor: '#b45309',
+            permission: 'inventory:view',
+          },
+          {
+            icon: 'DollarSign',
+            label: t('recipeTools.title'),
+            sub: t('recipeTools.subtitle'),
+            route: '/recipes/cost-calculator',
+            iconBg: '#ecfdf5',
+            iconColor: '#047857',
             permission: 'inventory:view',
           },
           {
@@ -240,7 +292,7 @@ export default function MoreScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
-      <TopBar title={t('navigation.more')} large />
+      <TopBar title={t('navigation.more')} large right={<LanguageQuickBar compact />} />
 
       <ScrollView
         contentContainerStyle={[
@@ -249,6 +301,7 @@ export default function MoreScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <DesktopAccessNotice compact />
         {/* ── Profile Hero Card ── */}
         <Pressable
           onPress={() => router.push('/settings/profile' as any)}

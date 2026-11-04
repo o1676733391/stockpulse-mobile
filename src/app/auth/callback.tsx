@@ -20,7 +20,8 @@ export default function AuthCallbackScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
-  const { authState } = useAuth();
+  const { refreshUser } = useAuth();
+  const linkedUrl = Linking.useURL();
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -35,15 +36,22 @@ export default function AuthCallbackScreen() {
         setErrorMsg(null);
         setStatusText('Confirming email and establishing secure session...');
 
-        // 1. Get initial URL if app was launched via deep link
+        // 1. Get URL from warm deep link (useURL) or cold launch (getInitialURL)
         const initialUrl = await Linking.getInitialURL();
-        const currentUrl = typeof window !== 'undefined' ? window.location.href : initialUrl;
+        const currentUrl =
+          typeof window !== 'undefined' ? window.location.href : linkedUrl || initialUrl;
 
         if (!currentUrl) {
+          const existing = await refreshUser();
+          if (existing) {
+            router.replace('/(tabs)' as any);
+            return;
+          }
           throw new Error('No deep link parameters received. Please try logging in directly.');
         }
 
         const result = await authService.handleAuthCallback(currentUrl);
+        await refreshUser();
 
         if (!active) return;
 

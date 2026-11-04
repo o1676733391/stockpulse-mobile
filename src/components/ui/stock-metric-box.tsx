@@ -1,5 +1,6 @@
 import { VariancePill } from '@/components/ui/variance-pill';
 import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
@@ -18,6 +19,7 @@ export function StockMetricBox({
   compact = false,
   style,
 }: StockMetricBoxProps) {
+  const { t } = useI18n();
   const variance = physicalStock - theoreticalStock;
   const variancePct = theoreticalStock > 0 ? (variance / theoreticalStock) * 100 : 0;
   const absVariancePct = Math.abs(variancePct);
@@ -52,7 +54,7 @@ export function StockMetricBox({
       <View style={styles.physicalBox}>
         <View style={styles.boxHeader}>
           <View style={styles.greenDot} />
-          <Text style={styles.physicalLabel}>IS</Text>
+          <Text style={styles.physicalLabel}>{t('stockMetric.actualIs')}</Text>
         </View>
         <Text style={[styles.value, styles.physicalValue]}>{physicalStock}</Text>
         <Text style={styles.unitText}>{unit}</Text>
@@ -62,7 +64,7 @@ export function StockMetricBox({
       <View style={styles.theoreticalBox}>
         <View style={styles.boxHeader}>
           <View style={styles.slateDot} />
-          <Text style={styles.theoreticalLabel}>SHOULD</Text>
+          <Text style={styles.theoreticalLabel}>{t('stockMetric.targetShould')}</Text>
         </View>
         <Text style={[styles.value, styles.theoreticalValue]}>{theoreticalStock}</Text>
         <Text style={styles.unitText}>{unit}</Text>
@@ -71,7 +73,7 @@ export function StockMetricBox({
       {/* ── 3. Variance (Diff) ── */}
       <View style={[styles.diffBox, { backgroundColor: diffBg, borderColor: diffBorder }]}>
         <View style={styles.boxHeader}>
-          <Text style={styles.diffLabel}>DIFF</Text>
+          <Text style={styles.diffLabel}>{t('stockMetric.varianceDiff')}</Text>
         </View>
         <Text style={[styles.value, { color: diffText }]}>
           {isMatch ? '—' : `${variance > 0 ? '+' : ''}${variance.toFixed(1)}`}

@@ -1,0 +1,6 @@
+waste_log_id,log_timestamp,reporting_station,logged_by_staff,item_sku,item_description,wasted_quantity,unit_of_measure,waste_category,unit_cost_eur,total_loss_cost_eur,notes
+WST-2026-041,2026-03-11 14:20:00,Hot Kitchen Line 1,Marco Rossi,CHK-001,Fresh Chicken Breast Fillet,0.80,kg,cooking_dropped,4.80,3.84,Line dropped during peak lunch rush
+WST-2026-042,2026-03-11 09:15:00,Walk-in Cooler 2,Elena Fischer,MLK-005,Whole Fresh Milk 3.8% Fat,2.00,L,spoilage_expired,1.10,2.20,Opened carton past safe BBD usage window
+WST-2026-043,2026-03-10 17:40:00,Fish Butchery Station,David Weber,SAL-002,Fresh Atlantic Salmon Portion,0.45,kg,prep_trimming,16.20,7.29,Excess butchery trimming loss
+WST-2026-044,2026-03-10 11:20:00,Cold Room 2,Anna Schmidt,TOM-007,Vine Tomatoes Grade A,1.50,kg,spoilage_expired,1.80,2.70,Soft rot detected in bottom of delivery crate
+WST-2026-045,2026-10-07 11:59:00,Hot Kitchen Line 1,Anna Schmidt,CHK-001,Fresh Chicken Breast Fillet,1.20,kg,cooking_dropped,4.80,5.76,Overcooked fillet batch discarded during rush

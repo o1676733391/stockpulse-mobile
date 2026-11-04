@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { i18n } from './index';
+import { i18n } from './manager';
 import {
   LanguageMetadata,
   SupportedLanguage,
@@ -34,6 +34,18 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [language, setLanguageState] = useState<SupportedLanguage>(() => i18n.getLanguage());
 
   useEffect(() => {
+    // If i18n is currently resolving from persistent storage, synchronize state immediately upon resolution
+    void i18n.init().then((lang) => {
+      if (lang) {
+        setLanguageState(lang);
+      }
+    });
+
+    const current = i18n.getLanguage();
+    if (current !== language) {
+      setLanguageState(current);
+    }
+
     const unsubscribe = i18n.subscribe((newLang) => {
       setLanguageState(newLang);
     });
@@ -44,52 +56,53 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     i18n.setLanguage(lang);
   }, []);
 
+  // IMPORTANT: Explicitly reference `language` inside each closure body so React Compiler
+  // tracks `language` as a reactive dependency and invalidates downstream memoized JSX.
   const t = useCallback(
     (key: string, options?: TranslationInterpolation & { count?: number }) => {
-      return i18n.t(key, options);
+      return i18n.t(key, { ...options, _lang: language });
     },
-    // We include `language` in dependencies so any component consuming `t` re-evaluates when language changes
     [language]
   );
 
   const formatNumber = useCallback(
     (value: number, options?: Intl.NumberFormatOptions) => {
-      return i18n.formatNumber(value, options);
+      return language ? i18n.formatNumber(value, options) : i18n.formatNumber(value, options);
     },
     [language]
   );
 
   const formatCurrency = useCallback(
     (value: number, currency?: string, options?: Intl.NumberFormatOptions) => {
-      return i18n.formatCurrency(value, currency, options);
+      return language ? i18n.formatCurrency(value, currency, options) : i18n.formatCurrency(value, currency, options);
     },
     [language]
   );
 
   const formatPercent = useCallback(
     (value: number, decimals?: number) => {
-      return i18n.formatPercent(value, decimals);
+      return language ? i18n.formatPercent(value, decimals) : i18n.formatPercent(value, decimals);
     },
     [language]
   );
 
   const formatDate = useCallback(
     (date: Date | string | number, options?: Intl.DateTimeFormatOptions) => {
-      return i18n.formatDate(date, options);
+      return language ? i18n.formatDate(date, options) : i18n.formatDate(date, options);
     },
     [language]
   );
 
   const formatTime = useCallback(
     (date: Date | string | number, options?: Intl.DateTimeFormatOptions) => {
-      return i18n.formatTime(date, options);
+      return language ? i18n.formatTime(date, options) : i18n.formatTime(date, options);
     },
     [language]
   );
 
   const formatRelativeTime = useCallback(
     (value: number, unit: Intl.RelativeTimeFormatUnit) => {
-      return i18n.formatRelativeTime(value, unit);
+      return language ? i18n.formatRelativeTime(value, unit) : i18n.formatRelativeTime(value, unit);
     },
     [language]
   );
@@ -135,7 +148,6 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export function useI18n(): I18nContextValue {
   const context = useContext(I18nContext);
   if (!context) {
-    // Fallback if rendered outside of provider
     return {
       language: i18n.getLanguage(),
       setLanguage: (l) => i18n.setLanguage(l),

@@ -70,25 +70,53 @@ export class AuthService implements IAuthService {
       return this.buildMockAuthResponse(dto.email, 'superadmin');
     }
 
-    // 1. Create user in Supabase Auth GoTrue via Admin API
+    // 1. Create user in Supabase Auth GoTrue via Admin API (or confirm existing unverified user)
+    const normalizedEmail = dto.email.trim().toLowerCase();
     let userId: string;
     const { data: authData, error: authError } = await client.auth.admin.createUser({
-      email: dto.email.trim().toLowerCase(),
+      email: normalizedEmail,
       password: dto.password,
       email_confirm: true,
       user_metadata: {
         name: dto.name,
         organization_name: dto.organizationName,
+        store_name: dto.organizationName,
         role: 'admin',
       },
     });
 
     if (authError || !authData?.user) {
-      this.logger.error(`Supabase Auth admin createUser failed: ${authError?.message}`);
-      throw new BadRequestException(authError?.message || 'Failed to create user account');
+      // Check if user was already created via client-side supabase.auth.signUp
+      let existingUser: any = null;
+      if (typeof client.auth?.admin?.listUsers === 'function') {
+        const { data: listData } = await client.auth.admin.listUsers();
+        const usersList: any[] = (listData as any)?.users || [];
+        existingUser = usersList.find(
+          (u: any) => u.email?.toLowerCase() === normalizedEmail,
+        );
+      }
+      if (!existingUser) {
+        this.logger.error(`Supabase Auth admin createUser failed: ${authError?.message}`);
+        throw new BadRequestException(authError?.message || 'Failed to create user account');
+      }
+      userId = existingUser.id;
+      if (typeof client.auth?.admin?.updateUserById === 'function') {
+        await client.auth.admin.updateUserById(userId, {
+          email_confirm: true,
+          password: dto.password,
+          user_metadata: {
+            ...(existingUser.user_metadata || {}),
+            name: dto.name,
+            organization_name: dto.organizationName,
+            store_name: dto.organizationName,
+            role: 'admin',
+            email_verified: true,
+          },
+        });
+      }
+    } else {
+      userId = authData.user.id;
     }
-
-    userId = authData.user.id;
     const orgSlug =
       dto.organizationSlug ||
       dto.organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
@@ -529,6 +557,119 @@ export class AuthService implements IAuthService {
       defaultStoreId: userProfile?.default_store_id,
       assignedStoreIds,
       permissions: authUser.user_metadata?.permissions || ROLE_PERMISSIONS[role] || (role === 'superadmin' || role === 'admin' ? ['*'] : []),
+    };
+  }
+
+  /**
+   * Confirm a pending user's email address and ensure their organization/store/profile exist.
+   */
+  async verifyEmailByAddress(email: string): Promise<{ verified: boolean; message: string }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      throw new BadRequestException('Email address is required');
+    }
+
+    const client = this.supabaseService.getAdminClient();
+    if (!client) {
+      return { verified: true, message: 'Email verified (local mode)' };
+    }
+
+    const { data: listData, error: listErr } = await client.auth.admin.listUsers();
+    if (listErr) {
+      throw new InternalServerErrorException(listErr.message);
+    }
+
+    const usersList: any[] = (listData as any)?.users || [];
+    const authUser = usersList.find((u: any) => u.email?.toLowerCase() === cleanEmail);
+    if (!authUser) {
+      throw new NotFoundException(`No account found for ${cleanEmail}`);
+    }
+
+    const meta = authUser.user_metadata || {};
+    const storeName = meta.store_name || meta.organization_name || 'StockPulse Kitchen';
+    const name = meta.name || cleanEmail.split('@')[0];
+    const roleName = meta.role || 'admin';
+
+    // Ensure email is marked confirmed in Supabase GoTrue
+    if (!authUser.email_confirmed_at) {
+      await client.auth.admin.updateUserById(authUser.id, {
+        email_confirm: true,
+        user_metadata: {
+          ...meta,
+          email_verified: true,
+        },
+      });
+    }
+
+    // Ensure public.users & store exist
+    const { data: existingPub } = await client
+      .from('users')
+      .select('id, default_store_id')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    if (!existingPub) {
+      const slug = `${storeName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')}-${Date.now().toString(36)}`;
+      const { data: org } = await client
+        .from('organizations')
+        .insert({ name: storeName, slug, plan_tier: 'trial' })
+        .select('id')
+        .single();
+
+      if (org?.id) {
+        const { data: store } = await client
+          .from('stores')
+          .insert({
+            organization_id: org.id,
+            store_code: `STR-${Date.now().toString(36).toUpperCase().slice(-4)}`,
+            name: storeName,
+            country: 'DE',
+            currency: 'EUR',
+            timezone: 'Europe/Berlin',
+          })
+          .select('id')
+          .single();
+
+        if (store?.id) {
+          await client.from('users').upsert({
+            id: authUser.id,
+            organization_id: org.id,
+            email: cleanEmail,
+            name,
+            default_store_id: store.id,
+            is_active: true,
+          });
+
+          const { data: roleRow } = await client
+            .from('roles')
+            .select('id')
+            .eq('name', roleName)
+            .maybeSingle();
+
+          await client.from('user_store_assignments').insert({
+            user_id: authUser.id,
+            store_id: store.id,
+            role_id: roleRow?.id || '01915dfa-9012-7000-8000-000000000001',
+          });
+
+          await client.auth.admin.updateUserById(authUser.id, {
+            user_metadata: {
+              ...meta,
+              email_verified: true,
+              organization_id: org.id,
+              assigned_store_ids: [store.id],
+            },
+          });
+        }
+      }
+    }
+
+    return {
+      verified: true,
+      message: 'Email verified and account workspace initialized.',
     };
   }
 

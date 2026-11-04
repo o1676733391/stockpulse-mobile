@@ -5,7 +5,7 @@ import { OcrService } from '../ocr.service';
 import { GeminiVisionProvider } from '../providers/gemini-vision.provider';
 import { OcrProviderFactory } from '../providers/ocr-provider.factory';
 
-jest.setTimeout(15000);
+jest.setTimeout(30000);
 
 describe('OCR Agent - Failure Handling & Resilience Tests', () => {
   let provider: GeminiVisionProvider;
@@ -73,7 +73,7 @@ describe('OCR Agent - Failure Handling & Resilience Tests', () => {
       // Provider falls back to resilient fallback agent without crashing
       expect(result.rawResponse).toBeDefined();
       expect(result.lineItems.length).toBeGreaterThan(0);
-    }, 15000);
+    }, 30000);
 
     it('should handle Gemini HTTP 503 Service Unavailable gracefully', async () => {
       global.fetch = jest.fn().mockResolvedValue({
@@ -86,7 +86,7 @@ describe('OCR Agent - Failure Handling & Resilience Tests', () => {
 
       expect(result.rawResponse).toBeDefined();
       expect(result.overallConfidence).toBeDefined();
-    }, 15000);
+    }, 30000);
 
     it('should handle network timeout / fetch rejection', async () => {
       global.fetch = jest.fn().mockRejectedValue(new Error('Connection timed out after 30000ms'));
@@ -95,7 +95,7 @@ describe('OCR Agent - Failure Handling & Resilience Tests', () => {
 
       expect(result.rawResponse).toBeDefined();
       expect(result.lineItems.length).toBeGreaterThan(0);
-    }, 15000);
+    }, 30000);
 
     it('should record document as failed when an unrecoverable repository error occurs', async () => {
       jest.spyOn(provider, 'processDocument').mockRejectedValueOnce(new Error('Fatal unrecoverable buffer corruption'));

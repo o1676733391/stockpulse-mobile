@@ -1,7 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DesktopAccessNotice } from '@/components/ui/desktop-access-notice';
 import { VectorIcon } from '@/components/ui/icons';
+import { LanguageQuickBar } from '@/components/ui/language-quick-bar';
 import { TopBar } from '@/components/ui/top-bar';
 import { ROLES } from '@/constants/rbac';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
@@ -82,7 +84,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [showDemoStaff, setShowDemoStaff] = useState(false);
+  const [showDemoStaff, setShowDemoStaff] = useState(true);
 
   // ── Staff Invitation Code State ──
   const [invitationCode, setInvitationCode] = useState('');
@@ -106,10 +108,10 @@ export default function LoginScreen() {
   };
 
   /**
-   * Handle Standard / Staff Email Login
+   * Perform Email / Staff Login
    */
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+  const performLogin = async (targetEmail: string, targetPassword: string) => {
+    if (!targetEmail.trim() || !targetPassword.trim()) {
       setErrorMsg(t('auth.fillAllFields'));
       return;
     }
@@ -117,7 +119,7 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const res = await login(email.trim(), password);
+      const res = await login(targetEmail.trim(), targetPassword);
 
       if (res.emailNeedsVerification) {
         router.push('/verify-email' as any);
@@ -141,12 +143,20 @@ export default function LoginScreen() {
   };
 
   /**
-   * Handle Quick Demo Staff Selection
+   * Handle Standard / Staff Email Login
+   */
+  const handleLogin = async () => {
+    await performLogin(email, password);
+  };
+
+  /**
+   * Handle Quick Demo Staff Selection (populates credentials and signs in immediately)
    */
   const handleSelectDemoStaff = (demoUser: typeof DEMO_STAFF_USERS[0]) => {
     setEmail(demoUser.email);
     setPassword('StockPulse123!');
     setErrorMsg(null);
+    void performLogin(demoUser.email, 'StockPulse123!');
   };
 
   /**
@@ -283,6 +293,7 @@ export default function LoginScreen() {
         subtitle={t('common.tagline')}
         showBack
         onBack={() => router.replace('/' as any)}
+        right={<LanguageQuickBar compact />}
       />
 
       <ScrollView
@@ -293,6 +304,8 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <DesktopAccessNotice compact />
+
         {/* Brand Banner */}
         <View style={styles.brandCard}>
           <View style={styles.brandLogoRow}>
@@ -408,7 +421,7 @@ export default function LoginScreen() {
                 <View style={styles.passwordLabelRow}>
                   <Text style={styles.inputLabel}>{t('auth.passwordLabel')}</Text>
                   <Pressable onPress={() => router.push('/forgot-password' as any)}>
-                    <Text style={styles.forgotPasswordLink}>Forgot Password?</Text>
+                    <Text style={styles.forgotPasswordLink}>{t('auth.forgotPassword')}</Text>
                   </Pressable>
                 </View>
                 <View style={styles.inputWrapper}>
@@ -493,7 +506,7 @@ export default function LoginScreen() {
                         >
                           <View style={styles.quickRolePillRow}>
                             <Badge variant={demo.badgeVariant}>
-                              {ROLES[demo.role]?.label || demo.title}
+                              {t(`team.roles.${demo.role}`)}
                             </Badge>
                             <Text style={styles.quickRoleName}>{demo.name}</Text>
                           </View>
@@ -618,22 +631,22 @@ export default function LoginScreen() {
                 {/* Optional Staff Setup Fields */}
                 <View style={styles.staffFieldsGroup}>
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>{t('common.details')} (Your Name)</Text>
+                    <Text style={styles.inputLabel}>{t('auth.yourName')}</Text>
                     <TextInput
                       value={staffName}
                       onChangeText={setStaffName}
-                      placeholder="e.g. Maria Rossi"
+                      placeholder={t('registerWizard.fullNamePlaceholder')}
                       placeholderTextColor={Colors.neutral.textTertiary}
                       style={styles.subTextInput}
                     />
                   </View>
 
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>{t('auth.passwordLabel')} (Set Password)</Text>
+                    <Text style={styles.inputLabel}>{t('auth.setPassword')}</Text>
                     <TextInput
                       value={staffPassword}
                       onChangeText={setStaffPassword}
-                      placeholder="•••••••••••• (min. 6 characters)"
+                      placeholder="••••••••••••"
                       placeholderTextColor={Colors.neutral.textTertiary}
                       secureTextEntry
                       style={styles.subTextInput}

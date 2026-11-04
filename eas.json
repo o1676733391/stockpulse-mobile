@@ -1,0 +1,61 @@
+{
+  "cli": {
+    "version": ">= 16.0.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://stockpulse-backend-staging-847107251833.europe-west3.run.app/api/v1",
+        "EXPO_PUBLIC_ENABLE_MOCK_FALLBACK": "true"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production:local": {
+      "autoIncrement": true,
+      "credentialsSource": "local",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://stockpulse-backend-staging-847107251833.europe-west3.run.app/api/v1",
+        "EXPO_PUBLIC_ENABLE_MOCK_FALLBACK": "true"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://stockpulse-backend-staging-847107251833.europe-west3.run.app/api/v1",
+        "EXPO_PUBLIC_ENABLE_MOCK_FALLBACK": "true"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6824584119",
+        "ascApiKeyPath": "./docs/certificates/AuthKey_NC23V7MVKY.p8",
+        "ascApiKeyId": "NC23V7MVKY",
+        "ascApiKeyIssuerId": "c15c422d-74e8-45cf-a653-289369d4dc50"
+      }
+    },
+    "production:local": {
+      "ios": {
+        "ascAppId": "6824584119",
+        "ascApiKeyPath": "./docs/certificates/AuthKey_NC23V7MVKY.p8",
+        "ascApiKeyId": "NC23V7MVKY",
+        "ascApiKeyIssuerId": "c15c422d-74e8-45cf-a653-289369d4dc50"
+      }
+    }
+  }
+}

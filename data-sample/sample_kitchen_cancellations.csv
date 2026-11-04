@@ -1,0 +1,5 @@
+cancellation_id,ticket_number,table_or_location,dish_name,recipe_code,portions_cancelled,cancellation_reason,is_cooked_in_kitchen,monetary_loss_cost_eur,outcome_status,logged_by_staff,cancellation_timestamp,notes
+CANC-8802,TKT-8802,Table 14,Grilled Chicken Breast Plate,REC-CHK-01,1,guest_cancelled,true,3.42,Prepped & Discarded,Marco Rossi,2026-03-11 13:45:00,Customer walked out due to emergency; chicken already plated
+CANC-8795,TKT-8795,Table 08,Burger XL Deluxe,REC-BRG-02,2,wrong_order,false,0.00,Voided Before Cooking (Saved),Elena Fischer,2026-03-11 12:10:00,Server rang in wrong burger; voided before hot line fired ticket
+CANC-8760,TKT-8760,Takeout #19,Norwegian Salmon Special,REC-SAL-03,1,kitchen_delay,true,8.90,Prepped & Discarded,David Weber,2026-03-10 20:30:00,Long delivery driver delay; fish dried out under heat lamp
+CANC-8810,TKT-4377,Table 22,Grilled Chicken Breast Plate,REC-CHK-01,1,guest_cancelled,true,3.42,Prepped & Discarded,Anna Schmidt,2026-10-07 11:59:00,Guest had urgent call and left after plate was already fired

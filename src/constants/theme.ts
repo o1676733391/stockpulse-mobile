@@ -144,6 +144,7 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
+  xs: 4,
   sm: 8,
   md: 10,
   lg: 12,
@@ -218,6 +219,55 @@ export const Typography = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  },
+  // Standard token aliases
+  titleLarge: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+  },
+  titleMedium: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.neutral.textPrimary,
+  },
+  titleSmall: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.neutral.textPrimary,
+  },
+  bodyLarge: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: Colors.neutral.textPrimary,
+    lineHeight: 22,
+  },
+  bodyMedium: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: Colors.neutral.textPrimary,
+    lineHeight: 20,
+  },
+  bodySmall: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: Colors.neutral.textSecondary,
+    lineHeight: 16,
+  },
+  labelLarge: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.neutral.textPrimary,
+  },
+  labelMedium: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.neutral.textSecondary,
+  },
+  labelSmall: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.neutral.textSecondary,
   },
 });
 

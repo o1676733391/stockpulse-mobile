@@ -1,0 +1,27 @@
+appId: host.exp.exponent
+---
+- clearState
+- launchApp
+- openLink: "exp://127.0.0.1:8081"
+- tapOn:
+    id: "Got It"
+    optional: true
+- tapOn: "Sign in with email & password"
+- tapOn: "Email Address"
+- inputText: "admin@example.com"
+- tapOn: "Password"
+- inputText: "password123"
+- tapOn: "Sign In"
+- assertVisible: "Inventory"
+- tapOn: "Inventory"
+- assertVisible: "Manage your current stock and products."
+- assertVisible: "Invoices"
+- assertVisible: "Delivery Notes"
+- tapOn: "Invoices"
+- assertVisible: "Invoices features coming soon..."
+- tapOn: "Back"
+- tapOn: "Delivery Notes"
+- assertVisible: "Delivery notes features coming soon..."
+- tapOn: "Back"
+- tapOn: "Manage your current stock and products."
+- assertVisible: "Add Item"

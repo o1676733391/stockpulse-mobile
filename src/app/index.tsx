@@ -1,15 +1,14 @@
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { VectorIcon } from '@/components/ui/icons';
-import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { LanguageQuickBar } from '@/components/ui/language-quick-bar';
+import { Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
-  Image,
-  Platform,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -22,6 +21,7 @@ export default function SplashScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { authState, isAuthenticated, user } = useAuth();
+  const { t } = useI18n();
 
   // Animation values
   const logoScale = useRef(new Animated.Value(0.8)).current;
@@ -30,7 +30,6 @@ export default function SplashScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Sequence entrance animations
     Animated.parallel([
       Animated.timing(logoScale, {
         toValue: 1,
@@ -51,7 +50,6 @@ export default function SplashScreen() {
       }),
     ]).start();
 
-    // Subtle continuous ambient pulse
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -101,8 +99,13 @@ export default function SplashScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#064e3b" />
 
       {/* Decorative Gradient/Ambient Shapes */}
-      <View style={styles.topAura} />
-      <View style={styles.bottomAura} />
+      <View style={styles.topAura} pointerEvents="none" />
+      <View style={styles.bottomAura} pointerEvents="none" />
+
+      {/* Top Language Bar */}
+      <View style={styles.topLangRow}>
+        <LanguageQuickBar dark />
+      </View>
 
       {/* Main Brand Hero Section */}
       <View style={styles.heroSection}>
@@ -121,19 +124,17 @@ export default function SplashScreen() {
         </Animated.View>
 
         <Animated.View style={[styles.brandTextContainer, { opacity: contentFade }]}>
-          <Text style={styles.brandTitle}>StockPulse</Text>
+          <Text style={styles.brandTitle}>{t('common.appName')}</Text>
           <View style={styles.badgeRow}>
             <View style={styles.badgePill}>
-              <Text style={styles.badgeText}>F&B INTELLIGENCE</Text>
+              <Text style={styles.badgeText}>{t('desktopNotice.badge')}</Text>
             </View>
             <View style={[styles.badgePill, styles.badgePillAccent]}>
-              <Text style={[styles.badgeText, styles.badgeTextAccent]}>AI OCR & SQLite</Text>
+              <Text style={[styles.badgeText, styles.badgeTextAccent]}>AI OCR & BOM</Text>
             </View>
           </View>
 
-          <Text style={styles.brandSubtitle}>
-            Real-time theoretical vs. physical stock, automated BBD tracking, and AI-powered POS deductions.
-          </Text>
+          <Text style={styles.brandSubtitle}>{t('common.tagline')}</Text>
         </Animated.View>
       </View>
 
@@ -144,28 +145,28 @@ export default function SplashScreen() {
             <VectorIcon name="ScanLine" size={18} color="#34d399" />
           </View>
           <View style={styles.featureTextBox}>
-            <Text style={styles.featureTitle}>Gemini Vertex AI OCR</Text>
-            <Text style={styles.featureDesc}>Extract POS receipts & auto-deduct raw ingredients</Text>
+            <Text style={styles.featureTitle}>{t('scan.title')}</Text>
+            <Text style={styles.featureDesc}>{t('scan.processingSubtitle')}</Text>
           </View>
         </View>
 
         <View style={styles.featureItem}>
           <View style={[styles.featureIconBox, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
-            <VectorIcon name="AlertTriangle" size={18} color="#fbbf24" />
+            <VectorIcon name="Layers" size={18} color="#fbbf24" />
           </View>
           <View style={styles.featureTextBox}>
-            <Text style={styles.featureTitle}>Proactive Expiration Engine</Text>
-            <Text style={styles.featureDesc}>Prevent spoilage with 7-day BBD alerts & promos</Text>
+            <Text style={styles.featureTitle}>{t('upperGroups.title')}</Text>
+            <Text style={styles.featureDesc}>{t('upperGroups.subtitle')}</Text>
           </View>
         </View>
 
         <View style={styles.featureItem}>
           <View style={[styles.featureIconBox, { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
-            <VectorIcon name="ClipboardList" size={18} color="#60a5fa" />
+            <VectorIcon name="Laptop" size={18} color="#60a5fa" />
           </View>
           <View style={styles.featureTextBox}>
-            <Text style={styles.featureTitle}>Multi-Tenant Store Isolation</Text>
-            <Text style={styles.featureDesc}>RBAC permissions for Admin, Manager & Staff</Text>
+            <Text style={styles.featureTitle}>{t('desktopNotice.title')}</Text>
+            <Text style={styles.featureDesc}>{t('desktopNotice.compact')}</Text>
           </View>
         </View>
       </Animated.View>
@@ -173,7 +174,11 @@ export default function SplashScreen() {
       {/* Bottom CTA Action Bar */}
       <Animated.View style={[styles.bottomBar, { opacity: contentFade }]}>
         <Button
-          label={isAuthenticated ? `Continue as ${user.name.split(' ')[0]}` : 'Get Started'}
+          label={
+            isAuthenticated
+              ? `${t('registerWizard.continueButton')} (${user.name.split(' ')[0]})`
+              : t('auth.signInButton')
+          }
           variant="primary"
           size="lg"
           fullWidth
@@ -187,16 +192,24 @@ export default function SplashScreen() {
             style={({ pressed }) => [styles.staffJoinBtn, pressed && styles.pressed]}
           >
             <VectorIcon name="KeyRound" size={14} color="#a7f3d0" />
-            <Text style={styles.staffJoinBtnText}>Have an invite code? Join as Staff</Text>
+            <Text style={styles.staffJoinBtnText}>
+              {t('auth.staffPrompt')} {t('auth.claimInvite')}
+            </Text>
           </Pressable>
         )}
 
         <Pressable
-          onPress={handleSignIn}
+          onPress={
+            isAuthenticated
+              ? handleSignIn
+              : () => router.push('/register' as any)
+          }
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
         >
           <Text style={styles.secondaryBtnText}>
-            {isAuthenticated ? 'Switch Account or Role' : 'Sign in with email & password'}
+            {isAuthenticated
+              ? t('auth.signInButton')
+              : `${t('auth.dontHaveAccount')} ${t('auth.registerNow')}`}
           </Text>
         </Pressable>
       </Animated.View>
@@ -207,9 +220,13 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#064e3b', // Deep rich emerald brand green
+    backgroundColor: '#064e3b',
     paddingHorizontal: Spacing.xl,
     justifyContent: 'space-between',
+  },
+  topLangRow: {
+    alignItems: 'flex-end',
+    marginTop: Spacing.xs,
   },
   topAura: {
     position: 'absolute',
@@ -231,7 +248,7 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     alignItems: 'center',
-    marginTop: Spacing.xl * 1.5,
+    marginTop: Spacing.md,
   },
   logoContainer: {
     marginBottom: Spacing.lg,
@@ -323,6 +340,7 @@ const styles = StyleSheet.create({
   bottomBar: {
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
+    zIndex: 10,
   },
   staffJoinBtn: {
     flexDirection: 'row',

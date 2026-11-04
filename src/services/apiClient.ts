@@ -3,16 +3,21 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from './supabaseClient';
 
+const PRODUCTION_API_URL =
+  'https://stockpulse-backend-staging-847107251833.europe-west3.run.app/api/v1';
+
 function resolveApiBaseUrl(): string {
   // If user provided a specific custom URL in env
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl && envUrl.trim() !== '') {
-    return envUrl;
+    return envUrl.trim();
   }
 
-  // 1. Web always uses localhost
+  // 1. Web always uses localhost in dev, or production URL in prod
   if (Platform.OS === 'web') {
-    return 'http://localhost:5000/api/v1';
+    return typeof __DEV__ !== 'undefined' && __DEV__
+      ? 'http://localhost:5000/api/v1'
+      : PRODUCTION_API_URL;
   }
 
   // 2. Android Studio Emulator MUST use 10.0.2.2
@@ -25,7 +30,7 @@ function resolveApiBaseUrl(): string {
     return 'http://localhost:5000/api/v1';
   }
 
-  // 4. Physical device (Android or iOS) detects host PC LAN IP from Metro
+  // 4. Physical device (Android or iOS) detects host PC LAN IP or USB adb reverse from Metro in dev
   const hostUri =
     Constants.expoConfig?.hostUri ||
     (Constants as any).manifest?.debuggerHost ||
@@ -33,16 +38,17 @@ function resolveApiBaseUrl(): string {
 
   if (hostUri) {
     const hostIp = hostUri.split(':')[0];
-    if (hostIp && hostIp !== 'localhost' && hostIp !== '127.0.0.1') {
+    if (hostIp) {
       return `http://${hostIp}:5000/api/v1`;
     }
   }
 
-  return Platform.OS === 'android' ? 'http://10.0.2.2:5000/api/v1' : 'http://localhost:5000/api/v1';
+  // 5. Standalone / TestFlight / Production builds on physical devices default to staging Cloud Run URL
+  return PRODUCTION_API_URL;
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
-const ENABLE_MOCK_FALLBACK = process.env.EXPO_PUBLIC_ENABLE_MOCK_FALLBACK === 'true';
+const ENABLE_MOCK_FALLBACK = process.env.EXPO_PUBLIC_ENABLE_MOCK_FALLBACK !== 'false';
 const DEBUG_API = process.env.EXPO_PUBLIC_DEBUG_API !== 'false';
 
 let authToken: string | null = null;
@@ -77,17 +83,24 @@ export function logApiError(
   error: any
 ): void {
   const timestamp = new Date().toISOString();
-  console.error(
-    `[API Error] Service: ${serviceName} | Endpoint: ${endpoint} | Method: ${method} | Status: ${status} | Error: ${error?.message || error || 'Unknown'} | Time: ${timestamp}`
-  );
+  const msg = `[API Error] Service: ${serviceName} | Endpoint: ${endpoint} | Method: ${method} | Status: ${status} | Error: ${error?.message || error || 'Unknown'} | Time: ${timestamp}`;
+  if (status === 'MOCK' || method === 'LOCAL_MOCK' || ENABLE_MOCK_FALLBACK) {
+    if (DEBUG_API) {
+      console.warn(msg);
+    }
+    return;
+  }
+  console.error(msg);
 }
 
-export function logDebugFallback(serviceName: string, endpoint: string, error: any): void {
-  const methodMatch = endpoint.match(/\[([A-Z]+)\]/);
-  const method = methodMatch ? methodMatch[1] : (error?.method || 'UNKNOWN');
-  const cleanEndpoint = endpoint.replace(/\s*\[[A-Z]+\]\s*/, '');
-  const status = error?.status ? String(error.status) : 'ERROR';
-  logApiError(serviceName, cleanEndpoint, method, status, error);
+export function logDebugFallback(serviceName: string, endpointOrContext: any, error?: any): void {
+  const endpointStr = typeof endpointOrContext === 'string' ? endpointOrContext : 'fallback';
+  const errObj = error !== undefined ? error : endpointOrContext;
+  const methodMatch = typeof endpointStr === 'string' ? endpointStr.match(/\[([A-Z]+)\]/) : null;
+  const method = methodMatch ? methodMatch[1] : (errObj?.method || 'LOCAL_MOCK');
+  const cleanEndpoint = typeof endpointStr === 'string' ? endpointStr.replace(/\s*\[[A-Z]+\]\s*/, '') : 'local';
+  const status = errObj?.status ? String(errObj.status) : 'MOCK';
+  logApiError(serviceName, cleanEndpoint, method, status, errObj);
 }
 
 export interface ApiRequestOptions extends RequestInit {
@@ -99,7 +112,7 @@ export interface ApiRequestOptions extends RequestInit {
 
 async function request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-  const timeoutMs = options.timeoutMs || 10000;
+  const timeoutMs = options.timeoutMs || 8000;
   const retryCount = options._retryCount || 0;
 
   // Retrieve current active token if not manually set
@@ -139,11 +152,33 @@ async function request<T>(endpoint: string, options: ApiRequestOptions = {}): Pr
       console.log(`\x1b[34m[API Request]\x1b[0m ${options.method || 'GET'} ${url}`);
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+    } catch (fetchErr: any) {
+      // If a USB-connected device in dev mode has Wi-Fi off and cannot reach the remote staging URL,
+      // automatically fall back to http://localhost:5000/api/v1 via adb reverse.
+      if (
+        typeof __DEV__ !== 'undefined' &&
+        __DEV__ &&
+        Platform.OS !== 'web' &&
+        !API_BASE_URL.includes('localhost') &&
+        !API_BASE_URL.includes('127.0.0.1')
+      ) {
+        const localUrl = `http://localhost:5000/api/v1${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+        response = await fetch(localUrl, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+      } else {
+        throw fetchErr;
+      }
+    }
 
     clearTimeout(id);
 
@@ -170,10 +205,12 @@ async function request<T>(endpoint: string, options: ApiRequestOptions = {}): Pr
         }
       }
 
-      // Refresh failed: clear token and notify context
-      setAuthToken(null);
-      if (onUnauthorizedCallback) {
-        onUnauthorizedCallback();
+      // Refresh failed: clear token and notify context only if we had an active token
+      if (authToken) {
+        setAuthToken(null);
+        if (onUnauthorizedCallback) {
+          onUnauthorizedCallback();
+        }
       }
     }
 

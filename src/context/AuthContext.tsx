@@ -1,5 +1,5 @@
 import { ROLES } from '@/constants/rbac';
-import { registerUnauthorizedCallback, setAuthToken } from '@/services/apiClient';
+import { registerUnauthorizedCallback, setActiveStoreId, setAuthToken } from '@/services/apiClient';
 import {
   AuthUser,
   LoginResult,
@@ -61,6 +61,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser>(MOCK_USERS.admin);
   const [authState, setAuthState] = useState<AuthState>('INITIALIZING');
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+
+  // Keep apiClient activeStoreId synchronized with the authenticated user's storeId
+  useEffect(() => {
+    if (
+      user?.storeId &&
+      user.storeId !== 'pending' &&
+      user.storeId !== 'unassigned' &&
+      !user.storeId.startsWith('store-mock-')
+    ) {
+      setActiveStoreId(user.storeId);
+    }
+  }, [user?.storeId]);
 
   // Initialize session & register state listeners
   useEffect(() => {

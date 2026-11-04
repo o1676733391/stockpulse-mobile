@@ -91,6 +91,16 @@ export class AuthController {
   }
 
   @Public()
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify and confirm pending user email and ensure tenant profile exists' })
+  async verifyEmail(
+    @Body('email') email: string,
+  ): Promise<{ verified: boolean; message: string }> {
+    return this.authService.verifyEmailByAddress(email);
+  }
+
+  @Public()
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Supabase Auth Webhook receiver for automatic user synchronization' })

@@ -1,15 +1,20 @@
 {
   "expo": {
-    "name": "stockpulse-temp",
-    "slug": "stockpulse-temp",
-    "version": "1.0.0",
+    "name": "StockPulse",
+    "slug": "stockpulse",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "stockpulse",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "io.stockpulse.app",
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "ch.tks-group.stockpulse",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow StockPulse to access your camera to scan POS receipts, goods delivery slips, and supplier invoices.",
+        "NSPhotoLibraryUsageDescription": "Allow StockPulse to access your photo library to import receipt and invoice photos.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "io.stockpulse.app",
@@ -35,7 +40,11 @@
           ]
         }
       ],
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -51,11 +60,29 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow StockPulse to access your camera to scan POS receipts, goods delivery slips, and supplier invoices."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow StockPulse to access your photo library to import receipt and invoice photos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b5dd8ffd-277b-4716-aab1-2a5db27a3175"
+      }
     }
   }
 }

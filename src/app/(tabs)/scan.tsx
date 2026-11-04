@@ -7,8 +7,8 @@ import { useI18n } from '@/i18n/I18nContext';
 import { OcrDocumentType } from '@/types/ocr';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ScanScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ initialType?: OcrDocumentType }>();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const { user } = useAuth();
@@ -28,7 +29,15 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [flash, setFlash] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [selectedInvoiceType, setSelectedInvoiceType] = useState<OcrDocumentType>('order_invoice');
+  const [selectedInvoiceType, setSelectedInvoiceType] = useState<OcrDocumentType>(
+    params.initialType || 'order_invoice'
+  );
+
+  useEffect(() => {
+    if (params.initialType && (params.initialType === 'goods_receipt' || params.initialType === 'order_invoice')) {
+      setSelectedInvoiceType(params.initialType);
+    }
+  }, [params.initialType]);
   const cameraRef = useRef<any>(null);
   const isIOS = Platform.OS === 'ios';
 

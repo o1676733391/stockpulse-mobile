@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  useWindowDimensions,
-  Platform,
-  TouchableOpacity,
-  Pressable,
-} from 'react-native';
-import { Colors, Spacing, Typography, Radius as BorderRadius } from '@/constants/theme';
 import { VectorIcon } from '@/components/ui/icons';
+import { Colors, Spacing } from '@/constants/theme';
+import React, { useState } from 'react';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 interface MobilePreviewContainerProps {
   children: React.ReactNode;
@@ -22,8 +22,8 @@ export function MobilePreviewContainer({ children }: MobilePreviewContainerProps
 
   const { width, height } = useWindowDimensions();
   const isWideWeb = Platform.OS === 'web' && width > 560;
-  
-  const [deviceMode, setDeviceMode] = useState<'phone' | 'max' | 'full'>('phone');
+
+  const [deviceMode, setDeviceMode] = useState<'phone' | 'max' | 'full'>('full');
   const [showHelper, setShowHelper] = useState(true);
 
   // If on actual mobile browser or user toggled full width

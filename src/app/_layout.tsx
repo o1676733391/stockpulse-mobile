@@ -5,18 +5,30 @@ import { Colors } from '@/constants/theme';
 import { AuthProvider } from '@/context/AuthContext';
 import { OfflineProvider } from '@/context/OfflineContext';
 import { I18nProvider } from '@/i18n/I18nContext';
+import { i18n } from '@/i18n/manager';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   useEffect(() => {
-    // Hide splash screen once mounted
-    SplashScreen.hideAsync().catch(() => {});
+    async function bootstrap() {
+      try {
+        console.log('[RootLayout] Initializing language settings...');
+        await i18n.init();
+      } catch (err) {
+        console.warn('[RootLayout] Bootstrap language error:', err);
+      } finally {
+        console.log('[RootLayout] Bootstrap complete, hiding splash screen...');
+        SplashScreen.hideAsync()
+          .then(() => console.log('[RootLayout] SplashScreen.hideAsync resolved'))
+          .catch((err) => console.warn('[RootLayout] SplashScreen.hideAsync error:', err));
+      }
+    }
+    void bootstrap();
   }, []);
 
   return (
@@ -43,9 +55,39 @@ export default function RootLayout() {
               <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
               <Stack.Screen name="reset-password" options={{ headerShown: false }} />
               <Stack.Screen name="account-disabled" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              <Stack.Screen name="store/join" options={{ headerShown: false, presentation: 'card' }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen
+                name="inventory/overview"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
                 name="inventory/[id]"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="inventory/invoices/index"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="inventory/delivery-notes/index"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="loss-logs/index"
                 options={{
                   headerShown: false,
                   presentation: 'card',
@@ -74,6 +116,62 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="recipes/edit"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="recipes/cost-calculator"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="recipes/batch-scaler"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="invoices/index"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="invoices/[id]"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="delivery-notes/index"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="delivery-notes/[id]"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="events/index"
+                options={{
+                  headerShown: false,
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="events/[id]"
                 options={{
                   headerShown: false,
                   presentation: 'card',
