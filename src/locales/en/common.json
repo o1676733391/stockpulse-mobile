@@ -30,6 +30,8 @@
     "overview": "Overview",
     "history": "History",
     "today": "Today",
+    "tomorrow": "Tomorrow",
+    "days": "Days",
     "yesterday": "Yesterday",
     "unit": "Unit",
     "quantity": "Quantity",
@@ -424,7 +426,12 @@
     "backToList": "Back to Expiration Alerts",
     "shortTitle": "Expiring",
     "daysLeftShort": "d left",
-    "tomorrow": "Tomorrow"
+    "tomorrow": "Tomorrow",
+    "markUsed": "Mark Used",
+    "adjust": "Adjust",
+    "valueAtRisk": "Value at risk",
+    "adjustQty": "Adjust quantity used",
+    "suggestion": "Suggestion"
   },
   "analytics": {
     "title": "Inventory Analytics & Reports",

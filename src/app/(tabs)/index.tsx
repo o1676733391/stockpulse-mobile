@@ -614,7 +614,12 @@ export default function DashboardScreen() {
                 <View style={[styles.actionIconBox, { backgroundColor: action.bg }]}>
                   <VectorIcon name={action.iconName as any} size={20} color={action.iconColor} />
                 </View>
-                <Text style={styles.actionLabel} numberOfLines={2}>
+                <Text
+                  style={styles.actionLabel}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
                   {action.label}
                 </Text>
               </Pressable>
@@ -752,8 +757,14 @@ export default function DashboardScreen() {
                               : Colors.warning.dark,
                         },
                       ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
                     >
-                      {t('common.date')}
+                      {item.days === 0
+                        ? t('common.today')
+                        : item.days === 1
+                        ? t('common.tomorrow')
+                        : t('common.days')}
                     </Text>
                   </View>
 

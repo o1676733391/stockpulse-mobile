@@ -30,6 +30,8 @@
     "overview": "Resumen",
     "history": "Historial",
     "today": "Hoy",
+    "tomorrow": "Mañana",
+    "days": "Días",
     "yesterday": "Ayer",
     "unit": "Unidad",
     "quantity": "Cantidad",
@@ -136,12 +138,12 @@
     "claimInvite": "Unirse con código",
     "quickRoleSelect": "Acceso rápido por rol",
     "quickRoleSelectSub": "Toque un rol para rellenar credenciales",
-    "signOut": "Sign Out",
-    "signOutFrom": "Sign Out from {{store}}",
-    "forgotPassword": "Forgot Password?",
-    "forgotPasswordLink": "Forgot Password?",
-    "yourName": "Your Name",
-    "setPassword": "Set Password (min. 6 characters)"
+    "signOut": "Cerrar sesión",
+    "signOutFrom": "Cerrar sesión en {{store}}",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "forgotPasswordLink": "¿Olvidó su contraseña?",
+    "yourName": "Su nombre completo",
+    "setPassword": "Establecer contraseña (mín. 6 caracteres)"
   },
   "dashboard": {
     "welcome": "Bienvenido, {{name}}",
@@ -191,13 +193,13 @@
     },
     "noTasks": "Todas las tareas de inventario están completadas por hoy.",
     "actions": {
-      "stockCount": "Stock Count",
-      "scanReceipt": "Scan Receipt",
-      "createPo": "Create PO",
-      "expiryAlerts": "Expiry Alerts"
+      "stockCount": "Contar stock",
+      "scanReceipt": "Escanear ticket",
+      "createPo": "Crear pedido",
+      "expiryAlerts": "Caducidades"
     },
-    "noExpiringBatches": "No batches expiring within the next 7 days",
-    "noRecentActivities": "No recent activities recorded"
+    "noExpiringBatches": "No hay lotes que caduquen en los próximos 7 días",
+    "noRecentActivities": "No hay actividades recientes registradas"
   },
   "inventory": {
     "title": "Gestión de Inventario",
@@ -227,7 +229,7 @@
       "low": "Stock bajo",
       "critical": "Crítico",
       "overstock": "Exceso",
-      "expiry": "Expiring Soon"
+      "expiry": "Próximo a caducar"
     },
     "categories": {
       "all": "Todos los artículos",
@@ -408,13 +410,18 @@
     },
     "noItemsInCategory": "No items in this category",
     "noItemsInCategorySub": "All stock items in this range are healthy",
-    "batchExpiringTomorrow": "Batch Expiring Tomorrow",
-    "batchesExpiringSoon": "Batches Expiring Soon",
-    "promoLossSub": "{{value}} potential loss. Promo discount recommended.",
-    "backToList": "Back to Expiration Alerts",
-    "shortTitle": "Expiring",
-    "daysLeftShort": "d left",
-    "tomorrow": "Tomorrow"
+    "batchExpiringTomorrow": "Lote caduca mañana",
+    "batchesExpiringSoon": "Lotes próximos a caducar",
+    "promoLossSub": "{{value}} pérdida potencial. Descuento promocional recomendado.",
+    "backToList": "Volver a Caducidades",
+    "shortTitle": "Caducidades",
+    "daysLeftShort": "d restantes",
+    "tomorrow": "Mañana",
+    "markUsed": "Marcar como consumido",
+    "adjust": "Ajustar",
+    "valueAtRisk": "Valor en riesgo",
+    "adjustQty": "Ajustar cantidad consumida",
+    "suggestion": "Sugerencia"
   },
   "analytics": {
     "title": "Informes y Análisis de existencias",
@@ -992,44 +999,44 @@
     }
   },
   "stockMetric": {
-    "actualIs": "IS",
-    "targetShould": "SHOULD",
-    "varianceDiff": "DIFF"
+    "actualIs": "REAL",
+    "targetShould": "TEÓRICO",
+    "varianceDiff": "DIF."
   },
   "desktopNotice": {
-    "badge": "PC / Mac & Mobile",
-    "title": "Also Accessible on Computer (PC / Mac)",
-    "description": "Note: The manager or authorized person can also open StockPulse on a computer to comfortably create and manage recipes, articles, and upper groups.",
-    "compact": "Note: Managers & authorized personnel can also open the app on a computer (PC/Mac) to create recipes, articles & upper groups.",
-    "openDesktopMode": "Full Computer View Active"
+    "badge": "PC / Mac y Móvil",
+    "title": "También disponible en ordenador (PC / Mac)",
+    "description": "Nota: Los encargados y personal autorizado pueden abrir StockPulse en su ordenador para crear o gestionar recetas, artículos y grupos superiores.",
+    "compact": "Nota: Encargados y personal autorizado pueden abrir la app en un ordenador (PC/Mac) para crear recetas, artículos y grupos superiores.",
+    "openDesktopMode": "Vista de ordenador en pantalla completa activa"
   },
   "upperGroups": {
-    "title": "Manage Upper Groups",
-    "subtitle": "Define your own upper groups (e.g. Drinks, Bar, Spirits, Food)",
-    "label": "Upper Group / Category",
-    "selectOrCreate": "Select upper group or create your own",
-    "addButton": "+ Upper Group",
-    "createNew": "+ Create Custom Upper Group",
-    "modalTitle": "Create Custom Upper Group",
-    "modalSubtitle": "Define your own upper groups freely — e.g. for drinks, bar, wine list, or kitchen stations.",
-    "nameLabel": "Upper Group Name",
-    "namePlaceholder": "e.g. Drinks, Cocktails & Bar, Draft Beer, Desserts...",
-    "typeLabel": "Department / Type",
-    "typeFood": "Food & Kitchen",
-    "typeDrinks": "Drinks & Bar",
-    "typeOther": "Other / General",
-    "saveGroup": "Save Upper Group",
-    "existingGroups": "Available Upper Groups",
-    "customBadge": "Custom",
-    "defaultBadge": "Default",
-    "deleteConfirm": "Remove upper group",
-    "createdSuccess": "Upper group \"{{name}}\" created and selected.",
-    "shortButton": "Groups"
+    "title": "Gestionar grupos superiores",
+    "subtitle": "Defina sus propios grupos (p. ej. Bebidas, Bar, Licores, Cocina)",
+    "label": "Grupo superior / Categoría",
+    "selectOrCreate": "Seleccione un grupo o cree uno nuevo",
+    "addButton": "+ Grupo superior",
+    "createNew": "+ Crear grupo superior propio",
+    "modalTitle": "Crear grupo superior propio",
+    "modalSubtitle": "Defina sus propios grupos libremente, p. ej. para bebidas, coctelería, carta de vinos o áreas de cocina.",
+    "nameLabel": "Nombre del grupo superior",
+    "namePlaceholder": "p. ej. Bebidas, Coctelería, Cerveza de barril, Postres...",
+    "typeLabel": "Área / Tipo",
+    "typeFood": "Comida y Cocina",
+    "typeDrinks": "Bebidas y Bar",
+    "typeOther": "Otros / General",
+    "saveGroup": "Guardar grupo superior",
+    "existingGroups": "Grupos superiores existentes",
+    "customBadge": "Personalizado",
+    "defaultBadge": "Estándar",
+    "deleteConfirm": "Eliminar grupo superior",
+    "createdSuccess": "El grupo «{{name}}» ha sido creado y seleccionado.",
+    "shortButton": "Grupos"
   },
   "inventoryHub": {
-    "title": "Inventory & Kitchen",
-    "subtitle": "Manage stock, recipes, invoices, deliveries & events",
-    "DesktopHint": "Managers & authorized personnel can also open StockPulse on a computer (PC/Mac) to create recipes, articles, and upper groups.",
+    "title": "Inventario y Cocina",
+    "subtitle": "Control de stock, recetas, facturas, albaranes y eventos",
+    "DesktopHint": "Encargados y personal autorizado pueden gestionar artículos, grupos y recetas directamente en el ordenador (PC/Mac).",
     "cards": {
       "stockItemsTitle": "Stock Items & Upper Groups",
       "stockItemsSub": "Raw ingredients, drinks, custom upper groups, BBD batches & stock counts",

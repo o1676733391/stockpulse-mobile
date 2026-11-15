@@ -30,6 +30,8 @@
     "overview": "Übersicht",
     "history": "Verlauf",
     "today": "Heute",
+    "tomorrow": "Morgen",
+    "days": "Tage",
     "yesterday": "Gestern",
     "unit": "Einheit",
     "quantity": "Menge",
@@ -161,7 +163,7 @@
       "stockCount": "Bestand zählen",
       "scanReceipt": "Beleg scannen",
       "createPo": "Bestellung aufgeben",
-      "expiryAlerts": "MHD-Warnungen"
+      "expiryAlerts": "MHD & Ablauf"
     },
     "kpis": {
       "totalValuation": "Gesamtlagerwert",
@@ -424,7 +426,12 @@
     "backToList": "Zurück zu MHD-Warnungen",
     "shortTitle": "MHD & Ablauf",
     "daysLeftShort": "T. verbl.",
-    "tomorrow": "Morgen"
+    "tomorrow": "Morgen",
+    "markUsed": "Als verbraucht buchen",
+    "adjust": "Anpassen",
+    "valueAtRisk": "Gefährdeter Wert",
+    "adjustQty": "Verbrauchte Menge anpassen",
+    "suggestion": "Vorschlag"
   },
   "analytics": {
     "title": "Lageranalysen & Berichte",

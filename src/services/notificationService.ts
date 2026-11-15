@@ -275,13 +275,61 @@ export class RealNotificationService implements INotificationService {
 
 export const notificationService: INotificationService = new RealNotificationService();
 
+function translateRelativeTimeString(timeStr: string, language: SupportedLanguage): string {
+  if (!timeStr) return language === 'de' ? 'Heute' : language === 'es' ? 'Hoy' : language === 'fr' ? "Aujourd'hui" : language === 'it' ? 'Oggi' : 'Today';
+  const trimmed = timeStr.trim();
+  if (language === 'de') {
+    if (/^just now$/i.test(trimmed)) return 'Gerade eben';
+    if (/^today$/i.test(trimmed)) return 'Heute';
+    if (/^yesterday$/i.test(trimmed)) return 'Gestern';
+    const dMatch = trimmed.match(/^(\d+)\s*d(\s*ago)?$/i);
+    if (dMatch) return `vor ${dMatch[1]} Tagen`;
+    const hMatch = trimmed.match(/^(\d+)\s*h(\s*ago)?$/i);
+    if (hMatch) return `vor ${hMatch[1]} Std.`;
+    const mMatch = trimmed.match(/^(\d+)\s*m(\s*ago)?$/i);
+    if (mMatch) return `vor ${mMatch[1]} Min.`;
+  } else if (language === 'es') {
+    if (/^just now$/i.test(trimmed)) return 'Ahora';
+    if (/^today$/i.test(trimmed)) return 'Hoy';
+    if (/^yesterday$/i.test(trimmed)) return 'Ayer';
+    const dMatch = trimmed.match(/^(\d+)\s*d(\s*ago)?$/i);
+    if (dMatch) return `hace ${dMatch[1]} d`;
+    const hMatch = trimmed.match(/^(\d+)\s*h(\s*ago)?$/i);
+    if (hMatch) return `hace ${hMatch[1]} h`;
+    const mMatch = trimmed.match(/^(\d+)\s*m(\s*ago)?$/i);
+    if (mMatch) return `hace ${mMatch[1]} min`;
+  } else if (language === 'fr') {
+    if (/^just now$/i.test(trimmed)) return "À l'instant";
+    if (/^today$/i.test(trimmed)) return "Aujourd'hui";
+    if (/^yesterday$/i.test(trimmed)) return 'Hier';
+    const dMatch = trimmed.match(/^(\d+)\s*d(\s*ago)?$/i);
+    if (dMatch) return `il y a ${dMatch[1]} j`;
+    const hMatch = trimmed.match(/^(\d+)\s*h(\s*ago)?$/i);
+    if (hMatch) return `il y a ${hMatch[1]} h`;
+    const mMatch = trimmed.match(/^(\d+)\s*m(\s*ago)?$/i);
+    if (mMatch) return `il y a ${mMatch[1]} min`;
+  } else if (language === 'it') {
+    if (/^just now$/i.test(trimmed)) return 'Proprio ora';
+    if (/^today$/i.test(trimmed)) return 'Oggi';
+    if (/^yesterday$/i.test(trimmed)) return 'Ieri';
+    const dMatch = trimmed.match(/^(\d+)\s*d(\s*ago)?$/i);
+    if (dMatch) return `${dMatch[1]} d fa`;
+    const hMatch = trimmed.match(/^(\d+)\s*h(\s*ago)?$/i);
+    if (hMatch) return `${hMatch[1]} ore fa`;
+    const mMatch = trimmed.match(/^(\d+)\s*m(\s*ago)?$/i);
+    if (mMatch) return `${mMatch[1]} min fa`;
+  }
+  return trimmed;
+}
+
 export function localizeNotification(
   notification: AppNotification,
   language: SupportedLanguage = i18n ? i18n.getLanguage() : 'en'
 ): { title: string; body: string; time: string } {
-  const time = notification.timestamp
+  const rawTime = notification.timestamp
     ? formatTimestampRelative(notification.timestamp, language)
-    : notification.time || (language === 'de' ? 'Heute' : 'Today');
+    : notification.time;
+  const time = translateRelativeTimeString(rawTime || '', language);
 
   const rawTitle = notification.title || '';
   const rawBody = notification.body || '';

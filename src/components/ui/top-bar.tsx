@@ -60,7 +60,12 @@ export function TopBar({
 
           {!large && (
             <View style={styles.iosCenterSlot} pointerEvents="none">
-              <Text style={styles.iosTitle} numberOfLines={1}>
+              <Text
+                style={styles.iosTitle}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
                 {title}
               </Text>
               {subtitle && (
@@ -100,10 +105,27 @@ export function TopBar({
           )}
 
           <View style={styles.androidTitleContainer}>
-            <Text style={large ? Typography.display : Typography.pageTitle} numberOfLines={1}>
+            <Text
+              style={[
+                large && !handleBack ? Typography.display : Typography.pageTitle,
+                styles.androidTitleText,
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               {title}
             </Text>
-            {subtitle && <Text style={styles.subtitleText} numberOfLines={1}>{subtitle}</Text>}
+            {subtitle && (
+              <Text
+                style={styles.subtitleText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
+                {subtitle}
+              </Text>
+            )}
           </View>
 
           {right && <View style={styles.androidRightSlot}>{right}</View>}
@@ -214,5 +236,8 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.neutral.textSecondary,
     marginTop: 2,
+  },
+  androidTitleText: {
+    color: Colors.neutral.textPrimary,
   },
 });

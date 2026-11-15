@@ -39,13 +39,37 @@ function formatDateStr(dateStr?: string): string {
 export default function ExpirationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t } = useI18n();
+  const { t, formatCurrency } = useI18n();
 
   const daysLabel = (days: number) => {
     if (days < 0) return t('expiration.expired', { defaultValue: 'Abgelaufen' });
     if (days === 0) return t('common.today');
     if (days === 1) return t('common.tomorrow', { defaultValue: 'Morgen' });
     return t('expiration.daysLeft', { count: days, defaultValue: `Noch ${days} Tage` });
+  };
+
+  const formatExpiryStatus = (days: number) => {
+    if (days < 0) {
+      return Math.abs(days) === 1
+        ? t('inventory.expiredAgo_one', { count: 1 })
+        : t('inventory.expiredAgo_other', { count: Math.abs(days) });
+    }
+    if (days === 0) return t('common.today');
+    if (days === 1) return t('common.tomorrow');
+    return days === 1
+      ? t('inventory.daysRemaining_one', { count: 1 })
+      : t('inventory.daysRemaining_other', { count: days });
+  };
+
+  const tabLabel = (tabKey: TabType) => {
+    switch (tabKey) {
+      case 'Critical':
+        return t('inventory.statusLabels.critical') || 'Kritisch';
+      case 'Soon':
+        return t('inventory.statusLabels.expiry') || t('expiration.shortTitle') || 'Läuft bald ab';
+      case 'All':
+        return t('common.all') || 'Alle';
+    }
   };
 
   const [items, setItems] = useState<ExpiryItem[]>([]);
@@ -162,8 +186,8 @@ export default function ExpirationScreen() {
             <VectorIcon name="AlertTriangle" size={14} color={Colors.critical.main} />
             <Text style={styles.riskBannerText}>
               {t('expiration.totalRiskText', {
-                value: `€${totalValueAtRisk.toFixed(2)}`,
-                defaultValue: `Gesamter gefährdeter Wert: €${totalValueAtRisk.toFixed(2)} in den nächsten 7 Tagen`,
+                value: formatCurrency(totalValueAtRisk),
+                defaultValue: `Gesamter gefährdeter Wert: ${formatCurrency(totalValueAtRisk)} in den nächsten 7 Tagen`,
               })}
             </Text>
           </View>
@@ -189,7 +213,7 @@ export default function ExpirationScreen() {
                     isSelected ? styles.tabChipTextSelected : styles.tabChipTextUnselected,
                   ]}
                 >
-                  {t}
+                  {tabLabel(t)}
                 </Text>
                 {t === 'Critical' && criticalCount > 0 && (
                   <View style={styles.criticalCountBadge}>
@@ -259,13 +283,7 @@ export default function ExpirationScreen() {
                       color={isCritical ? Colors.critical.main : Colors.warning.dark}
                     />
                     <Text style={styles.bbdDateText}>
-                      {item.days < 0
-                        ? 'Expired'
-                        : item.days === 0
-                        ? 'Expires today'
-                        : item.days === 1
-                        ? 'Expires tomorrow'
-                        : `Expires in ${item.days} days`}
+                      {formatExpiryStatus(item.days)}
                       {' · '}
                       <Text style={styles.bbdDateBold}>{formatDateStr(item.expiryDate)}</Text>
                     </Text>
@@ -289,15 +307,15 @@ export default function ExpirationScreen() {
                 {/* Value at Risk Bar */}
                 <View style={styles.valueRow}>
                   <Text style={styles.valueLabel}>
-                    Value at risk:{' '}
-                    <Text style={styles.valueBold}>€{item.value.toFixed(2)}</Text>
+                    {t('expiration.valueAtRisk', { defaultValue: 'Gefährdeter Wert' })}:{' '}
+                    <Text style={styles.valueBold}>{formatCurrency(item.value)}</Text>
                   </Text>
                 </View>
 
                 {/* Inline Stepper Adjustment Box */}
                 {isAdjusting ? (
                   <View style={styles.adjustContainer}>
-                    <Text style={styles.adjustTitle}>Adjust quantity used</Text>
+                    <Text style={styles.adjustTitle}>{t('expiration.adjustQty', { defaultValue: 'Verbrauchte Menge anpassen' })}</Text>
                     <View style={styles.stepperRow}>
                       <Pressable
                         onPress={() => setAdjustQty((q) => Math.max(0, parseFloat((q - 0.5).toFixed(1))))}
@@ -324,7 +342,7 @@ export default function ExpirationScreen() {
                         onPress={() => setAdjustingId(null)}
                         style={styles.adjustCancelBtn}
                       >
-                        <Text style={styles.adjustCancelBtnText}>Cancel</Text>
+                        <Text style={styles.adjustCancelBtnText}>{t('common.cancel')}</Text>
                       </Pressable>
 
                       <Pressable
@@ -335,7 +353,7 @@ export default function ExpirationScreen() {
                           adjustQty === 0 && styles.btnDisabled,
                         ]}
                       >
-                        <Text style={styles.adjustConfirmBtnText}>Confirm</Text>
+                        <Text style={styles.adjustConfirmBtnText}>{t('common.confirm')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -353,7 +371,7 @@ export default function ExpirationScreen() {
                         style={({ pressed }) => [styles.suggestionBtn, pressed && styles.pressed]}
                       >
                         <VectorIcon name="Lightbulb" size={13} color={Colors.brand.dark} />
-                        <Text style={styles.suggestionBtnText}>Suggestion</Text>
+                        <Text style={styles.suggestionBtnText}>{t('expiration.suggestion', { defaultValue: 'Vorschlag' })}</Text>
                       </Pressable>
                     )}
 
@@ -364,14 +382,14 @@ export default function ExpirationScreen() {
                       }}
                       style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
                     >
-                      <Text style={styles.secondaryActionText}>Adjust</Text>
+                      <Text style={styles.secondaryActionText}>{t('expiration.adjust', { defaultValue: 'Anpassen' })}</Text>
                     </Pressable>
 
                     <Pressable
                       onPress={() => handleMarkUsed(item.id)}
                       style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
                     >
-                      <Text style={styles.secondaryActionText}>Mark Used</Text>
+                      <Text style={styles.secondaryActionText}>{t('expiration.markUsed', { defaultValue: 'Als verbraucht buchen' })}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -383,7 +401,7 @@ export default function ExpirationScreen() {
         {/* ── Expired Items Section (Critical / All tab) ── */}
         {(tab === 'Critical' || tab === 'All') && expiredItems.length > 0 && (
           <View style={styles.expiredSection}>
-            <SectionHeader title="Expired Items" />
+            <SectionHeader title={t('lossLogs.foodLossSpoilage', { defaultValue: 'Abgelaufene Artikel' })} />
             {expiredItems.map((exp) => (
               <Card key={exp.id} urgencyColor={Colors.neutral.textTertiary} style={styles.expiredCard}>
                 <View style={styles.expiredRow}>
@@ -394,7 +412,7 @@ export default function ExpirationScreen() {
                   <View style={styles.expiredInfo}>
                     <Text style={styles.expiredName}>{exp.name}</Text>
                     <Text style={styles.expiredSub}>
-                      Batch #{exp.batch} · {exp.qty} · Expired {exp.expiryDate}
+                      {t('common.batch')}: #{exp.batch} · {exp.qty} · {t('expiration.expired', { defaultValue: 'Abgelaufen' })}: {formatDateStr(exp.expiryDate)}
                     </Text>
                   </View>
 

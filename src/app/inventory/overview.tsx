@@ -223,22 +223,21 @@ export default function InventoryListScreen() {
               style={({ pressed }) => [styles.importHeaderBtn, pressed && styles.pressed]}
               accessibilityLabel="Excel oder PDF importieren"
             >
-              <VectorIcon name="FileSpreadsheet" size={13} color="#059669" />
-              <Text style={styles.importHeaderText}>Import</Text>
+              <VectorIcon name="FileSpreadsheet" size={15} color="#059669" />
             </Pressable>
             <Pressable
               onPress={() => setShowUpperGroupModal(true)}
               style={({ pressed }) => [styles.upperGroupHeaderBtn, pressed && styles.pressed]}
               accessibilityLabel={t('upperGroups.addButton')}
             >
-              <VectorIcon name="Layers" size={13} color={Colors.brand.dark} />
-              <Text style={styles.upperGroupHeaderText}>{t('upperGroups.shortButton') || 'Gruppen'}</Text>
+              <VectorIcon name="Layers" size={15} color={Colors.brand.dark} />
             </Pressable>
             <Pressable
               onPress={() => setShowAddModal(true)}
               style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+              accessibilityLabel={t('inventory.addItem')}
             >
-              <VectorIcon name="Plus" size={20} color={Colors.neutral.textPrimary} strokeWidth={2.4} />
+              <VectorIcon name="Plus" size={18} color="#FFFFFF" strokeWidth={2.6} />
             </Pressable>
           </View>
         }
@@ -761,36 +760,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   importHeaderBtn: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
     backgroundColor: '#f0fdf4',
     borderWidth: 1,
     borderColor: '#bbf7d0',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: Radius.full,
-  },
-  importHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#059669',
+    borderRadius: 16,
   },
   upperGroupHeaderBtn: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
     backgroundColor: Colors.brand.subtle,
     borderWidth: 1,
     borderColor: Colors.brand.light,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: Radius.full,
-  },
-  upperGroupHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.brand.dark,
+    borderRadius: 16,
   },
   headerBtn: {
     width: 32,
@@ -798,9 +785,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.neutral.surface,
-    borderWidth: 1,
-    borderColor: Colors.neutral.borderLight,
+    backgroundColor: Colors.brand.primary,
   },
   filterBar: {
     backgroundColor: Colors.neutral.card,
