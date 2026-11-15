@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   RefreshControl,
@@ -27,6 +28,11 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  pickAndRecognizeDocument,
+  DocumentRecognitionResult,
+} from '@/services/documentRecognitionService';
+import { DocumentRecognitionModal } from '@/components/ui/document-recognition-modal';
 
 type StatusFilterId = 'all' | 'low' | 'expiry' | 'overstock';
 
@@ -62,6 +68,18 @@ export default function InventoryListScreen() {
   const [showUpperGroupModal, setShowUpperGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState<'drinks' | 'food'>('drinks');
+  const [recognitionResult, setRecognitionResult] = useState<DocumentRecognitionResult | null>(null);
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await pickAndRecognizeDocument();
+      if (result) {
+        setRecognitionResult(result);
+      }
+    } catch (err: any) {
+      Alert.alert('Fehler', 'Dokument konnte nicht geöffnet werden');
+    }
+  };
 
   const loadUpperGroups = useCallback(async () => {
     const groups = await upperGroupService.getAllGroups();
@@ -128,23 +146,29 @@ export default function InventoryListScreen() {
   const filtered = useMemo(() => {
     return items
       .filter((item) => {
-        const localizedCat = upperGroupService.translateCategory(item.category, language);
+        if (!item) return false;
+        const name = (item.name || '').toLowerCase();
+        const sku = (item.sku || '').toLowerCase();
+        const rawCat = item.category || '';
+        const localizedCat = (upperGroupService.translateCategory(rawCat, language) || '').toLowerCase();
+        const q = query.trim().toLowerCase();
+
         const matchesQuery =
-          !query.trim() ||
-          item.name.toLowerCase().includes(query.toLowerCase()) ||
-          item.sku.toLowerCase().includes(query.toLowerCase()) ||
-          item.category.toLowerCase().includes(query.toLowerCase()) ||
-          localizedCat.toLowerCase().includes(query.toLowerCase());
+          !q ||
+          name.includes(q) ||
+          sku.includes(q) ||
+          rawCat.toLowerCase().includes(q) ||
+          localizedCat.includes(q);
 
         const matchesCategory =
           selectedGroupId === 'all' ||
-          upperGroupService.matchesGroup(item.category, selectedGroupId);
+          upperGroupService.matchesGroup(rawCat, selectedGroupId);
 
         let matchesStatus = true;
         if (statusFilterId === 'low') {
           matchesStatus = item.status === 'low' || item.status === 'critical';
         } else if (statusFilterId === 'expiry') {
-          matchesStatus = (item.batches || []).some((b) => b.daysRemaining <= 7);
+          matchesStatus = Array.isArray(item.batches) && item.batches.some((b) => (b?.daysRemaining ?? 99) <= 7);
         } else if (statusFilterId === 'overstock') {
           matchesStatus = item.status === 'overstock';
         }
@@ -152,26 +176,29 @@ export default function InventoryListScreen() {
         return matchesQuery && matchesCategory && matchesStatus;
       })
       .sort((a, b) => {
-        if (sort === 'Physical') return b.physicalStock - a.physicalStock;
+        if (!a || !b) return 0;
+        if (sort === 'Physical') return (b.physicalStock ?? 0) - (a.physicalStock ?? 0);
         if (sort === 'Expiry') {
-          const minA = a.batches && a.batches.length > 0 ? Math.min(...a.batches.map((x) => x.daysRemaining)) : 999;
-          const minB = b.batches && b.batches.length > 0 ? Math.min(...b.batches.map((x) => x.daysRemaining)) : 999;
+          const batchesA = Array.isArray(a.batches) ? a.batches : [];
+          const batchesB = Array.isArray(b.batches) ? b.batches : [];
+          const minA = batchesA.length > 0 ? Math.min(...batchesA.map((x) => x?.daysRemaining ?? 999)) : 999;
+          const minB = batchesB.length > 0 ? Math.min(...batchesB.map((x) => x?.daysRemaining ?? 999)) : 999;
           return minA - minB;
         }
-        return a.name.localeCompare(b.name);
+        return (a.name || '').localeCompare(b.name || '');
       });
   }, [items, query, selectedGroupId, statusFilterId, sort, language]);
 
   const totalValue = useMemo(() => {
     return filtered.reduce(
-      (sum, item) => sum + item.physicalStock * item.costPerUnit,
+      (sum, item) => sum + (Number(item?.physicalStock) || 0) * (Number(item?.costPerUnit) || 0),
       0
     );
   }, [filtered]);
 
   const alertCount = useMemo(() => {
     return items.filter(
-      (item) => item.status === 'critical' || item.status === 'low'
+      (item) => item && (item.status === 'critical' || item.status === 'low')
     ).length;
   }, [items]);
 
@@ -191,6 +218,14 @@ export default function InventoryListScreen() {
         large
         right={
           <View style={styles.headerActions}>
+            <Pressable
+              onPress={handlePickDocument}
+              style={({ pressed }) => [styles.upperGroupHeaderBtn, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }, pressed && styles.pressed]}
+              accessibilityLabel="Excel oder PDF importieren"
+            >
+              <VectorIcon name="FileSpreadsheet" size={14} color="#059669" />
+              <Text style={[styles.upperGroupHeaderText, { color: '#059669' }]}>Import</Text>
+            </Pressable>
             <Pressable
               onPress={() => setShowUpperGroupModal(true)}
               style={({ pressed }) => [styles.upperGroupHeaderBtn, pressed && styles.pressed]}
@@ -375,17 +410,22 @@ export default function InventoryListScreen() {
         )}
 
         {filtered.map((item) => {
-          const variance = item.physicalStock - item.theoreticalStock;
-          const variancePct = item.theoreticalStock > 0 ? (variance / item.theoreticalStock) * 100 : 0;
+          if (!item) return null;
+          const physical = Number(item.physicalStock ?? 0);
+          const theoretical = Number(item.theoreticalStock ?? 0);
+          const variance = physical - theoretical;
+          const variancePct = theoretical > 0 ? (variance / theoretical) * 100 : 0;
           const needsReview = Math.abs(variancePct) > 5;
-          const batches = item.batches || [];
-          const nearExpiry = batches.some((b) => (b.daysRemaining ?? 99) <= 7);
+          const batches = Array.isArray(item.batches) ? item.batches : [];
+          const nearExpiry = batches.some((b) => (b?.daysRemaining ?? 99) <= 7);
           const minDays = nearExpiry && batches.length > 0
-            ? Math.min(...batches.map((b) => b.daysRemaining ?? 99))
+            ? Math.min(...batches.map((b) => b?.daysRemaining ?? 99))
             : 99;
 
-          const { label, variant } = STATUS_BADGE[item.status] || STATUS_BADGE.healthy;
-          const localizedCategory = upperGroupService.translateCategory(item.category, language);
+          const badgeDef = (item.status && STATUS_BADGE[item.status]) || STATUS_BADGE.healthy || { label: 'Optimal', variant: 'green' as BadgeVariant };
+          const label = badgeDef.label || 'Optimal';
+          const variant = badgeDef.variant || 'green';
+          const localizedCategory = upperGroupService.translateCategory(item.category || '', language);
 
           const urgencyColor =
             item.status === 'critical'
@@ -451,11 +491,21 @@ export default function InventoryListScreen() {
             </View>
             <Text style={styles.emptyTitle}>{t('inventory.emptyState')}</Text>
             <Text style={styles.emptySub}>{t('inventory.emptyStateDesc')}</Text>
-            <View style={{ marginTop: Spacing.sm }}>
+            <View style={{ marginTop: Spacing.md, gap: Spacing.sm, width: '100%', maxWidth: 280, alignItems: 'center' }}>
+              <Button
+                label="Excel / PDF Katalog importieren"
+                variant="primary"
+                size="md"
+                icon="FileSpreadsheet"
+                fullWidth
+                onPress={handlePickDocument}
+              />
               <Button
                 label={t('itemModal.addTitle')}
-                variant="primary"
+                variant="outline"
                 size="sm"
+                icon="Plus"
+                fullWidth
                 onPress={() => setShowAddModal(true)}
               />
             </View>
@@ -667,6 +717,33 @@ export default function InventoryListScreen() {
           loadUpperGroups();
         }}
       />
+
+      {/* ── Auto-Recognition & Auto-Assignment Modal ── */}
+      {recognitionResult && (
+        <DocumentRecognitionModal
+          visible={Boolean(recognitionResult)}
+          recognition={recognitionResult}
+          onClose={() => setRecognitionResult(null)}
+          onAssigned={async (res) => {
+            setRecognitionResult(null);
+            await Promise.all([fetchItems(), loadUpperGroups()]);
+            Alert.alert(
+              res.success ? 'Erfolgreich zugewiesen' : 'Hinweis',
+              res.message,
+              [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    if (res.targetRoute !== '/inventory/overview') {
+                      router.push(res.targetRoute as any);
+                    }
+                  },
+                },
+              ]
+            );
+          }}
+        />
+      )}
     </View>
   );
 }

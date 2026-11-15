@@ -160,9 +160,12 @@ export function LineChart({
   width = 300,
   height = 120,
 }: LineChartProps) {
-  if (!physical || physical.length < 2) return null;
+  if (!physical || !Array.isArray(physical) || physical.length < 2) return null;
 
-  const all = [...physical, ...theoretical];
+  const phys = physical.map((v) => Number(v) || 0);
+  const theo = Array.isArray(theoretical) ? theoretical.map((v) => Number(v) || 0) : [];
+  const all = [...phys, ...theo];
+  if (all.length === 0) return null;
   const min = Math.min(...all) - 2;
   const max = Math.max(...all) + 2;
   const range = max - min || 1;

@@ -397,6 +397,9 @@
       "discard": "Log Spoilage Waste"
     },
     "potentialLoss": "Potential Spoilage Loss: {{value}}",
+    "batchExpiringTomorrow": "Batch Expiring Tomorrow",
+    "batchesExpiringSoon": "Batches Expiring Soon",
+    "promoLossSub": "{{value}} potential loss. Promo discount recommended.",
     "urgentAction": "Urgent Action Needed",
     "actions": {
       "reduceWaste": "Waste Reduction Strategy",
@@ -1128,17 +1131,17 @@
       },
       "weekly": {
         "label": "Weekly",
-        "badge": "",
+        "badge": "Standard",
         "desc": "Count every week — suitable for most restaurants"
       },
       "monthly": {
         "label": "Monthly",
-        "badge": "",
+        "badge": "Extended",
         "desc": "Full monthly inventory — lower frequency operations"
       },
       "quarterly": {
         "label": "Quarterly",
-        "badge": "",
+        "badge": "Audit",
         "desc": "Quarterly audit — for low-turnover inventory"
       }
     },

@@ -10,6 +10,7 @@ export interface IInventoryService {
   archiveItem(id: string): Promise<void>;
   deleteItem(id: string): Promise<void>;
   getCategories(): Promise<Array<{ id: string; name: string }>>;
+  bulkImportItems(items: Array<Partial<InventoryItem>>): Promise<number>;
 }
 
 export function normalizeInventoryItem(raw: any): InventoryItem {
@@ -263,6 +264,20 @@ export class RealInventoryService implements IInventoryService {
 
   async deleteItem(id: string): Promise<void> {
     return this.archiveItem(id);
+  }
+
+  async bulkImportItems(items: Array<Partial<InventoryItem>>): Promise<number> {
+    let count = 0;
+    for (const item of items) {
+      if (!item.name) continue;
+      try {
+        await this.createItem(item);
+        count++;
+      } catch (err) {
+        logDebugFallback('InventoryService', 'bulkImportItem', err);
+      }
+    }
+    return count;
   }
 
   async getCategories(): Promise<Array<{ id: string; name: string }>> {

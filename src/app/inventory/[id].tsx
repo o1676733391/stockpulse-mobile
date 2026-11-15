@@ -119,13 +119,15 @@ export default function InventoryDetailScreen() {
     );
   }
 
-  const variance = item.physicalStock - item.theoreticalStock;
-  const variancePct = item.theoreticalStock > 0 ? (variance / item.theoreticalStock) * 100 : 0;
-  const recommended = Math.max(0, item.targetStock - item.physicalStock + item.safetyStock);
+  const phys = Number(item.physicalStock ?? 0);
+  const theo = Number(item.theoreticalStock ?? 0);
+  const variance = isNaN(phys - theo) ? 0 : phys - theo;
+  const variancePct = theo > 0 ? (variance / theo) * 100 : 0;
+  const recommended = Math.max(0, (Number(item.targetStock) || 0) - phys + (Number(item.safetyStock) || 0));
 
   const trendData = useMemo(() => {
-    const base = item.physicalStock;
-    const theo = item.theoreticalStock;
+    const base = Number(item.physicalStock) || 0;
+    const theoVal = Number(item.theoreticalStock) || 0;
     if (range === '7D') {
       return {
         physical: [
@@ -138,13 +140,13 @@ export default function InventoryDetailScreen() {
           base,
         ],
         theoretical: [
-          Math.round(theo * 1.06),
-          Math.round(theo * 1.04),
-          Math.round(theo * 1.03),
-          Math.round(theo * 1.01),
-          Math.round(theo * 1.00),
-          Math.round(theo * 0.99),
-          theo,
+          Math.round(theoVal * 1.06),
+          Math.round(theoVal * 1.04),
+          Math.round(theoVal * 1.03),
+          Math.round(theoVal * 1.01),
+          Math.round(theoVal * 1.00),
+          Math.round(theoVal * 0.99),
+          theoVal,
         ],
         labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'],
       };
@@ -160,12 +162,12 @@ export default function InventoryDetailScreen() {
           base,
         ],
         theoretical: [
-          Math.round(theo * 1.28),
-          Math.round(theo * 1.22),
-          Math.round(theo * 1.15),
-          Math.round(theo * 1.10),
-          Math.round(theo * 1.04),
-          theo,
+          Math.round(theoVal * 1.28),
+          Math.round(theoVal * 1.22),
+          Math.round(theoVal * 1.15),
+          Math.round(theoVal * 1.10),
+          Math.round(theoVal * 1.04),
+          theoVal,
         ],
         labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'Now'],
       };
@@ -179,11 +181,11 @@ export default function InventoryDetailScreen() {
         base,
       ],
       theoretical: [
-        Math.round(theo * 1.45),
-        Math.round(theo * 1.30),
-        Math.round(theo * 1.18),
-        Math.round(theo * 1.08),
-        theo,
+        Math.round(theoVal * 1.45),
+        Math.round(theoVal * 1.30),
+        Math.round(theoVal * 1.18),
+        Math.round(theoVal * 1.08),
+        theoVal,
       ],
       labels: ['M1', 'M2', 'M3', 'M4', 'Now'],
     };

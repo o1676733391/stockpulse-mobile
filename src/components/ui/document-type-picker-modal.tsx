@@ -14,6 +14,11 @@ import {
   Text,
   View,
 } from 'react-native';
+import {
+  pickAndRecognizeDocument,
+  DocumentRecognitionResult,
+} from '@/services/documentRecognitionService';
+import { DocumentRecognitionModal } from '@/components/ui/document-recognition-modal';
 
 export interface DocumentTypePickerModalProps {
   visible: boolean;
@@ -33,6 +38,19 @@ export function DocumentTypePickerModal({
   const router = useRouter();
   const { t } = useI18n();
   const [selectedType, setSelectedType] = useState<OcrDocumentType>('goods_receipt');
+  const [recognitionResult, setRecognitionResult] = useState<DocumentRecognitionResult | null>(null);
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await pickAndRecognizeDocument();
+      if (result) {
+        onClose();
+        setRecognitionResult(result);
+      }
+    } catch (err: any) {
+      Alert.alert('Fehler', 'Dokument konnte nicht geöffnet werden');
+    }
+  };
 
   const handleStartScan = (mode: 'camera' | 'gallery') => {
     onClose();
@@ -191,10 +209,35 @@ export function DocumentTypePickerModal({
             </Pressable>
           </View>
 
+          {/* Option 3: PDF / Excel (XLSX) Auto-Recognition Import */}
+          <Pressable
+            onPress={handlePickDocument}
+            style={({ pressed }) => [
+              styles.documentImportBtn,
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.documentImportIconCircle}>
+              <VectorIcon name="FileSpreadsheet" size={20} color="#059669" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.docImportTitleRow}>
+                <Text style={styles.documentImportTitle}>PDF / Excel (XLSX) importieren</Text>
+                <View style={styles.autoBadge}>
+                  <Text style={styles.autoBadgeText}>Auto-Erkennung</Text>
+                </View>
+              </View>
+              <Text style={styles.documentImportSub}>
+                Rechnungen, Lieferscheine oder Artikelkataloge automatisch erkennen & zuweisen
+              </Text>
+            </View>
+            <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textSecondary} />
+          </Pressable>
+
           {/* Action Buttons */}
           <View style={styles.actionRow}>
             <Button
-              label="Choose Gallery"
+              label="Galerie"
               variant="outline"
               size="md"
               icon="Image"
@@ -202,7 +245,7 @@ export function DocumentTypePickerModal({
               style={{ flex: 1, marginRight: Spacing.sm }}
             />
             <Button
-              label="Capture Camera"
+              label="Kamera"
               variant="primary"
               size="md"
               icon="Camera"
@@ -212,6 +255,28 @@ export function DocumentTypePickerModal({
           </View>
         </Pressable>
       </Pressable>
+
+      {/* Auto-Recognition Modal */}
+      {recognitionResult && (
+        <DocumentRecognitionModal
+          visible={Boolean(recognitionResult)}
+          recognition={recognitionResult}
+          onClose={() => setRecognitionResult(null)}
+          onAssigned={(res) => {
+            setRecognitionResult(null);
+            Alert.alert(
+              res.success ? 'Erfolgreich zugewiesen' : 'Hinweis',
+              res.message,
+              [
+                {
+                  text: 'Öffnen',
+                  onPress: () => router.push(res.targetRoute as any),
+                },
+              ]
+            );
+          }}
+        />
+      )}
     </Modal>
   );
 }
@@ -356,5 +421,54 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  documentImportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1.5,
+    borderColor: '#86efac',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  documentImportIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: '#dcfce7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  docImportTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  documentImportTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#064e3b',
+  },
+  autoBadge: {
+    backgroundColor: '#bbf7d0',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: Radius.full,
+  },
+  autoBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  documentImportSub: {
+    fontSize: 11,
+    color: '#166534',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  pressed: {
+    opacity: 0.85,
   },
 });

@@ -35,7 +35,7 @@ export const NOTIFICATION_TYPE_CONFIG: Record<
     bgColor: '#fef3c7',
     iconColor: '#b45309',
     badgeVariant: 'amber',
-    defaultRoute: '/inventory',
+    defaultRoute: '/inventory/overview',
   },
   variance: {
     label: 'High Variance',
@@ -120,7 +120,7 @@ export interface INotificationService {
 }
 
 function formatRelativeTime(timestamp: number): string {
-  const currentLang = typeof i18n !== 'undefined' ? i18n.getLanguage() : 'en';
+  const currentLang = i18n ? i18n.getLanguage() : 'en';
   return formatTimestampRelative(timestamp, currentLang);
 }
 
@@ -277,7 +277,7 @@ export const notificationService: INotificationService = new RealNotificationSer
 
 export function localizeNotification(
   notification: AppNotification,
-  language: SupportedLanguage = 'en'
+  language: SupportedLanguage = i18n ? i18n.getLanguage() : 'en'
 ): { title: string; body: string; time: string } {
   const time = notification.timestamp
     ? formatTimestampRelative(notification.timestamp, language)

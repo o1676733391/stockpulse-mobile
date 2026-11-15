@@ -18,6 +18,11 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  pickAndRecognizeDocument,
+  DocumentRecognitionResult,
+} from '@/services/documentRecognitionService';
+import { DocumentRecognitionModal } from '@/components/ui/document-recognition-modal';
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -32,6 +37,18 @@ export default function ScanScreen() {
   const [selectedInvoiceType, setSelectedInvoiceType] = useState<OcrDocumentType>(
     params.initialType || 'order_invoice'
   );
+  const [recognitionResult, setRecognitionResult] = useState<DocumentRecognitionResult | null>(null);
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await pickAndRecognizeDocument();
+      if (result) {
+        setRecognitionResult(result);
+      }
+    } catch (err: any) {
+      Alert.alert('Fehler', 'Dokument konnte nicht geöffnet werden');
+    }
+  };
 
   useEffect(() => {
     if (params.initialType && (params.initialType === 'goods_receipt' || params.initialType === 'order_invoice')) {
@@ -165,6 +182,15 @@ export default function ScanScreen() {
               size="md"
               fullWidth
               onPress={handlePickImage}
+              style={{ marginBottom: Spacing.sm }}
+            />
+            <Button
+              label="PDF / Excel (XLSX) importieren"
+              variant="outline"
+              size="md"
+              fullWidth
+              icon="FileSpreadsheet"
+              onPress={handlePickDocument}
             />
           </View>
         </View>
@@ -319,18 +345,43 @@ export default function ScanScreen() {
             <View style={[styles.shutterCore, isCapturing && { backgroundColor: Colors.brand.primary }]} />
           </Pressable>
 
-          {/* AI OCR Badge */}
-          <View style={styles.sideControl}>
-            <View style={styles.aiBadgeBox}>
-              <Text style={styles.aiBadgeText}>AI</Text>
+          {/* Document Picker Button (PDF / XLSX Auto-Recognition) */}
+          <Pressable
+            onPress={handlePickDocument}
+            style={({ pressed }) => [styles.sideControl, pressed && styles.pressed]}
+          >
+            <View style={[styles.sideIconBox, { backgroundColor: '#059669' }]}>
+              <VectorIcon name="FileSpreadsheet" size={20} color="#ffffff" />
             </View>
-            <Text style={styles.sideControlLabel}>Gemini</Text>
-          </View>
+            <Text style={styles.sideControlLabel}>PDF / Excel</Text>
+          </Pressable>
         </View>
 
         {/* Tip Text */}
         <Text style={styles.bottomTip}>{t('scan.tip')}</Text>
       </View>
+
+      {/* Auto-Recognition Modal */}
+      {recognitionResult && (
+        <DocumentRecognitionModal
+          visible={Boolean(recognitionResult)}
+          recognition={recognitionResult}
+          onClose={() => setRecognitionResult(null)}
+          onAssigned={(res) => {
+            setRecognitionResult(null);
+            Alert.alert(
+              res.success ? 'Erfolgreich zugewiesen' : 'Hinweis',
+              res.message,
+              [
+                {
+                  text: 'Öffnen',
+                  onPress: () => router.push(res.targetRoute as any),
+                },
+              ]
+            );
+          }}
+        />
+      )}
     </View>
   );
 }

@@ -20,8 +20,10 @@ export function StockMetricBox({
   style,
 }: StockMetricBoxProps) {
   const { t } = useI18n();
-  const variance = physicalStock - theoreticalStock;
-  const variancePct = theoreticalStock > 0 ? (variance / theoreticalStock) * 100 : 0;
+  const phys = Number(physicalStock ?? 0);
+  const theo = Number(theoreticalStock ?? 0);
+  const variance = isNaN(phys - theo) ? 0 : phys - theo;
+  const variancePct = theo > 0 ? (variance / theo) * 100 : 0;
   const absVariancePct = Math.abs(variancePct);
 
   const isMajor = absVariancePct > 10;

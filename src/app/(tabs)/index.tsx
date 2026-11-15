@@ -99,10 +99,10 @@ const DEFAULT_QUICK_ACTIONS: QuickActionItem[] = [
 ];
 
 const INITIAL_ADMIN_KPIS: DashboardKpi[] = [
-  { label: 'Total Valuation', value: '--', sub: 'Active stock', variant: 'green', trend: { dir: 'up', label: '+3.4%' } },
-  { label: 'Healthy Rate', value: '--', sub: 'Target range', variant: 'blue', trend: { dir: 'flat', label: '0%' } },
-  { label: 'Expiring Soon', value: '--', sub: 'In ≤7 days', variant: 'amber', trend: { dir: 'down', label: 'Critical' } },
-  { label: 'Open Orders', value: '--', sub: 'Inbound', variant: 'purple', trend: { dir: 'flat', label: 'Pending' } },
+  { label: '', value: '--', sub: '', variant: 'green', trend: { dir: 'up', label: '+3.4%' } },
+  { label: '', value: '--', sub: '', variant: 'blue', trend: { dir: 'flat', label: '0%' } },
+  { label: '', value: '--', sub: '', variant: 'amber', trend: { dir: 'down', label: 'Critical' } },
+  { label: '', value: '--', sub: '', variant: 'purple', trend: { dir: 'flat', label: 'Pending' } },
 ];
 
 export default function DashboardScreen() {
@@ -475,10 +475,10 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.criticalAlertContent}>
                 <Text style={styles.criticalAlertTitle}>
-                  {criticalExpiry.length} {criticalExpiry.length === 1 ? 'Batch Expiring Tomorrow' : 'Batches Expiring Soon'}
+                  {criticalExpiry.length} {criticalExpiry.length === 1 ? t('expiration.batchExpiringTomorrow') : t('expiration.batchesExpiringSoon')}
                 </Text>
                 <Text style={styles.criticalAlertSub}>
-                  {formatCurrency(totalValueAtRisk)} potential loss. Promo discount recommended.
+                  {t('expiration.promoLossSub', { value: formatCurrency(totalValueAtRisk) })}
                 </Text>
               </View>
             </Pressable>
@@ -493,32 +493,32 @@ export default function DashboardScreen() {
           <SectionHeader
             title={t('common.overview')}
             action={t('common.details')}
-            onAction={() => router.push('/inventory' as any)}
+            onAction={() => router.push('/inventory/overview' as any)}
           />
           <View style={styles.kpiGrid}>
             <View style={styles.kpiRow}>
               <KpiCard
                 label={t('dashboard.kpis.totalValuation')}
                 value={loading ? '--' : adminKpis[0]?.value || '--'}
-                sub={adminKpis[0]?.sub}
+                sub={adminKpis[0]?.sub || t('dashboard.kpis.activeStock')}
                 variant={adminKpis[0]?.variant}
                 trend={adminKpis[0]?.trend}
-                onPress={() => router.push('/inventory' as any)}
+                onPress={() => router.push('/inventory/overview' as any)}
               />
               <KpiCard
                 label={t('dashboard.kpis.healthyRate')}
                 value={loading ? '--' : adminKpis[1]?.value || '--'}
-                sub={adminKpis[1]?.sub}
+                sub={adminKpis[1]?.sub || t('dashboard.kpis.targetRange')}
                 variant={adminKpis[1]?.variant}
                 trend={adminKpis[1]?.trend}
-                onPress={() => router.push('/inventory' as any)}
+                onPress={() => router.push('/inventory/overview' as any)}
               />
             </View>
             <View style={styles.kpiRow}>
               <KpiCard
                 label={t('dashboard.kpis.expiringSoon')}
                 value={loading ? '--' : adminKpis[2]?.value || '--'}
-                sub={adminKpis[2]?.sub}
+                sub={adminKpis[2]?.sub || t('dashboard.kpis.within7Days')}
                 variant={adminKpis[2]?.variant}
                 trend={adminKpis[2]?.trend}
                 onPress={() => router.push('/expiration' as any)}
@@ -526,7 +526,7 @@ export default function DashboardScreen() {
               <KpiCard
                 label={t('dashboard.kpis.openOrders')}
                 value={loading ? '--' : adminKpis[3]?.value || '--'}
-                sub={adminKpis[3]?.sub}
+                sub={adminKpis[3]?.sub || t('dashboard.kpis.inboundOrders')}
                 variant={adminKpis[3]?.variant}
                 trend={adminKpis[3]?.trend}
                 onPress={() => router.push('/orders' as any)}
@@ -627,7 +627,7 @@ export default function DashboardScreen() {
           <SectionHeader
             title={t('dashboard.stockHealthTitle')}
             action={t('common.viewAll')}
-            onAction={() => router.push('/inventory' as any)}
+            onAction={() => router.push('/inventory/overview' as any)}
           />
           <Card style={styles.stockHealthCard}>
             <View style={styles.donutRow}>

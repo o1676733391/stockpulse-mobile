@@ -397,6 +397,9 @@
       "discard": "Verderb erfassen"
     },
     "potentialLoss": "Möglicher Verlust durch Verderb: {{value}}",
+    "batchExpiringTomorrow": "Charge läuft morgen ab",
+    "batchesExpiringSoon": "Chargen laufen bald ab",
+    "promoLossSub": "{{value}} potenzieller Verlust. Aktionsrabatt empfohlen.",
     "urgentAction": "Dringende Maßnahme erforderlich",
     "actions": {
       "reduceWaste": "Maßnahmen zur Abfallvermeidung",
@@ -1128,17 +1131,17 @@
       },
       "weekly": {
         "label": "Wöchentlich",
-        "badge": "",
+        "badge": "Standard",
         "desc": "Wöchentliche Inventur — passend für die meisten Restaurants"
       },
       "monthly": {
         "label": "Monatlich",
-        "badge": "",
+        "badge": "Erweitert",
         "desc": "Vollständige Monatsinventur für Betriebe mit geringerer Umschlagshäufigkeit"
       },
       "quarterly": {
         "label": "Quartalsweise",
-        "badge": "",
+        "badge": "Audit",
         "desc": "Quartalsprüfung für langfristige Lagerbestände"
       }
     },
