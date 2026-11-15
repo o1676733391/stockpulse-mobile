@@ -205,7 +205,7 @@ export default function InventoryListScreen() {
   const statusChips: Array<{ id: StatusFilterId; label: string }> = [
     { id: 'all', label: t('common.all') },
     { id: 'low', label: t('inventory.statusLabels.low') },
-    { id: 'expiry', label: t('expiration.title') },
+    { id: 'expiry', label: t('inventory.statusLabels.expiry') || t('expiration.shortTitle') || 'MHD & Ablauf' },
     { id: 'overstock', label: t('inventory.statusLabels.overstock') },
   ];
 
@@ -220,24 +220,25 @@ export default function InventoryListScreen() {
           <View style={styles.headerActions}>
             <Pressable
               onPress={handlePickDocument}
-              style={({ pressed }) => [styles.upperGroupHeaderBtn, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.importHeaderBtn, pressed && styles.pressed]}
               accessibilityLabel="Excel oder PDF importieren"
             >
-              <VectorIcon name="FileSpreadsheet" size={14} color="#059669" />
-              <Text style={[styles.upperGroupHeaderText, { color: '#059669' }]}>Import</Text>
+              <VectorIcon name="FileSpreadsheet" size={13} color="#059669" />
+              <Text style={styles.importHeaderText}>Import</Text>
             </Pressable>
             <Pressable
               onPress={() => setShowUpperGroupModal(true)}
               style={({ pressed }) => [styles.upperGroupHeaderBtn, pressed && styles.pressed]}
+              accessibilityLabel={t('upperGroups.addButton')}
             >
-              <VectorIcon name="Layers" size={14} color={Colors.brand.dark} />
-              <Text style={styles.upperGroupHeaderText}>{t('upperGroups.addButton')}</Text>
+              <VectorIcon name="Layers" size={13} color={Colors.brand.dark} />
+              <Text style={styles.upperGroupHeaderText}>{t('upperGroups.shortButton') || 'Gruppen'}</Text>
             </Pressable>
             <Pressable
               onPress={() => setShowAddModal(true)}
               style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
             >
-              <VectorIcon name="Plus" size={22} color={Colors.neutral.textPrimary} strokeWidth={2.2} />
+              <VectorIcon name="Plus" size={20} color={Colors.neutral.textPrimary} strokeWidth={2.4} />
             </Pressable>
           </View>
         }
@@ -275,7 +276,8 @@ export default function InventoryListScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsScrollRow}
+          style={styles.horizontalScroll}
+          contentContainerStyle={[styles.chipsScrollRow, styles.chipsScrollContainer]}
         >
           <Pressable
             onPress={() => setSelectedGroupId('all')}
@@ -335,7 +337,8 @@ export default function InventoryListScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsScrollRow}
+          style={styles.horizontalScroll}
+          contentContainerStyle={[styles.chipsScrollRow, styles.chipsScrollContainer]}
         >
           {statusChips.map((chip) => {
             const active = statusFilterId === chip.id;
@@ -755,7 +758,23 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 6,
+  },
+  importHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+  },
+  importHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
   },
   upperGroupHeaderBtn: {
     flexDirection: 'row',
@@ -764,21 +783,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.subtle,
     borderWidth: 1,
     borderColor: Colors.brand.light,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: Radius.full,
   },
   upperGroupHeaderText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.brand.dark,
   },
   headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.neutral.surface,
+    borderWidth: 1,
+    borderColor: Colors.neutral.borderLight,
   },
   filterBar: {
     backgroundColor: Colors.neutral.card,
@@ -820,6 +842,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  horizontalScroll: {
+    marginHorizontal: -Spacing.lg,
+  },
+  chipsScrollContainer: {
+    paddingHorizontal: Spacing.lg,
   },
   chipsScrollRow: {
     flexDirection: 'row',

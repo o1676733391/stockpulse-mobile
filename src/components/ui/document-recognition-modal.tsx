@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, Radius } from '@/constants/theme';
 import { VectorIcon } from './icons';
 import { Badge } from './badge';
@@ -39,6 +40,7 @@ export function DocumentRecognitionModal({
   onClose,
   onAssigned,
 }: DocumentRecognitionModalProps) {
+  const insets = useSafeAreaInsets();
   const { language, formatCurrency } = useI18n();
   const isDe = language === 'de';
 
@@ -82,7 +84,7 @@ export function DocumentRecognitionModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.sm) + Spacing.sm }]}>
           {/* Header Bar */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
@@ -614,9 +616,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   primaryBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+    flexShrink: 1,
+    textAlign: 'center',
   },
   btnDisabled: {
     opacity: 0.6,

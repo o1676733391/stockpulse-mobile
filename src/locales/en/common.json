@@ -236,7 +236,8 @@
       "healthy": "Optimal",
       "low": "Low Stock",
       "critical": "Critical",
-      "overstock": "Overstock"
+      "overstock": "Overstock",
+      "expiry": "Expiring Soon"
     },
     "categories": {
       "all": "All Items",
@@ -276,7 +277,15 @@
     "backToList": "Back to Inventory",
     "physical": "Physical",
     "target": "Target",
-    "safety": "Safety"
+    "safety": "Safety",
+    "bbd": "BBD",
+    "transactions": {
+      "posDeduction": "POS Deduction",
+      "manualCount": "Stock Count",
+      "adjustment": "Adjustment",
+      "goodsReceipt": "Goods Receipt",
+      "ocrInvoice": "OCR Invoice"
+    }
   },
   "stockCount": {
     "title": "Stock Audit & Count",
@@ -308,7 +317,14 @@
     "countSummaryTitle": "Count Summary & Audit",
     "status": {
       "completed": "Completed"
-    }
+    },
+    "exitAlertTitle": "Exit Count Session?",
+    "exitAlertMessage": "Your recorded counts are saved in the local draft session.",
+    "continueCounting": "Continue Counting",
+    "exitSession": "Exit Session",
+    "scheduledCounts": "Scheduled Counts",
+    "startBtn": "Start",
+    "completed": "complete"
   },
   "ocr": {
     "title": "Document AI & OCR Scanner",
@@ -405,7 +421,10 @@
       "reduceWaste": "Waste Reduction Strategy",
       "triageBbd": "Action Expiring Batches"
     },
-    "backToList": "Back to Expiration Alerts"
+    "backToList": "Back to Expiration Alerts",
+    "shortTitle": "Expiring",
+    "daysLeftShort": "d left",
+    "tomorrow": "Tomorrow"
   },
   "analytics": {
     "title": "Inventory Analytics & Reports",
@@ -714,7 +733,9 @@
       "orderInvoice": "Order Form Receipt",
       "goodsReceipt": "Delivery Invoice",
       "orderInvoiceDesc": "POS register sales receipt / order voucher. Explodes recipe BOM to deduct raw materials.",
-      "goodsReceiptDesc": "Inbound supplier delivery invoice / goods receipt. Restocks physical inventory & tracks BBD."
+      "goodsReceiptDesc": "Inbound supplier delivery invoice / goods receipt. Restocks physical inventory & tracks BBD.",
+      "orderInvoiceTab": "POS Sales",
+      "goodsReceiptTab": "Goods Receipt"
     },
     "scanHistory": "Scan History",
     "invoiceTypeLabel": "Invoice Type",
@@ -1002,7 +1023,8 @@
     "customBadge": "Custom",
     "defaultBadge": "Default",
     "deleteConfirm": "Remove upper group",
-    "createdSuccess": "Upper group \"{{name}}\" created and selected."
+    "createdSuccess": "Upper group \"{{name}}\" created and selected.",
+    "shortButton": "Groups"
   },
   "inventoryHub": {
     "title": "Inventory & Kitchen",

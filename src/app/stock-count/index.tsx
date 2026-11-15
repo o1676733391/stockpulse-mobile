@@ -122,7 +122,7 @@ export default function StockCountScreen() {
                     {t('stockCount.itemsToCount', { count: s.total - s.progress })}
                   </Text>
                   <Text style={styles.progressMetaPct}>
-                    {Math.round((s.progress / s.total) * 100)}% complete
+                    {Math.round((s.progress / s.total) * 100)}% {t('stockCount.completed') || 'abgeschlossen'}
                   </Text>
                 </View>
 
@@ -132,7 +132,7 @@ export default function StockCountScreen() {
                   style={({ pressed }) => [styles.continueBtn, pressed && styles.pressed]}
                 >
                   <VectorIcon name="Play" size={16} color="#ffffff" />
-                  <Text style={styles.continueBtnText}>{t('stockCount.title')}</Text>
+                  <Text style={styles.continueBtnText}>{t('stockCount.continueCounting') || 'Weiterzählen'}</Text>
                 </Pressable>
               </Card>
             ))}
@@ -141,7 +141,7 @@ export default function StockCountScreen() {
 
         {/* ── Scheduled Counts ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('common.filter')}</Text>
+          <Text style={styles.sectionHeader}>{t('stockCount.scheduledCounts') || 'Geplante Inventuren'}</Text>
           <View style={styles.scheduledStack}>
             {scheduled.map((s) => (
               <Card key={s.id} style={styles.scheduledCard}>
@@ -161,7 +161,7 @@ export default function StockCountScreen() {
                     onPress={() => router.push('/stock-count/active' as any)}
                     style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
                   >
-                    <Text style={styles.startBtnText}>{t('common.add')}</Text>
+                    <Text style={styles.startBtnText}>{t('stockCount.startBtn') || 'Starten'}</Text>
                   </Pressable>
                 </View>
               </Card>

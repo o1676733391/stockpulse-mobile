@@ -21,7 +21,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function MenuCostCalculatorScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t, formatCurrency } = useI18n();
+  const { t, language, formatCurrency } = useI18n();
+  const isDe = language === 'de';
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>('');
@@ -76,8 +77,10 @@ export default function MenuCostCalculatorScreen() {
     if (isHighMargin && isHighVolume) {
       return {
         type: 'star',
-        label: 'Star Dish (High Margin & High Popularity)',
-        desc: 'High Margin & High Popularity. Maintain exact quality and prominent menu placement.',
+        label: isDe ? 'Star-Gericht (Hohe Marge & Hoher Absatz)' : 'Star Dish (High Margin & High Popularity)',
+        desc: isDe
+          ? 'Hohe Marge & Hoher Absatz. Gleichbleibende Qualität sichern und prominent auf der Karte platzieren.'
+          : 'High Margin & High Popularity. Maintain exact quality and prominent menu placement.',
         color: '#15803d',
         bg: '#dcfce7',
       };
@@ -85,8 +88,10 @@ export default function MenuCostCalculatorScreen() {
     if (!isHighMargin && isHighVolume) {
       return {
         type: 'plowhorse',
-        label: 'Plowhorse (High Popularity & Low Margin)',
-        desc: 'High Popularity but Low Margin. Consider a slight price increase or reducing ingredient cost.',
+        label: isDe ? 'Dauerbrenner (Hoher Absatz, Geringe Marge)' : 'Plowhorse (High Popularity & Low Margin)',
+        desc: isDe
+          ? 'Sehr beliebt, aber knappe Marge. Leichte Preisanpassung oder Optimierung des Wareneinsatzes prüfen.'
+          : 'High Popularity but Low Margin. Consider a slight price increase or reducing ingredient cost.',
         color: '#b45309',
         bg: '#fef3c7',
       };
@@ -94,26 +99,30 @@ export default function MenuCostCalculatorScreen() {
     if (isHighMargin && !isHighVolume) {
       return {
         type: 'puzzle',
-        label: 'Puzzle (High Margin & Low Popularity)',
-        desc: 'High Margin but Low Popularity. Feature as daily special or improve server recommendation.',
+        label: isDe ? 'Geheimtipp (Hohe Marge, Geringer Absatz)' : 'Puzzle (High Margin & Low Popularity)',
+        desc: isDe
+          ? 'Attraktive Marge, aber noch zu selten bestellt. Als Tagesempfehlung hervorheben oder Service-Schulung nutzen.'
+          : 'High Margin but Low Popularity. Feature as daily special or improve server recommendation.',
         color: '#4338ca',
         bg: '#e0e7ff',
       };
     }
     return {
       type: 'dog',
-      label: 'Dog / Re-engineer (Low Margin & Low Popularity)',
-      desc: 'Low Margin & Low Popularity. Re-evaluate recipe ingredients or replace with higher-margin alternative.',
+      label: isDe ? 'Prüfposten (Geringe Marge & Geringer Absatz)' : 'Dog / Re-engineer (Low Margin & Low Popularity)',
+      desc: isDe
+        ? 'Niedrige Marge und schwacher Absatz. Rezeptur überarbeiten, Wareneinsatz senken oder von der Karte streichen.'
+        : 'Low Margin & Low Popularity. Re-evaluate recipe ingredients or replace with higher-margin alternative.',
       color: '#dc2626',
       bg: '#fee2e2',
     };
-  }, [isHighMargin, isHighVolume]);
+  }, [isHighMargin, isHighVolume, isDe]);
 
   return (
     <View style={[styles.screen, { backgroundColor: Colors.neutral.surface }]}>
       <TopBar
-        title="Menu Cost & Margin Matrix"
-        subtitle="Menu engineering & profitability analysis"
+        title={t('recipeTools.title') || 'Rezept- & Menü-Tools'}
+        subtitle={t('recipeTools.subtitle') || 'Kalkulation & Margen-Matrix'}
         showBack
       />
 

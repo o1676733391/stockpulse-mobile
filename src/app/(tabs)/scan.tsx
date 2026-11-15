@@ -277,7 +277,7 @@ export default function ScanScreen() {
               ]}
               numberOfLines={1}
             >
-              {t('scan.invoiceTypes.orderInvoice')}
+              {t('scan.invoiceTypes.orderInvoiceTab') || t('scan.invoiceTypes.orderInvoice')}
             </Text>
           </Pressable>
 
@@ -300,7 +300,7 @@ export default function ScanScreen() {
               ]}
               numberOfLines={1}
             >
-              {t('scan.invoiceTypes.goodsReceipt')}
+              {t('scan.invoiceTypes.goodsReceiptTab') || t('scan.invoiceTypes.goodsReceipt')}
             </Text>
           </Pressable>
         </View>

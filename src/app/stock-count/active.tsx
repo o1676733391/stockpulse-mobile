@@ -108,11 +108,11 @@ export default function ActiveStockCountScreen() {
 
   const handleExit = () => {
     Alert.alert(
-      'Exit Count Session?',
-      'Your recorded counts are saved in the local draft session.',
+      t('stockCount.exitAlertTitle') || 'Zählsitzung verlassen?',
+      t('stockCount.exitAlertMessage') || 'Ihre bisher erfassten Zählungen bleiben im Entwurf gespeichert.',
       [
-        { text: 'Continue Counting', style: 'cancel' },
-        { text: 'Exit Session', style: 'destructive', onPress: () => router.back() },
+        { text: t('stockCount.continueCounting') || 'Weiterzählen', style: 'cancel' },
+        { text: t('stockCount.exitSession') || 'Sitzung beenden', style: 'destructive', onPress: () => router.back() },
       ]
     );
   };

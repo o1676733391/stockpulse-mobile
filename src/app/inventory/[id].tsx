@@ -38,13 +38,13 @@ export default function InventoryDetailScreen() {
       icon: 'TrendingDown',
       bg: Colors.info.subtle,
       color: Colors.info.main,
-      label: 'POS Deduction',
+      label: t('inventory.transactions.posDeduction') || 'POS-Abbuchung',
     },
     manual_count: {
       icon: 'ClipboardCheck',
       bg: Colors.brand.subtle,
       color: Colors.brand.primary,
-      label: 'Stock Count',
+      label: t('inventory.transactions.manualCount') || 'Inventurzählung',
     },
     ocr_invoice: {
       icon: 'FileText',
@@ -56,7 +56,7 @@ export default function InventoryDetailScreen() {
       icon: 'Pencil',
       bg: Colors.warning.subtle,
       color: Colors.warning.dark,
-      label: 'Adjustment',
+      label: t('inventory.transactions.adjustment') || 'Korrekturbuchung',
     },
   };
 
@@ -374,7 +374,7 @@ export default function InventoryDetailScreen() {
               </View>
               <View style={styles.activeScheduleRight}>
                 <Text style={styles.activeScheduleCount}>42</Text>
-                <Text style={styles.activeScheduleTotal}>of 68</Text>
+                <Text style={styles.activeScheduleTotal}>/ 68</Text>
               </View>
             </View>
 
@@ -447,19 +447,19 @@ export default function InventoryDetailScreen() {
                   <View key={batch.id} style={styles.batchItem}>
                     <View style={styles.batchTop}>
                       <View>
-                        <Text style={styles.batchName}>Batch #{batch.id}</Text>
+                        <Text style={styles.batchName}>{t('common.batch') || 'Charge'} #{batch.id}</Text>
                         <Text style={styles.batchSub}>
-                          {batch.quantity} {item.unit} · BBD {batch.expiryDate}
+                          {batch.quantity} {item.unit} · {t('inventory.bbd') || 'MHD'} {batch.expiryDate}
                         </Text>
                       </View>
                       <Badge variant={variant}>
                         {isExpired
-                          ? 'Expired'
+                          ? (t('expiration.expired') || 'Abgelaufen')
                           : days === 0
-                          ? 'Today'
+                          ? t('common.today')
                           : days === 1
-                          ? 'Tomorrow'
-                          : `${days}d left`}
+                          ? (t('expiration.tomorrow') || 'Morgen')
+                          : `${days}d`}
                       </Badge>
                     </View>
 
@@ -471,7 +471,11 @@ export default function InventoryDetailScreen() {
                         height={4}
                       />
                       <Text style={styles.batchProgressText}>
-                        {isExpired ? 'Expired' : days === 0 ? 'Today' : `${days}d`}
+                        {isExpired
+                          ? (t('expiration.expired') || 'Abg.')
+                          : days === 0
+                          ? t('common.today')
+                          : `${days}d`}
                       </Text>
                     </View>
                   </View>
@@ -525,55 +529,61 @@ export default function InventoryDetailScreen() {
               })
             ) : (
               <Text style={{ color: Colors.neutral.textSecondary, fontSize: 13, paddingVertical: 8 }}>
-                {t('dashboard.noTasks') || 'No recent activity transactions recorded.'}
+                {t('dashboard.noRecentActivities') || 'Keine Aktivitäten verzeichnet'}
               </Text>
             )}
           </View>
         </Card>
 
-        {/* ── 6. Bottom Action Buttons ── */}
-        <View style={styles.actionGrid}>
-          <Pressable
-            onPress={() => router.push('/stock-count/active' as any)}
-            style={({ pressed }) => [styles.primaryActionBtn, pressed && styles.pressed]}
-          >
-            <VectorIcon name="CheckCircle" size={18} color="#ffffff" />
-            <Text style={styles.primaryActionText}>{t('stockCount.title')}</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setShowEditModal(true)}
-            style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
-          >
-            <VectorIcon name="Pencil" size={18} color={Colors.neutral.textPrimary} />
-            <Text style={styles.secondaryActionText}>{t('common.edit')}</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={handleDelete}
-            style={({ pressed }) => [styles.dangerActionBtn, pressed && styles.pressed]}
-          >
-            <VectorIcon name="Trash2" size={18} color={Colors.critical.main} />
-            <Text style={styles.dangerActionText}>{t('common.delete')}</Text>
-          </Pressable>
-
-          {item.status === 'low' || item.status === 'critical' ? (
+        {/* ── 6. Bottom Action Buttons (Clean 2-Row Stack for Mobile) ── */}
+        <View style={styles.actionGridContainer}>
+          {/* Row 1: Primary Operation & Orders/Analytics */}
+          <View style={styles.actionRow}>
             <Pressable
-              onPress={() => router.push('/orders' as any)}
-              style={({ pressed }) => [styles.warningActionBtn, pressed && styles.pressed]}
+              onPress={() => router.push('/stock-count/active' as any)}
+              style={({ pressed }) => [styles.primaryActionBtn, pressed && styles.pressed]}
             >
-              <VectorIcon name="ShoppingCart" size={18} color={Colors.warning.dark} />
-              <Text style={styles.warningActionText}>{t('orders.title')}</Text>
+              <VectorIcon name="CheckCircle" size={17} color="#ffffff" />
+              <Text style={styles.primaryActionText} numberOfLines={1}>{t('stockCount.title')}</Text>
             </Pressable>
-          ) : (
+
+            {item.status === 'low' || item.status === 'critical' ? (
+              <Pressable
+                onPress={() => router.push('/orders' as any)}
+                style={({ pressed }) => [styles.warningActionBtn, pressed && styles.pressed]}
+              >
+                <VectorIcon name="ShoppingCart" size={17} color={Colors.warning.dark} />
+                <Text style={styles.warningActionText} numberOfLines={1}>{t('orders.title')}</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={() => router.push('/analytics' as any)}
+                style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
+              >
+                <VectorIcon name="History" size={17} color={Colors.neutral.textPrimary} />
+                <Text style={styles.secondaryActionText} numberOfLines={1}>{t('analytics.title')}</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Row 2: Secondary Utilities (Edit & Delete) */}
+          <View style={styles.actionRow}>
             <Pressable
-              onPress={() => router.push('/analytics' as any)}
+              onPress={() => setShowEditModal(true)}
               style={({ pressed }) => [styles.secondaryActionBtn, pressed && styles.pressed]}
             >
-              <VectorIcon name="History" size={18} color={Colors.neutral.textPrimary} />
-              <Text style={styles.secondaryActionText}>{t('analytics.title')}</Text>
+              <VectorIcon name="Pencil" size={16} color={Colors.neutral.textPrimary} />
+              <Text style={styles.secondaryActionText} numberOfLines={1}>{t('common.edit')}</Text>
             </Pressable>
-          )}
+
+            <Pressable
+              onPress={handleDelete}
+              style={({ pressed }) => [styles.dangerActionBtn, pressed && styles.pressed]}
+            >
+              <VectorIcon name="Trash2" size={16} color={Colors.critical.main} />
+              <Text style={styles.dangerActionText} numberOfLines={1}>{t('common.delete')}</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
 
@@ -942,75 +952,86 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  actionGrid: {
-    flexDirection: 'row',
+  actionGridContainer: {
     gap: Spacing.sm,
     marginTop: Spacing.xs,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
   primaryActionBtn: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: Colors.brand.primary,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     ...Shadows.card,
   },
   primaryActionText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   secondaryActionBtn: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: Colors.neutral.card,
     borderColor: Colors.neutral.border,
     borderWidth: 1,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     ...Shadows.card,
   },
   secondaryActionText: {
     color: Colors.neutral.textPrimary,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   warningActionBtn: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: Colors.warning.subtle,
     borderColor: Colors.warning.light,
     borderWidth: 1,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     ...Shadows.card,
   },
   warningActionText: {
     color: Colors.warning.dark,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   dangerActionBtn: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: Colors.critical.subtle,
     borderColor: Colors.critical.light,
     borderWidth: 1,
-    borderRadius: Radius.xl,
-    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     ...Shadows.card,
   },
   dangerActionText: {
     color: Colors.critical.main,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   pressed: {

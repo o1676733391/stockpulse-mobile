@@ -56,7 +56,15 @@
     "requiredPermission": "Permiso requerido: {{permission}}",
     "returnToDashboard": "Volver al panel principal",
     "understood": "Entendido",
-    "success": "Éxito"
+    "success": "Éxito",
+    "batches": "Batches",
+    "items": "Items",
+    "est": "Est.",
+    "goBack": "Go Back",
+    "item": "Item",
+    "you": "YOU",
+    "order": "Order",
+    "orders": "Orders"
   },
   "navigation": {
     "home": "Inicio",
@@ -127,7 +135,13 @@
     "staffPrompt": "¿Es miembro del equipo con código?",
     "claimInvite": "Unirse con código",
     "quickRoleSelect": "Acceso rápido por rol",
-    "quickRoleSelectSub": "Toque un rol para rellenar credenciales"
+    "quickRoleSelectSub": "Toque un rol para rellenar credenciales",
+    "signOut": "Sign Out",
+    "signOutFrom": "Sign Out from {{store}}",
+    "forgotPassword": "Forgot Password?",
+    "forgotPasswordLink": "Forgot Password?",
+    "yourName": "Your Name",
+    "setPassword": "Set Password (min. 6 characters)"
   },
   "dashboard": {
     "welcome": "Bienvenido, {{name}}",
@@ -137,7 +151,11 @@
       "totalValuation": "Valoración total del stock",
       "healthyRate": "Tasa de stock óptimo",
       "expiringSoon": "Caduca en 48h",
-      "openOrders": "Pedidos pendientes"
+      "openOrders": "Pedidos pendientes",
+      "activeStock": "Active Stock",
+      "targetRange": "Target Range",
+      "within7Days": "In ≤ 7 Days",
+      "inboundOrders": "Inbound"
     },
     "stockHealthTitle": "Estado de salud del inventario",
     "stockHealth": {
@@ -153,7 +171,16 @@
       "expiringBrd": "{{count}} lotes caducan hoy",
       "expiringBrdSub": "Consumo inmediato o rebaja recomendada",
       "poWaiting": "{{count}} pedidos pendientes de aprobación",
-      "poWaitingSub": "Proveedores esperando confirmación"
+      "poWaitingSub": "Proveedores esperando confirmación",
+      "expiringBatchesLabel": "Expiring Stock Items",
+      "expiringBatchesSub": "{{count}} batches require promotional or kitchen priority",
+      "lowStockLabel": "Low Stock Safety Thresholds",
+      "lowStockSub": "{{count}} SKUs below minimum reorder points",
+      "openDeliveriesLabel": "Awaiting Purchase Deliveries",
+      "openDeliveriesSub": "{{count}} purchase orders in transit / awaiting receipt",
+      "dailyCountLabel": "Daily Stock Count Audit",
+      "dailyCountSub": "Conduct physical inventory audit and resolve discrepancies",
+      "scheduledBadge": "Scheduled"
     },
     "recentActivityTitle": "Actividad reciente en almacén",
     "quickActionButtons": {
@@ -162,7 +189,15 @@
       "order": "Nuevo pedido",
       "expiry": "Triaje caducidades"
     },
-    "noTasks": "Todas las tareas de inventario están completadas por hoy."
+    "noTasks": "Todas las tareas de inventario están completadas por hoy.",
+    "actions": {
+      "stockCount": "Stock Count",
+      "scanReceipt": "Scan Receipt",
+      "createPo": "Create PO",
+      "expiryAlerts": "Expiry Alerts"
+    },
+    "noExpiringBatches": "No batches expiring within the next 7 days",
+    "noRecentActivities": "No recent activities recorded"
   },
   "inventory": {
     "title": "Gestión de Inventario",
@@ -191,7 +226,8 @@
       "healthy": "Óptimo",
       "low": "Stock bajo",
       "critical": "Crítico",
-      "overstock": "Exceso"
+      "overstock": "Exceso",
+      "expiry": "Expiring Soon"
     },
     "categories": {
       "all": "Todos los artículos",
@@ -227,7 +263,19 @@
     "reorderPoint": "Punto de pedido",
     "deleteConfirmTitle": "Eliminar artículo de inventario",
     "deleteConfirmMessage": "¿Seguro que deseas eliminar «{{name}}»? Esto archivará el artículo y lo eliminará de los conteos activos.",
-    "deleteSuccess": "Artículo eliminado con éxito"
+    "deleteSuccess": "Artículo eliminado con éxito",
+    "backToList": "Back to Inventory",
+    "physical": "Physical",
+    "target": "Target",
+    "safety": "Safety",
+    "bbd": "BBD",
+    "transactions": {
+      "posDeduction": "POS Deduction",
+      "manualCount": "Stock Count",
+      "adjustment": "Adjustment",
+      "goodsReceipt": "Goods Receipt",
+      "ocrInvoice": "OCR Invoice"
+    }
   },
   "stockCount": {
     "title": "Recuento y Auditoría de stock",
@@ -256,7 +304,17 @@
     "countSummaryTitle": "Resumen de inventario y auditoría",
     "status": {
       "completed": "Completado"
-    }
+    },
+    "noScheduledCounts": "No scheduled counts",
+    "noScheduledCountsSub": "All audit sessions have been completed or reconciled",
+    "ofTotal": "of {{total}}",
+    "exitAlertTitle": "Exit Count Session?",
+    "exitAlertMessage": "Your recorded counts are saved in the local draft session.",
+    "continueCounting": "Continue Counting",
+    "exitSession": "Exit Session",
+    "scheduledCounts": "Scheduled Counts",
+    "startBtn": "Start",
+    "completed": "complete"
   },
   "ocr": {
     "title": "IA Documental y Escáner de tickets",
@@ -307,7 +365,29 @@
       "sent": "Enviado",
       "confirmed": "Confirmado",
       "received": "Recibido"
-    }
+    },
+    "createFromPoq": "Create from POQ Recommendations",
+    "noActiveOrders": "No active orders",
+    "noOrderHistory": "No order history",
+    "activeOrders": "Active Orders",
+    "pastOrders": "Past Orders",
+    "totalValue": "Total Value",
+    "totalSpent": "Total Spent",
+    "awaiting": "Awaiting",
+    "cancelled": "Cancelled",
+    "poqSubtitle": "{{selected}} of {{total}} selected",
+    "howCalculatedTitle": "How is this calculated?",
+    "howCalculatedFormula": "Recommended Order = Target Stock − Physical Stock + Safety Stock",
+    "howCalculatedExample": "35 kg target − 24.5 kg physical + 5 kg safety = 15.5 kg",
+    "selected": "selected",
+    "recommended": "Recommended",
+    "supplierOne": "supplier",
+    "supplierOther": "suppliers",
+    "generatingOrders": "Generating Orders...",
+    "createPurchaseOrders": "Create Purchase Order(s)",
+    "ordersCreatedTitle": "Orders Created",
+    "ordersCreatedMsg": "{{count}} orders successfully generated.",
+    "creationFailed": "Creation Failed"
   },
   "expiration": {
     "title": "Control de Caducidades",
@@ -325,7 +405,16 @@
     "actions": {
       "reduceWaste": "Estrategia contra el desperdicio",
       "triageBbd": "Gestionar lotes próximos a caducar"
-    }
+    },
+    "noItemsInCategory": "No items in this category",
+    "noItemsInCategorySub": "All stock items in this range are healthy",
+    "batchExpiringTomorrow": "Batch Expiring Tomorrow",
+    "batchesExpiringSoon": "Batches Expiring Soon",
+    "promoLossSub": "{{value}} potential loss. Promo discount recommended.",
+    "backToList": "Back to Expiration Alerts",
+    "shortTitle": "Expiring",
+    "daysLeftShort": "d left",
+    "tomorrow": "Tomorrow"
   },
   "analytics": {
     "title": "Informes y Análisis de existencias",
@@ -338,7 +427,32 @@
     "exportCsv": "Exportar valoración (CSV)",
     "trends": "Tendencias históricas",
     "reports": "Informes de valoración y auditoría",
-    "suppliers": "Rendimiento de proveedores"
+    "suppliers": "Rendimiento de proveedores",
+    "reportsBtn": "Reports",
+    "tabs": {
+      "overview": "Overview",
+      "valuation": "Valuation",
+      "variance": "Variance",
+      "waste": "Waste",
+      "purchasing": "Purchasing"
+    },
+    "healthScore": "Health Score",
+    "avgTurnover": "Avg Turnover",
+    "totalValue": "Total Value",
+    "netVariance": "Net Variance",
+    "supplierScorecard": "Supplier Performance Scorecard",
+    "supplierScorecardSub": "View lead times, on-time rates & spend per vendor",
+    "totalValuation": "Total Inventory Valuation",
+    "acrossCatalogItems": "Across {{count}} catalog items",
+    "netDiscrepancyImpact": "Net Discrepancy Impact",
+    "monthlyWasteCost": "Monthly Waste Cost",
+    "wasteReductionSuggestions": "Active Waste Reduction Suggestions",
+    "wasteReductionSuggestionsSub": "Promote recipes with expiring stock before BBD",
+    "ytdTotalSpend": "YTD Total Spend",
+    "monthActual": "Month Actual",
+    "monthBudget": "Month Budget",
+    "poqReorderTitle": "Reorder from POQ Recommendations",
+    "poqReorderSub": "Auto-calculate orders based on target stock"
   },
   "team": {
     "title": "Equipo y Permisos de acceso",
@@ -388,7 +502,24 @@
     },
     "permissionsMatrix": "Matriz de permisos por rol",
     "roleAssigned": "Rol: {{role}}",
-    "rolesDesc": "Gestionar roles y permisos de establecimientos"
+    "rolesDesc": "Gestionar roles y permisos de establecimientos",
+    "roleDescriptions": {
+      "admin": "Full unrestricted access across operations, financials, recipes, and team management",
+      "manager": "Day-to-day operations, POS reviews, POQ recommendations, purchasing, and analytics",
+      "supervisor": "Shift supervision, count execution & approval, POS scan reviews, and waste triage",
+      "staff": "Physical inventory counts, POS scanning, goods intake receipts, and BBD warnings",
+      "auditor": "Read-only compliance and audit access for inventory valuation, variances, and trail logs"
+    },
+    "modulePermissionsGranted": "{{count}} module permissions granted",
+    "selectRolePrompt": "Select the operational role and permissions for this member.",
+    "fullNameOptional": "Full Name (Optional)",
+    "validityDuration": "Validity Duration",
+    "daysCount": "{{count}} Days",
+    "invitationReady": "Invitation Ready",
+    "invitationReadySub": "Share this 6-character code with {{email}} to join the kitchen store.",
+    "invitationCode": "INVITATION CODE",
+    "expiresInDaysToken": "Expires in {{days}} days · Single-use secure token",
+    "copyAndShareCode": "Copy & Share Code"
   },
   "onboarding": {
     "getStarted": "¿Cómo desea empezar?",
@@ -456,7 +587,9 @@
     "emptyStateDesc": "¡Todo al día! Los avisos y alertas de stock aparecerán aquí.",
     "filterUnread": "No leídas",
     "filterUrgent": "Urgentes",
-    "unreadCount": "{{count}} notificaciones sin leer"
+    "unreadCount": "{{count}} notificaciones sin leer",
+    "backToList": "Back to Notifications",
+    "detailTitle": "Notification Detail"
   },
   "settings": {
     "title": "Ajustes",
@@ -520,7 +653,10 @@
       "phone": "Número de teléfono",
       "role": "Rol asignado",
       "store": "Local asignado",
-      "saveChanges": "Guardar perfil"
+      "saveChanges": "Guardar perfil",
+      "biometrics": "Biometrics / Face ID",
+      "fingerprint": "Fingerprint",
+      "biometricsSub": "Fast and secure sign in on this device"
     },
     "signOutConfirm": {
       "title": "Cerrar sesión",
@@ -584,7 +720,9 @@
       "orderInvoice": "Factura de pedido / Ventas TPV",
       "goodsReceipt": "Albarán de entrega / Recepción",
       "orderInvoiceDesc": "Extrae platos vendidos y descuenta ingredientes según escandallos",
-      "goodsReceiptDesc": "Extrae artículos recibidos e ingresa materias primas en almacén"
+      "goodsReceiptDesc": "Extrae artículos recibidos e ingresa materias primas en almacén",
+      "orderInvoiceTab": "POS Sales",
+      "goodsReceiptTab": "Goods Receipt"
     },
     "scanHistory": "Historial de escaneos",
     "invoiceTypeLabel": "Tipo de factura",
@@ -620,7 +758,10 @@
       "deleteConfirmMessage": "¿Está seguro de que desea eliminar este registro de escaneo?",
       "deleteWithRollback": "Revertir almacén y eliminar",
       "deleteRecordOnly": "Solo eliminar registro"
-    }
+    },
+    "cameraAccessNeeded": "Camera Access Needed",
+    "cameraAccessDesc": "StockPulse uses the camera to scan POS daily register receipts and supplier goods receipts.",
+    "enableCamera": "Enable Camera"
   },
   "recipes": {
     "title": "Recetas y Escandallos",
@@ -662,7 +803,15 @@
     "allCategories": "Todas las categorías",
     "food": "Comida",
     "drinks": "Bebidas",
-    "searchPlaceholder": "Buscar recetas o platos..."
+    "searchPlaceholder": "Buscar recetas o platos...",
+    "outOfStockBadge": "Ingredient Out of Stock",
+    "lowStockBadge": "Low Stock Warning",
+    "readyBadge": "Ingredients Ready",
+    "perServing": "/ serving",
+    "ingredientOne": "ingredient",
+    "ingredientOther": "ingredients",
+    "howBomDeductionsExplanation": "Each sale of {{name}} automatically deducts configured raw materials from inventory according to recipe quantities and waste factors.",
+    "recipeNotFound": "Recipe not found"
   },
   "invoices": {
     "title": "Facturas y Conciliación",
@@ -689,7 +838,46 @@
     "paymentStatus": "Estado del pago",
     "verifiedBy": "Verificado por",
     "linkToDeliveryNote": "Ver albarán vinculado",
-    "linkToPo": "Ver orden de compra vinculada"
+    "linkToPo": "Ver orden de compra vinculada",
+    "process": "Process",
+    "all": "All",
+    "allCount": "All ({{count}})",
+    "supplierInvoicesCount": "Supplier Deliveries ({{count}})",
+    "orderReceiptsCount": "Sales Receipts ({{count}})",
+    "supplierDebtCount": "Supplier Debt ({{count}})",
+    "supplierDebt": "Supplier Debt",
+    "chooseDocToProcess": "Choose Document to Process",
+    "invoiceDate": "Invoice Date",
+    "dueDate": "Due Date",
+    "backToList": "Back to Invoices",
+    "invoiceNotFound": "Invoice not found",
+    "deliveryInvoiceSupplier": "Delivery invoice from supplier",
+    "orderFormReceipt": "Order form receipt",
+    "statuses": {
+      "verified": "Verified",
+      "discrepancy": "Discrepancy",
+      "paid": "Paid",
+      "pending": "Pending",
+      "unpaidDebt": "Unpaid Debt"
+    },
+    "netDebt": "Net Debt",
+    "debt": "Debt",
+    "grossInvoiced": "Gross Invoiced",
+    "skipDeduction": "Skip / Shortage Deduction",
+    "netDebtSupplier": "Net Debt to Supplier",
+    "totalAmount": "Total Amount",
+    "markVerified": "Mark as Verified",
+    "recordPayment": "Record Payment ({{amount}})",
+    "linkedPo": "Linked PO: {{po}}",
+    "linkedDeliveryNote": "Linked Delivery Note",
+    "tapToAddNotes": "+ Tap to add remarks / notes",
+    "skipControlTitle": "Skip Control & Debt Deduction",
+    "deductionApplied": "Deduction Applied",
+    "skipControlDesc": "Directly deduct supplier debt for rejected, damaged, or short-delivered goods without complex reconciliation paperwork.",
+    "deductedFromDebt": "Deducted from Debt:",
+    "reason": "Reason:",
+    "modifySkipDeduction": "Modify Skip Deduction",
+    "addSkipDeduction": "+ Deduct Skip / Damaged Goods"
   },
   "deliveryNotes": {
     "title": "Albaranes de entrega",
@@ -708,7 +896,31 @@
     "searchPlaceholder": "Buscar por n° de albarán, proveedor o artículo...",
     "emptyState": "No se encontraron albaranes",
     "emptyStateDesc": "Registre los albaranes al recibir las mercancías.",
-    "markVerified": "Confirmar entrada en almacén"
+    "markVerified": "Confirmar entrada en almacén",
+    "shortages": "Shortages",
+    "inbound": "Inbound",
+    "totalDeliveries": "Total Deliveries",
+    "awaitingInspection": "Awaiting Inspection",
+    "scanIntakeTitle": "Scan / Intake Inbound Delivery",
+    "scanIntakeSub": "Choose: Delivery invoice from supplier vs Order form receipt",
+    "itemsReceived": "{{count}} items received: {{items}}",
+    "shortageNotice": "Discrepancy: Received less than ordered quantity on this delivery slip.",
+    "backToList": "Back to Delivery Notes",
+    "deliveryNoteNotFound": "Delivery Note not found",
+    "ordered": "Ordered",
+    "variance": "Variance",
+    "confirmReceiving": "Confirm Warehouse Receiving",
+    "allNotesCount": "All Notes ({{count}})",
+    "receivedCount": "Received ({{count}})",
+    "pendingCount": "Pending Inspection ({{count}})",
+    "shortagesCount": "Shortages ({{count}})",
+    "statuses": {
+      "received": "Received & Verified",
+      "pendingInspection": "Pending Inspection",
+      "variance": "Shortage / Variance",
+      "damaged": "Damaged / Rejected"
+    },
+    "receivedItemsInspection": "Received Items & Inspection ({{count}})"
   },
   "events": {
     "title": "Eventos y Catering",
@@ -751,6 +963,264 @@
       "plowhorse": "Caballo de batalla (Bajo margen, Alta popularidad)",
       "puzzle": "Enigma (Alto margen, Baja popularidad)",
       "dog": "Perro (Bajo margen, Baja popularidad)"
+    },
+    "selectRecipe": "Select Recipe / Dish",
+    "rawFoodCost": "Raw Food Cost",
+    "pricingTargets": "Pricing & Targets",
+    "menuSellingPrice": "Menu Selling Price (€)",
+    "targetFoodCostPct": "Target Food Cost %",
+    "estMonthlyOrders": "Est. Monthly Orders (Portions)",
+    "profitabilityAnalysis": "Profitability Analysis",
+    "actualFoodCostPct": "Actual Food Cost %",
+    "grossMarginServing": "Gross Margin / Serving",
+    "profitPerDish": "Profit per dish",
+    "recommendedPrice": "Recommended Price",
+    "estMonthlyProfit": "Est. Monthly Profit",
+    "prepBatchScaleTarget": "Prep Batch Scale Target",
+    "portionsServings": "Portions / Servings",
+    "perPortion": "Per Portion",
+    "shortage": "Shortage"
+  },
+  "more": {
+    "title": "More",
+    "roles": {
+      "staff": "Kitchen & Bar Staff",
+      "supervisor": "Shift Supervisor",
+      "manager": "Operations Manager",
+      "auditor": "Financial Auditor",
+      "owner": "Owner / Admin"
     }
+  },
+  "stockMetric": {
+    "actualIs": "IS",
+    "targetShould": "SHOULD",
+    "varianceDiff": "DIFF"
+  },
+  "desktopNotice": {
+    "badge": "PC / Mac & Mobile",
+    "title": "Also Accessible on Computer (PC / Mac)",
+    "description": "Note: The manager or authorized person can also open StockPulse on a computer to comfortably create and manage recipes, articles, and upper groups.",
+    "compact": "Note: Managers & authorized personnel can also open the app on a computer (PC/Mac) to create recipes, articles & upper groups.",
+    "openDesktopMode": "Full Computer View Active"
+  },
+  "upperGroups": {
+    "title": "Manage Upper Groups",
+    "subtitle": "Define your own upper groups (e.g. Drinks, Bar, Spirits, Food)",
+    "label": "Upper Group / Category",
+    "selectOrCreate": "Select upper group or create your own",
+    "addButton": "+ Upper Group",
+    "createNew": "+ Create Custom Upper Group",
+    "modalTitle": "Create Custom Upper Group",
+    "modalSubtitle": "Define your own upper groups freely — e.g. for drinks, bar, wine list, or kitchen stations.",
+    "nameLabel": "Upper Group Name",
+    "namePlaceholder": "e.g. Drinks, Cocktails & Bar, Draft Beer, Desserts...",
+    "typeLabel": "Department / Type",
+    "typeFood": "Food & Kitchen",
+    "typeDrinks": "Drinks & Bar",
+    "typeOther": "Other / General",
+    "saveGroup": "Save Upper Group",
+    "existingGroups": "Available Upper Groups",
+    "customBadge": "Custom",
+    "defaultBadge": "Default",
+    "deleteConfirm": "Remove upper group",
+    "createdSuccess": "Upper group \"{{name}}\" created and selected.",
+    "shortButton": "Groups"
+  },
+  "inventoryHub": {
+    "title": "Inventory & Kitchen",
+    "subtitle": "Manage stock, recipes, invoices, deliveries & events",
+    "DesktopHint": "Managers & authorized personnel can also open StockPulse on a computer (PC/Mac) to create recipes, articles, and upper groups.",
+    "cards": {
+      "stockItemsTitle": "Stock Items & Upper Groups",
+      "stockItemsSub": "Raw ingredients, drinks, custom upper groups, BBD batches & stock counts",
+      "stockItemsBadge": "Stock & Drinks",
+      "recipesTitle": "Recipes & BOM",
+      "recipesSub": "Dish & drink recipes, ingredient ratios & automatic stock deduction",
+      "recipesBadge": "BOM Recipes",
+      "invoicesTitle": "Invoices & Receipts",
+      "invoicesSub": "Supplier delivery invoices & POS order form receipts",
+      "invoicesBadge": "Financials",
+      "lossLogsTitle": "Waste & Loss Logs",
+      "lossLogsSub": "Record spoilage, breakage & write-offs",
+      "deliveryNotesTitle": "Delivery Notes",
+      "deliveryNotesSub": "Inbound delivery slips, temperature checks & receiving logs",
+      "deliveryNotesBadge": "Inbound",
+      "eventsTitle": "Events & Catering",
+      "eventsSub": "Banquet planning, prep schedules & BOM ingredient forecasting",
+      "eventsBadge": "Planning",
+      "recipeToolsTitle": "Recipe & Menu Tools",
+      "recipeToolsSub": "Menu cost matrix, profit margin analysis & batch prep scaler",
+      "recipeToolsBadge": "Engineering"
+    },
+    "stats": {
+      "activeModules": "Active Modules",
+      "bomSync": "BOM Sync",
+      "live": "Live",
+      "ocrEngine": "OCR Engine",
+      "ready": "Ready"
+    }
+  },
+  "itemModal": {
+    "addTitle": "Add New Article",
+    "editTitle": "Edit Article",
+    "addSubtitle": "Create food, drinks, or raw materials in your chosen upper group",
+    "editSubtitle": "Update article details, upper group & stock parameters",
+    "nameLabel": "Article Name *",
+    "namePlaceholder": "e.g. Coca-Cola 0.33L, Espresso Beans, Beef Tenderloin",
+    "skuLabel": "SKU / Article Code",
+    "skuPlaceholder": "Auto-generated if left empty",
+    "upperGroupLabel": "Upper Group / Category *",
+    "newGroupInputPlaceholder": "New upper group name (e.g. Soft Drinks)...",
+    "createGroupBtn": "Create",
+    "unitLabel": "Unit",
+    "zoneLabel": "Storage Zone",
+    "stockLevelsSection": "Stock Levels",
+    "currentStock": "Current IS Stock",
+    "targetStock": "SHOULD Stock (Target)",
+    "minThreshold": "Min Threshold (Reorder Point)",
+    "costPerUnit": "Cost per Unit (€)",
+    "bbdSection": "Best Before Date (BBD)",
+    "bbdRequired": "BBD Tracking Required",
+    "bbdDate": "Current BBD (YYYY-MM-DD)",
+    "validationNameRequired": "Please enter an article name.",
+    "saveChanges": "Save Changes",
+    "createItem": "Create Article",
+    "deleteItem": "Delete Article",
+    "deleteConfirmTitle": "Delete Article",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\" from inventory?"
+  },
+  "registerWizard": {
+    "headerSub": "F&B Inventory Intelligence & POS Reconciliation",
+    "stepOf": "Step {{step}} of {{total}}",
+    "step1Title": "Create Account",
+    "step1Sub": "Register your F&B business on StockPulse",
+    "fullName": "Full Name *",
+    "fullNamePlaceholder": "e.g. Marco Rossi",
+    "workEmail": "Work Email Address *",
+    "workEmailPlaceholder": "name@restaurant.de",
+    "phone": "Phone Number (Optional)",
+    "phonePlaceholder": "+49 30 1234 5678",
+    "password": "Password *",
+    "passwordPlaceholder": "Minimum 8 characters",
+    "confirmPassword": "Confirm Password *",
+    "confirmPasswordPlaceholder": "Re-enter password",
+    "step2Title": "Business Profile",
+    "step2Sub": "Details about your restaurant, café, bar, or hotel",
+    "businessName": "Restaurant / Business Name *",
+    "businessNamePlaceholder": "e.g. The Green Kitchen GmbH",
+    "businessType": "Business Type",
+    "address": "Street Address *",
+    "addressPlaceholder": "e.g. Friedrichstraße 123",
+    "city": "City *",
+    "cityPlaceholder": "Berlin",
+    "postalCode": "Postal Code",
+    "postalCodePlaceholder": "10117",
+    "country": "Country",
+    "taxId": "VAT / Tax ID (Optional)",
+    "taxIdPlaceholder": "DE123456789",
+    "step3Title": "Store Setup & Language",
+    "step3Sub": "Configure language, currency, and storage zones (language applies continuously across the app)",
+    "currency": "Default Currency",
+    "systemLanguage": "System Language (applies immediately)",
+    "storageZones": "Storage & Cooling Zones",
+    "customZonePlaceholder": "Add custom storage zone (e.g. Beverage Cellar, Bar)...",
+    "posSystem": "POS System",
+    "step4Title": "Role & Team Invite",
+    "step4Sub": "Your access level and staff onboarding code",
+    "yourRole": "Your Role",
+    "roleOwnerDesc": "Full access to all modules, financials, PC/Mobile management & settings",
+    "roleManagerDesc": "Manage inventory, drinks, upper groups, recipes (also on PC) & orders",
+    "staffInviteCode": "Staff Invite Code",
+    "staffInviteDesc": "Share this code with your team for quick onboarding",
+    "acceptTerms": "I accept the Terms of Service and GDPR Privacy Policy.",
+    "backButton": "Back",
+    "continueButton": "Continue",
+    "completeButton": "Complete Registration",
+    "alreadyHaveAccount": "Already have an account?",
+    "signInLink": "Sign In",
+    "steps": {
+      "restaurant": "Restaurant",
+      "inventory": "Inventory",
+      "admin": "Admin",
+      "team": "Team",
+      "done": "Done"
+    },
+    "schedules": {
+      "daily": {
+        "label": "Daily",
+        "badge": "Recommended",
+        "desc": "Best for high-volume kitchens — count every day"
+      },
+      "weekly": {
+        "label": "Weekly",
+        "badge": "Standard",
+        "desc": "Count every week — suitable for most restaurants"
+      },
+      "monthly": {
+        "label": "Monthly",
+        "badge": "Extended",
+        "desc": "Full monthly inventory — lower frequency operations"
+      },
+      "quarterly": {
+        "label": "Quarterly",
+        "badge": "Audit",
+        "desc": "Quarterly audit — for low-turnover inventory"
+      }
+    },
+    "inventoryPreferencesTitle": "Inventory Preferences",
+    "inventoryPreferencesSub": "Set your default stock count frequency schedule",
+    "adminAccountTitle": "Administrator Account",
+    "adminAccountSub": "Create the owner account for this store location",
+    "inviteTeamTitle": "Invite Your Team",
+    "inviteTeamSub": "Add managers, supervisors, and kitchen staff",
+    "createNewStore": "Create New Store",
+    "joinExistingStore": "Join Existing Store",
+    "staffRegistrationFlow": "Staff Registration Flow",
+    "staffRegistrationTitle": "Staff Registration",
+    "staffRegistrationSub": "Create your personal account to join an existing kitchen",
+    "staffAccountDesc": "Register your work account here. Once registered, you'll be prompted to enter your staff invitation code to join your restaurant.",
+    "passwordRules": "Password (min 8 chars, A-Z, 0-9) *",
+    "passwordErrorHint": "Password must be at least 8 characters and include uppercase, lowercase, and numbers.",
+    "addAnotherMember": "Invite another team member",
+    "addToInvites": "Add to Invites",
+    "timezone": "Time Zone",
+    "restaurantReady": "{{name}} is ready!",
+    "restaurantReadySub": "Your restaurant workspace has been configured. You can start creating articles, drinks, custom upper groups, and recipes immediately on mobile or computer.",
+    "workspaceSaved": "Restaurant workspace & language ({{lang}}) configured",
+    "scheduleActivated": "Stock count schedule & upper groups (incl. Drinks) activated",
+    "adminCreated": "Administrator account created ({{email}})",
+    "goToDashboard": "Go to Dashboard",
+    "signUpAndJoin": "Sign Up & Join Store",
+    "inviteNotice": "Team members will receive an activation email. Managers & authorized personnel can also open StockPulse on a computer (PC/Mac) to manage recipes, articles, and upper groups.",
+    "inviteModalTitle": "Invite Team Member"
+  },
+  "verifyEmail": {
+    "headerTitle": "Verify Email",
+    "headerSub": "Account Security & Activation",
+    "title": "Verify Your Email Address",
+    "subtitle": "We sent a confirmation link to:",
+    "AccountReadyTitle": "Account Ready to Sign In",
+    "AccountReadyDesc": "Your account has been created! You can sign in immediately with your email and password (on mobile or computer).",
+    "signInNowButton": "Sign In Now",
+    "checkInboxStep1": "Check your email inbox (and spam folder).",
+    "checkInboxStep2": "Click the verification link or sign in directly below.",
+    "resendButton": "Resend Verification Email",
+    "resendCooldown": "Resend in {{seconds}}s",
+    "resendSuccess": "Verification email has been resent.",
+    "backToLogin": "Back to Sign In",
+    "useDifferentEmail": "Use a different email",
+    "verifiedContinue": "I've Verified My Email — Continue"
+  },
+  "lossLogs": {
+    "title": "Loss & Cancellations",
+    "subtitle": "Kitchen spoilage, waste & voided tickets",
+    "logLoss": "Log Loss",
+    "voidDish": "Void Dish",
+    "foodLossSpoilage": "Food Loss & Spoilage",
+    "kitchenCancellations": "Kitchen Cancellations",
+    "totalLossCost": "Total Loss Cost",
+    "loggedLosses": "Logged Losses",
+    "cancelledOrders": "Cancelled Orders",
+    "preppedWaste": "Prepped Food Wasted"
   }
 }

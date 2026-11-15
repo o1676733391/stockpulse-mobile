@@ -236,7 +236,8 @@
       "healthy": "Optimal",
       "low": "Niedrig",
       "critical": "Kritisch",
-      "overstock": "Überbestand"
+      "overstock": "Überbestand",
+      "expiry": "MHD & Ablauf"
     },
     "categories": {
       "all": "Alle Artikel",
@@ -276,7 +277,15 @@
     "backToList": "Zurück zum Inventar",
     "physical": "Ist",
     "target": "Soll",
-    "safety": "Sicherheit"
+    "safety": "Sicherheit",
+    "bbd": "MHD",
+    "transactions": {
+      "posDeduction": "POS-Abbuchung",
+      "manualCount": "Inventurzählung",
+      "adjustment": "Korrekturbuchung",
+      "goodsReceipt": "Wareneingang",
+      "ocrInvoice": "Belegprüfung"
+    }
   },
   "stockCount": {
     "title": "Lagerprüfung & Inventur",
@@ -308,7 +317,14 @@
     "countSummaryTitle": "Inventurabschluss & Prüfung",
     "status": {
       "completed": "Abgeschlossen"
-    }
+    },
+    "exitAlertTitle": "Zählsitzung verlassen?",
+    "exitAlertMessage": "Ihre bisher erfassten Zählungen bleiben im Entwurf gespeichert.",
+    "continueCounting": "Weiterzählen",
+    "exitSession": "Sitzung beenden",
+    "scheduledCounts": "Geplante Inventuren",
+    "startBtn": "Starten",
+    "completed": "abgeschlossen"
   },
   "ocr": {
     "title": "Dokumenten-KI & Beleg-Scanner",
@@ -405,7 +421,10 @@
       "reduceWaste": "Maßnahmen zur Abfallvermeidung",
       "triageBbd": "Ablaufende Chargen bearbeiten"
     },
-    "backToList": "Zurück zu MHD-Warnungen"
+    "backToList": "Zurück zu MHD-Warnungen",
+    "shortTitle": "MHD & Ablauf",
+    "daysLeftShort": "T. verbl.",
+    "tomorrow": "Morgen"
   },
   "analytics": {
     "title": "Lageranalysen & Berichte",
@@ -714,7 +733,9 @@
       "orderInvoice": "Kassenbeleg / POS-Verkäufe",
       "goodsReceipt": "Wareneingang / Lieferschein",
       "orderInvoiceDesc": "Erfasst verkaufte Gerichte & bucht Zutaten über Rezeptur-Stücklisten ab",
-      "goodsReceiptDesc": "Erfasst Lieferpositionen & bucht Rohstoffe direkt ins Lager ein"
+      "goodsReceiptDesc": "Erfasst Lieferpositionen & bucht Rohstoffe direkt ins Lager ein",
+      "orderInvoiceTab": "Kassenbon / POS",
+      "goodsReceiptTab": "Wareneingang"
     },
     "scanHistory": "Scan-Verlauf",
     "invoiceTypeLabel": "Belegtyp",
@@ -1002,7 +1023,8 @@
     "customBadge": "Eigene",
     "defaultBadge": "Standard",
     "deleteConfirm": "Obergruppe entfernen",
-    "createdSuccess": "Obergruppe „{{name}}“ wurde angelegt und ausgewählt."
+    "createdSuccess": "Obergruppe „{{name}}“ wurde angelegt und ausgewählt.",
+    "shortButton": "Gruppen"
   },
   "inventoryHub": {
     "title": "Inventar & Küche",

@@ -25,8 +25,8 @@ export const BUILTIN_UPPER_GROUPS: UpperGroupDefinition[] = [
     type: 'drinks',
     defaultUnit: 'bottle',
     labels: {
-      de: 'Getränke & Alkoholfrei',
-      en: 'Drinks & Soft Drinks',
+      de: 'Alkoholfrei & Softdrinks',
+      en: 'Soft Drinks & Water',
       fr: 'Boissons & Sans Alcool',
       es: 'Bebidas y Refrescos',
       it: 'Bevande e Analcolici',
@@ -175,8 +175,8 @@ export const BUILTIN_UPPER_GROUPS: UpperGroupDefinition[] = [
     type: 'food',
     defaultUnit: 'kg',
     labels: {
-      de: 'Frische Erzeugnisse & Gemüse',
-      en: 'Fresh Produce & Vegetables',
+      de: 'Obst, Gemüse & Frische',
+      en: 'Fresh Produce & Veg',
       fr: 'Fruits & Légumes Frais',
       es: 'Frutas y Verduras Frescas',
       it: 'Frutta e Verdura Fresca',
