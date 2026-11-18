@@ -65,18 +65,20 @@ export class RealStockCountService implements IStockCountService {
         }));
       }
 
-      // Default scheduled stocktake if none in history yet
-      return [
-        {
-          id: 'sched-daily',
-          label: 'Daily Closing Inventory Count',
-          sub: 'Blind Count · Kitchen Staff',
-          progress: 0,
-          total: 0,
-          status: 'scheduled' as const,
-          route: '/stock-count/active',
-        },
-      ];
+      if (apiClient.isFallbackEnabled()) {
+        return [
+          {
+            id: 'sched-daily',
+            label: 'Daily Closing Inventory Count',
+            sub: 'Blind Count · Kitchen Staff',
+            progress: 0,
+            total: 0,
+            status: 'scheduled' as const,
+            route: '/stock-count/active',
+          },
+        ];
+      }
+      return [];
     } catch (err) {
       logDebugFallback('StockCountService', '/stock-counts/history [getSchedules]', err);
       return [];

@@ -8,15 +8,17 @@ import { TopBar } from '@/components/ui/top-bar';
 import { Colors, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useI18n } from '@/i18n';
 import {
-  INITIAL_HEALTH_DATA,
-  INITIAL_PURCHASE_DATA,
-  INITIAL_VALUATION_DATA,
-  INITIAL_VARIANCE_DATA,
-  INITIAL_WASTE_DATA,
+  analyticsService,
+  EMPTY_HEALTH_DATA,
+  EMPTY_PURCHASE_DATA,
+  EMPTY_VALUATION_DATA,
+  EMPTY_VARIANCE_DATA,
+  EMPTY_WASTE_DATA,
 } from '@/services/analyticsService';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -46,19 +48,48 @@ export default function AnalyticsScreen() {
 
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('Overview');
   const [valRange, setValRange] = useState<ValuationRange>('7D');
+  const [loading, setLoading] = useState(true);
 
-  const health = INITIAL_HEALTH_DATA;
-  const valuation = INITIAL_VALUATION_DATA;
-  const variance = INITIAL_VARIANCE_DATA;
-  const waste = INITIAL_WASTE_DATA;
-  const purchase = INITIAL_PURCHASE_DATA;
+  const [health, setHealth] = useState(EMPTY_HEALTH_DATA);
+  const [valuation, setValuation] = useState(EMPTY_VALUATION_DATA);
+  const [variance, setVariance] = useState(EMPTY_VARIANCE_DATA);
+  const [waste, setWaste] = useState(EMPTY_WASTE_DATA);
+  const [purchase, setPurchase] = useState(EMPTY_PURCHASE_DATA);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchAnalytics() {
+      try {
+        setLoading(true);
+        const [hRes, vRes, varRes, wRes, pRes] = await Promise.allSettled([
+          analyticsService.getInventoryHealth(),
+          analyticsService.getStockValuation(),
+          analyticsService.getVarianceAnalytics(),
+          analyticsService.getWasteAnalytics(),
+          analyticsService.getPurchaseAnalytics(),
+        ]);
+        if (!mounted) return;
+        if (hRes.status === 'fulfilled') setHealth(hRes.value);
+        if (vRes.status === 'fulfilled') setValuation(vRes.value);
+        if (varRes.status === 'fulfilled') setVariance(varRes.value);
+        if (wRes.status === 'fulfilled') setWaste(wRes.value);
+        if (pRes.status === 'fulfilled') setPurchase(pRes.value);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    fetchAnalytics();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const currentValuationTrend =
     valRange === '7D'
-      ? valuation.trend7D
+      ? valuation?.trend7D || { labels: [], values: [] }
       : valRange === '30D'
-      ? valuation.trend30D
-      : valuation.trend3M;
+      ? valuation?.trend30D || { labels: [], values: [] }
+      : valuation?.trend3M || { labels: [], values: [] };
 
   const activeOption = t(TAB_CONFIG.find((c) => c.id === activeTab)?.labelKey || 'analytics.tabs.overview');
   const options = TAB_CONFIG.map((c) => t(c.labelKey));
@@ -228,43 +259,61 @@ export default function AnalyticsScreen() {
 
               {/* Valuation Line Chart */}
               <View style={styles.lineChartWrap}>
-                <LineChart
-                  physical={currentValuationTrend.values}
-                  theoretical={currentValuationTrend.values.map((v) => v * 1.02)}
-                  labels={currentValuationTrend.labels}
-                  width={310}
-                  height={150}
-                />
+                {currentValuationTrend.values && currentValuationTrend.values.length > 0 ? (
+                  <LineChart
+                    physical={currentValuationTrend.values}
+                    theoretical={currentValuationTrend.values.map((v) => v * 1.02)}
+                    labels={currentValuationTrend.labels || []}
+                    width={310}
+                    height={150}
+                  />
+                ) : (
+                  <View style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={[styles.catName, { color: Colors.neutral.textMuted }]}>
+                      {t('analytics.noTrendData', { defaultValue: 'No trend data yet' })}
+                    </Text>
+                  </View>
+                )}
               </View>
             </Card>
 
             {/* Category Value Breakdown Bar Chart */}
             <Card style={styles.chartCard}>
               <SectionHeader title="Valuation by Category" />
-              <BarChart
-                data={valuation.categoryBreakdown.map((c) => ({
-                  label: c.category,
-                  value: c.value,
-                  color: c.color,
-                }))}
-                width={310}
-                height={150}
-                formatValue={(v) => `€${Math.round(v / 1000)}k`}
-              />
+              {valuation.categoryBreakdown && valuation.categoryBreakdown.length > 0 ? (
+                <>
+                  <BarChart
+                    data={valuation.categoryBreakdown.map((c) => ({
+                      label: c.category,
+                      value: c.value,
+                      color: c.color,
+                    }))}
+                    width={310}
+                    height={150}
+                    formatValue={(v) => `€${Math.round(v / 1000)}k`}
+                  />
 
-              {/* Category Breakdown Table */}
-              <View style={styles.catTable}>
-                {valuation.categoryBreakdown.map((c) => (
-                  <View key={c.category} style={styles.catTableRow}>
-                    <View style={styles.catLeft}>
-                      <View style={[styles.legendDot, { backgroundColor: c.color }]} />
-                      <Text style={styles.catName}>{c.category}</Text>
-                    </View>
-                    <Text style={styles.catPct}>{c.percentage}%</Text>
-                    <Text style={styles.catValue}>€{c.value.toLocaleString()}</Text>
+                  {/* Category Breakdown Table */}
+                  <View style={styles.catTable}>
+                    {valuation.categoryBreakdown.map((c) => (
+                      <View key={c.category} style={styles.catTableRow}>
+                        <View style={styles.catLeft}>
+                          <View style={[styles.legendDot, { backgroundColor: c.color }]} />
+                          <Text style={styles.catName}>{c.category}</Text>
+                        </View>
+                        <Text style={styles.catPct}>{c.percentage}%</Text>
+                        <Text style={styles.catValue}>€{c.value.toLocaleString()}</Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
+                </>
+              ) : (
+                <View style={{ height: 100, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={[styles.catName, { color: Colors.neutral.textMuted }]}>
+                    {t('inventory.emptyStateDesc', { defaultValue: 'No inventory categories recorded yet' })}
+                  </Text>
+                </View>
+              )}
             </Card>
           </View>
         )}

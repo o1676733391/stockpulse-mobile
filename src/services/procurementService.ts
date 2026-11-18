@@ -153,10 +153,13 @@ export class RealProcurementService implements IProcurementService {
       return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : [];
     } catch (err) {
       logDebugFallback('ProcurementService', `/procurement/purchase-orders?tab=${tab}`, err);
-      if (tab === 'history') {
-        return localPurchaseOrders.filter((po) => po.status === 'received' || po.status === 'cancelled');
+      if (apiClient.isFallbackEnabled()) {
+        if (tab === 'history') {
+          return localPurchaseOrders.filter((po) => po.status === 'received' || po.status === 'cancelled');
+        }
+        return localPurchaseOrders.filter((po) => po.status !== 'received' && po.status !== 'cancelled');
       }
-      return localPurchaseOrders.filter((po) => po.status !== 'received' && po.status !== 'cancelled');
+      return [];
     }
   }
 
@@ -166,7 +169,10 @@ export class RealProcurementService implements IProcurementService {
       return res || null;
     } catch (err) {
       logDebugFallback('ProcurementService', `/procurement/purchase-orders/${id}`, err);
-      return localPurchaseOrders.find((p) => p.id === id) || null;
+      if (apiClient.isFallbackEnabled()) {
+        return localPurchaseOrders.find((p) => p.id === id) || null;
+      }
+      return null;
     }
   }
 
@@ -176,7 +182,10 @@ export class RealProcurementService implements IProcurementService {
       return Array.isArray(res) ? res : [];
     } catch (err) {
       logDebugFallback('ProcurementService', '/suppliers', err);
-      return localSuppliers;
+      if (apiClient.isFallbackEnabled()) {
+        return localSuppliers;
+      }
+      return [];
     }
   }
 
@@ -186,7 +195,10 @@ export class RealProcurementService implements IProcurementService {
       return Array.isArray(res) ? res : [];
     } catch (err) {
       logDebugFallback('ProcurementService', '/procurement/poq-recommendations', err);
-      return localPOQGroups;
+      if (apiClient.isFallbackEnabled()) {
+        return localPOQGroups;
+      }
+      return [];
     }
   }
 

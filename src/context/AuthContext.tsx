@@ -55,10 +55,22 @@ export interface AuthContextType {
   canAccessRoute: (route: string) => boolean;
 }
 
+const EMPTY_AUTH_USER: AuthUser = {
+  id: '',
+  name: '',
+  email: '',
+  avatarText: '',
+  role: 'admin',
+  storeId: '',
+  storeName: '',
+  status: 'active',
+  lastActive: '',
+};
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser>(MOCK_USERS.admin);
+  const [user, setUser] = useState<AuthUser>(EMPTY_AUTH_USER);
   const [authState, setAuthState] = useState<AuthState>('INITIALIZING');
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
@@ -134,6 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (event === 'SIGNED_OUT' || !session) {
           setAuthToken(null);
+          setActiveStoreId('');
+          setUser(EMPTY_AUTH_USER);
           setAuthState('UNAUTHENTICATED');
           setUnverifiedEmail(null);
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
@@ -242,6 +256,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await authService.logout();
     setAuthToken(null);
+    setActiveStoreId('');
+    setUser(EMPTY_AUTH_USER);
     setAuthState('UNAUTHENTICATED');
     setUnverifiedEmail(null);
   }, []);

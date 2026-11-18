@@ -256,10 +256,10 @@ export class RealInvoiceService implements IInvoiceService {
       const res = await apiClient.get<any>(`/procurement/invoices${qs}`);
       const list = Array.isArray(res) ? res : res?.items || res?.data;
       if (Array.isArray(list)) return list;
-      return this.filterLocal(filters);
+      return apiClient.isFallbackEnabled() ? this.filterLocal(filters) : [];
     } catch (err) {
       logDebugFallback('InvoiceService', '/procurement/invoices [GET]', err);
-      return this.filterLocal(filters);
+      return apiClient.isFallbackEnabled() ? this.filterLocal(filters) : [];
     }
   }
 

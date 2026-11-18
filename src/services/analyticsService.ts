@@ -166,13 +166,74 @@ export const INITIAL_ARCHIVES: ArchiveReport[] = [
 
 export const INITIAL_ARCHIVE_REPORTS = INITIAL_ARCHIVES;
 
+export const EMPTY_HEALTH_DATA: InventoryHealthAnalytics = {
+  totalItems: 0,
+  healthScore: 100,
+  optimalCount: 0,
+  lowStockCount: 0,
+  overstockCount: 0,
+  outOfStockCount: 0,
+  turnoverDays: 0,
+};
+
+export const EMPTY_VALUATION_DATA: StockValuationAnalytics = {
+  totalValuation: 0,
+  trend7D: {
+    labels: [],
+    values: [],
+  },
+  trend30D: {
+    labels: [],
+    values: [],
+  },
+  trend3M: {
+    labels: [],
+    values: [],
+  },
+  categoryBreakdown: [],
+};
+
+export const EMPTY_VARIANCE_DATA: VarianceAnalytics = {
+  overallVarianceRate: 0,
+  netVarianceValue: 0,
+  trend: {
+    labels: [],
+    values: [],
+  },
+  topDiscrepancies: [],
+};
+
+export const EMPTY_WASTE_DATA: WasteAnalytics = {
+  monthlyWasteCost: 0,
+  monthlyWasteSaved: 0,
+  wasteReductionPct: 0,
+  trend: {
+    labels: [],
+    values: [],
+  },
+  breakdown: [],
+};
+
+export const EMPTY_PURCHASE_ANALYTICS: PurchaseAnalytics = {
+  ytdSpend: 0,
+  monthlyBudget: 0,
+  monthlyActual: 0,
+  monthlyTrend: {
+    labels: [],
+    spend: [],
+    budget: [],
+  },
+};
+
+export const EMPTY_PURCHASE_DATA = EMPTY_PURCHASE_ANALYTICS;
+
 export class RealAnalyticsService implements IAnalyticsService {
   async getInventoryHealth(): Promise<InventoryHealthAnalytics> {
     try {
       return await apiClient.get<InventoryHealthAnalytics>('/analytics/health');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/health', err);
-      return INITIAL_HEALTH_DATA;
+      return apiClient.isFallbackEnabled() ? INITIAL_HEALTH_DATA : EMPTY_HEALTH_DATA;
     }
   }
 
@@ -181,7 +242,7 @@ export class RealAnalyticsService implements IAnalyticsService {
       return await apiClient.get<StockValuationAnalytics>('/analytics/valuation');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/valuation', err);
-      return INITIAL_VALUATION_DATA;
+      return apiClient.isFallbackEnabled() ? INITIAL_VALUATION_DATA : EMPTY_VALUATION_DATA;
     }
   }
 
@@ -190,7 +251,7 @@ export class RealAnalyticsService implements IAnalyticsService {
       return await apiClient.get<VarianceAnalytics>('/analytics/variance');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/variance', err);
-      return INITIAL_VARIANCE_DATA;
+      return apiClient.isFallbackEnabled() ? INITIAL_VARIANCE_DATA : EMPTY_VARIANCE_DATA;
     }
   }
 
@@ -199,7 +260,7 @@ export class RealAnalyticsService implements IAnalyticsService {
       return await apiClient.get<WasteAnalytics>('/analytics/waste');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/waste', err);
-      return INITIAL_WASTE_DATA;
+      return apiClient.isFallbackEnabled() ? INITIAL_WASTE_DATA : EMPTY_WASTE_DATA;
     }
   }
 
@@ -208,17 +269,17 @@ export class RealAnalyticsService implements IAnalyticsService {
       return await apiClient.get<PurchaseAnalytics>('/analytics/purchases');
     } catch (err) {
       logDebugFallback('AnalyticsService', '/analytics/purchases', err);
-      return INITIAL_PURCHASE_DATA;
+      return apiClient.isFallbackEnabled() ? INITIAL_PURCHASE_DATA : EMPTY_PURCHASE_DATA;
     }
   }
 
   async getSupplierPerformance(): Promise<SupplierPerformance[]> {
     try {
       const res = await apiClient.get<any>('/suppliers/performance');
-      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : INITIAL_SUPPLIER_PERF;
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : (apiClient.isFallbackEnabled() ? INITIAL_SUPPLIER_PERF : []);
     } catch (err) {
       logDebugFallback('AnalyticsService', '/suppliers/performance', err);
-      return INITIAL_SUPPLIER_PERF;
+      return apiClient.isFallbackEnabled() ? INITIAL_SUPPLIER_PERF : [];
     }
   }
 
@@ -235,10 +296,10 @@ export class RealAnalyticsService implements IAnalyticsService {
   async getArchiveReports(): Promise<ArchiveReport[]> {
     try {
       const res = await apiClient.get<any>('/reports/archive');
-      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : INITIAL_ARCHIVES;
+      return Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : Array.isArray(res?.data) ? res.data : (apiClient.isFallbackEnabled() ? INITIAL_ARCHIVES : []);
     } catch (err) {
       logDebugFallback('AnalyticsService', '/reports/archive', err);
-      return INITIAL_ARCHIVES;
+      return apiClient.isFallbackEnabled() ? INITIAL_ARCHIVES : [];
     }
   }
 

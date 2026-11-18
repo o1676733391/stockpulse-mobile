@@ -143,10 +143,10 @@ export class RealLossService implements ILossService {
       const res = await apiClient.get<any>('/inventory/loss-logs');
       const list = Array.isArray(res) ? res : res?.items || res?.data;
       if (Array.isArray(list)) return list;
-      return localLossLogs;
+      return apiClient.isFallbackEnabled() ? localLossLogs : [];
     } catch (err) {
       logDebugFallback('LossService', '/inventory/loss-logs', err);
-      return localLossLogs;
+      return apiClient.isFallbackEnabled() ? localLossLogs : [];
     }
   }
 
@@ -155,10 +155,10 @@ export class RealLossService implements ILossService {
       const res = await apiClient.get<any>('/kitchen/cancellations');
       const list = Array.isArray(res) ? res : res?.items || res?.data;
       if (Array.isArray(list)) return list;
-      return localCancellations;
+      return apiClient.isFallbackEnabled() ? localCancellations : [];
     } catch (err) {
       logDebugFallback('LossService', '/kitchen/cancellations', err);
-      return localCancellations;
+      return apiClient.isFallbackEnabled() ? localCancellations : [];
     }
   }
 

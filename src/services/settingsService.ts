@@ -140,21 +140,21 @@ export class RealSettingsService implements ISettingsService {
         phone: data.phone || '',
         role: data.role || 'staff',
         avatarText: initials,
-        storeId: storeId || getActiveStoreId() || '01915dfa-9012-7000-8000-000000000002',
-        storeName: storeName || 'StockPulse Kitchen',
+        storeId: storeId || getActiveStoreId() || '',
+        storeName: storeName || 'StockPulse Store',
         biometricsEnabled: true,
       };
     } catch (err) {
       logDebugFallback('SettingsService', '/users/me', err);
       return {
-        id: '01915dfa-9012-7000-8000-000000000001',
-        name: 'Anna Schmidt',
-        email: 'anna.admin@restaurant.de',
-        phone: '+49 30 9876 5432',
+        id: 'u1',
+        name: 'User',
+        email: '',
+        phone: '',
         role: 'admin',
-        avatarText: 'AS',
-        storeId: getActiveStoreId() || '01915dfa-9012-7000-8000-000000000002',
-        storeName: 'Bella Cucina Restaurant',
+        avatarText: 'US',
+        storeId: getActiveStoreId() || '',
+        storeName: 'StockPulse Store',
         biometricsEnabled: true,
       };
     }

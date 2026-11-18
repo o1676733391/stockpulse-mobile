@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DonutChart, Sparkline, StockBar } from '@/components/ui/charts';
 import { DesktopAccessNotice } from '@/components/ui/desktop-access-notice';
@@ -205,8 +206,10 @@ export default function DashboardScreen() {
 
       // 1. Process Total Valuation & Sparkline
       const totalVal = valuationData?.totalValuation ?? (inventoryItems.reduce((acc, it) => acc + (it.physicalStock * it.costPerUnit), 0));
-      if (valuationData?.trend7D?.values) {
+      if (valuationData?.trend7D?.values && valuationData.trend7D.values.length > 0) {
         setSparklineData(valuationData.trend7D.values);
+      } else {
+        setSparklineData([]);
       }
 
       // 2. Process Inventory Stock Health
@@ -218,7 +221,7 @@ export default function DashboardScreen() {
       const criticalCount = inventoryItems.filter((i) => i.status === 'critical').length;
       const overstockCount = inventoryItems.filter((i) => i.status === 'overstock').length;
 
-      const healthyPct = totalItems > 0 ? Math.round((optimalCount / totalItems) * 100) : 100;
+      const healthyPct = totalItems > 0 ? Math.round((optimalCount / totalItems) * 100) : 0;
       const lowPct = totalItems > 0 ? Math.round((lowCount / totalItems) * 100) : 0;
       const criticalPct = totalItems > 0 ? Math.round((criticalCount / totalItems) * 100) : 0;
       const overstockPct = totalItems > 0 ? Math.round((overstockCount / totalItems) * 100) : 0;
@@ -243,14 +246,14 @@ export default function DashboardScreen() {
           value: formatCurrency(totalVal),
           sub: t('dashboard.kpis.activeStock'),
           variant: 'green',
-          trend: { dir: 'up', label: '+3.4%' },
+          trend: totalVal > 0 ? { dir: 'up', label: '+3.4%' } : { dir: 'flat', label: '0,0%' },
         },
         {
           label: t('dashboard.kpis.healthyRate'),
-          value: `${healthyPct}%`,
+          value: totalItems > 0 ? `${healthyPct}%` : '—',
           sub: t('dashboard.kpis.targetRange'),
           variant: 'blue',
-          trend: { dir: healthyPct >= 90 ? 'up' : 'down', label: `${healthyPct}%` },
+          trend: totalItems > 0 ? { dir: healthyPct >= 90 ? 'up' : 'down', label: `${healthyPct}%` } : { dir: 'flat', label: '—' },
         },
         {
           label: t('dashboard.kpis.expiringSoon'),
@@ -325,17 +328,19 @@ export default function DashboardScreen() {
         });
       }
 
-      dynamicTasks.push({
-        id: 'task-count',
-        iconName: 'ClipboardList',
-        color: '#6d28d9',
-        bg: '#ede9fe',
-        label: t('dashboard.tasks.dailyCountLabel'),
-        sub: t('dashboard.tasks.dailyCountSub'),
-        badge: t('dashboard.tasks.scheduledBadge'),
-        badgeVariant: 'purple',
-        route: '/stock-count',
-      });
+      if (totalItems > 0) {
+        dynamicTasks.push({
+          id: 'task-count',
+          iconName: 'ClipboardList',
+          color: '#6d28d9',
+          bg: '#ede9fe',
+          label: t('dashboard.tasks.dailyCountLabel'),
+          sub: t('dashboard.tasks.dailyCountSub'),
+          badge: t('dashboard.tasks.scheduledBadge'),
+          badgeVariant: 'purple',
+          route: '/stock-count',
+        });
+      }
 
       setTasks(dynamicTasks);
 
@@ -561,6 +566,34 @@ export default function DashboardScreen() {
               <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
             </View>
           </Card>
+
+          {/* Quick Onboarding for empty stores */}
+          {totalItemsCount === 0 && !loading && (
+            <Card style={styles.onboardingBanner}>
+              <View style={styles.onboardingBannerLeft}>
+                <View style={styles.onboardingIconBox}>
+                  <VectorIcon name="FileText" size={20} color={Colors.brand.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.onboardingTitle}>
+                    {language === 'de' ? 'Katalog importieren' : 'Import Product Catalog'}
+                  </Text>
+                  <Text style={styles.onboardingDesc}>
+                    {language === 'de'
+                      ? 'Laden Sie Ihre Artikelliste als Excel (XLSX) oder PDF hoch, um Ihr Inventar in Sekunden einzurichten.'
+                      : 'Upload your article catalog via Excel (XLSX) or PDF to set up your inventory in seconds.'}
+                  </Text>
+                </View>
+              </View>
+              <Button
+                label={language === 'de' ? 'Katalog hochladen' : 'Import Catalog'}
+                variant="primary"
+                size="sm"
+                onPress={() => router.push('/inventory/overview' as any)}
+                style={{ marginTop: Spacing.sm }}
+              />
+            </Card>
+          )}
         </View>
 
         {/* ── Today's Tasks ── */}
@@ -571,33 +604,42 @@ export default function DashboardScreen() {
             onAction={() => router.push('/notifications' as any)}
           />
           <View style={styles.taskStack}>
-            {tasks.map((task) => (
-              <Card
-                key={task.id}
-                onPress={() => router.push(task.route as any)}
-                style={styles.taskCard}
-              >
-                <View style={styles.taskRow}>
-                  <View style={[styles.taskIconBox, { backgroundColor: task.bg }]}>
-                    <VectorIcon name={task.iconName as any} size={18} color={task.color} />
-                  </View>
-
-                  <View style={styles.taskInfo}>
-                    <View style={styles.taskTitleRow}>
-                      <Text style={styles.taskTitle}>{task.label}</Text>
-                      {task.badge && (
-                        <Badge variant={task.badgeVariant ?? 'gray'}>
-                          {task.badge}
-                        </Badge>
-                      )}
-                    </View>
-                    <Text style={styles.taskSub}>{task.sub}</Text>
-                  </View>
-
-                  <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
+            {tasks.length === 0 ? (
+              <Card style={styles.emptyTaskCard}>
+                <View style={styles.emptyTaskRow}>
+                  <VectorIcon name="CheckCircle2" size={18} color={Colors.brand.primary} />
+                  <Text style={styles.emptyTaskText}>{t('dashboard.noTasks')}</Text>
                 </View>
               </Card>
-            ))}
+            ) : (
+              tasks.map((task) => (
+                <Card
+                  key={task.id}
+                  onPress={() => router.push(task.route as any)}
+                  style={styles.taskCard}
+                >
+                  <View style={styles.taskRow}>
+                    <View style={[styles.taskIconBox, { backgroundColor: task.bg }]}>
+                      <VectorIcon name={task.iconName as any} size={18} color={task.color} />
+                    </View>
+
+                    <View style={styles.taskInfo}>
+                      <View style={styles.taskTitleRow}>
+                        <Text style={styles.taskTitle}>{task.label}</Text>
+                        {task.badge && (
+                          <Badge variant={task.badgeVariant ?? 'gray'}>
+                            {task.badge}
+                          </Badge>
+                        )}
+                      </View>
+                      <Text style={styles.taskSub}>{task.sub}</Text>
+                    </View>
+
+                    <VectorIcon name="ChevronRight" size={16} color={Colors.neutral.textTertiary} />
+                  </View>
+                </Card>
+              ))
+            )}
           </View>
         </View>
 
@@ -1247,6 +1289,60 @@ const styles = StyleSheet.create({
   emptyCardText: {
     fontSize: 12,
     color: Colors.neutral.textMuted,
+  },
+  emptyTaskCard: {
+    padding: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.neutral.card,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.neutral.borderLight,
+  },
+  emptyTaskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  emptyTaskText: {
+    ...Typography.bodySecondary,
+    fontSize: 13,
+    color: Colors.neutral.textSecondary,
+    fontWeight: '500',
+  },
+  onboardingBanner: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  onboardingBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+  },
+  onboardingIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#dcfce7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onboardingTitle: {
+    ...Typography.cardTitle,
+    fontSize: 14,
+    color: Colors.brand.dark,
+    fontWeight: '700',
+  },
+  onboardingDesc: {
+    ...Typography.caption,
+    fontSize: 12,
+    color: Colors.neutral.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
   },
   pressed: {
     opacity: 0.8,

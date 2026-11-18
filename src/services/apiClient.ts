@@ -48,11 +48,11 @@ function resolveApiBaseUrl(): string {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
-const ENABLE_MOCK_FALLBACK = process.env.EXPO_PUBLIC_ENABLE_MOCK_FALLBACK !== 'false';
+const ENABLE_MOCK_FALLBACK = process.env.EXPO_PUBLIC_ENABLE_MOCK_FALLBACK === 'true';
 const DEBUG_API = process.env.EXPO_PUBLIC_DEBUG_API !== 'false';
 
 let authToken: string | null = null;
-let activeStoreId: string = '01915dfa-9012-7000-8000-000000000002'; // Default Bella Cucina Store UUID
+let activeStoreId: string = '';
 let onUnauthorizedCallback: (() => void) | null = null;
 
 export function setAuthToken(token: string | null): void {

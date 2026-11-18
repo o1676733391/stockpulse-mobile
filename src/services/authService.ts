@@ -3,7 +3,7 @@ import { i18n } from '@/i18n/manager';
 import { AuthUser, Permission, UserRole } from '@/types/rbac';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
-import { apiClient, getAuthToken, logDebugFallback, setAuthToken } from './apiClient';
+import { apiClient, getActiveStoreId, getAuthToken, logDebugFallback, setActiveStoreId, setAuthToken } from './apiClient';
 import { supabase } from './supabaseClient';
 
 export function getAuthRedirectUrl(path: string = 'auth/callback'): string {
@@ -257,8 +257,10 @@ export class RealAuthService implements IAuthService {
           storeId:
             backendProfile.defaultStoreId ||
             backendProfile.assignedStoreIds?.[0] ||
-            '01915dfa-9012-7000-8000-000000000002',
-          storeName: backendProfile.storeName || 'StockPulse Store',
+            backendProfile.currentStoreId ||
+            authData.user.user_metadata?.store_id ||
+            '',
+          storeName: backendProfile.storeName || backendProfile.organizationName || authData.user.user_metadata?.store_name || '',
           status: 'active',
           lastActive: 'Just now',
         };
@@ -269,9 +271,37 @@ export class RealAuthService implements IAuthService {
           this.currentUser = disabledUser;
           throw new Error('ACCOUNT_DISABLED');
         }
-        userProfile = this.mapSupabaseUserToAuthUser(authData.user);
+
+        let storeIdFromDb = '';
+        let storeNameFromDb = '';
+        try {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('default_store_id')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+          if (dbUser?.default_store_id) {
+            storeIdFromDb = dbUser.default_store_id;
+            const { data: dbStore } = await supabase
+              .from('stores')
+              .select('name')
+              .eq('id', storeIdFromDb)
+              .maybeSingle();
+            if (dbStore?.name) {
+              storeNameFromDb = dbStore.name;
+            }
+          }
+        } catch {}
+
+        userProfile = this.mapSupabaseUserToAuthUser(
+          authData.user,
+          storeIdFromDb ? { storeId: storeIdFromDb, storeName: storeNameFromDb || undefined } : undefined
+        );
       }
 
+      if (userProfile.storeId) {
+        setActiveStoreId(userProfile.storeId);
+      }
       this.currentUser = userProfile;
       return { user: userProfile, emailNeedsVerification: false };
     } catch (err: any) {
@@ -298,11 +328,15 @@ export class RealAuthService implements IAuthService {
             storeId:
               bp.defaultStoreId ||
               bp.assignedStoreIds?.[0] ||
-              '01915dfa-9012-7000-8000-000000000002',
-            storeName: bp.storeName || 'Bella Cucina Restaurant',
+              bp.currentStoreId ||
+              '',
+            storeName: bp.storeName || bp.organizationName || '',
             status: 'active',
             lastActive: 'Just now',
           };
+          if (userProfile.storeId) {
+            setActiveStoreId(userProfile.storeId);
+          }
           this.currentUser = userProfile;
           return { user: userProfile, emailNeedsVerification: false };
         }
@@ -692,15 +726,47 @@ export class RealAuthService implements IAuthService {
           storeId:
             backendProfile.defaultStoreId ||
             backendProfile.assignedStoreIds?.[0] ||
-            '01915dfa-9012-7000-8000-000000000002',
-          storeName: backendProfile.storeName || 'StockPulse Store',
+            backendProfile.currentStoreId ||
+            sessionData.session.user.user_metadata?.store_id ||
+            '',
+          storeName: backendProfile.storeName || backendProfile.organizationName || sessionData.session.user.user_metadata?.store_name || '',
           status: 'active',
           lastActive: 'Just now',
         };
+        if (user.storeId) {
+          setActiveStoreId(user.storeId);
+        }
         this.currentUser = user;
         return user;
       } catch (err) {
-        const fallback = this.mapSupabaseUserToAuthUser(sessionData.session.user);
+        let storeIdFromDb = '';
+        let storeNameFromDb = '';
+        try {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('default_store_id')
+            .eq('id', sessionData.session.user.id)
+            .maybeSingle();
+          if (dbUser?.default_store_id) {
+            storeIdFromDb = dbUser.default_store_id;
+            const { data: dbStore } = await supabase
+              .from('stores')
+              .select('name')
+              .eq('id', storeIdFromDb)
+              .maybeSingle();
+            if (dbStore?.name) {
+              storeNameFromDb = dbStore.name;
+            }
+          }
+        } catch {}
+
+        const fallback = this.mapSupabaseUserToAuthUser(
+          sessionData.session.user,
+          storeIdFromDb ? { storeId: storeIdFromDb, storeName: storeNameFromDb || undefined } : undefined
+        );
+        if (fallback.storeId) {
+          setActiveStoreId(fallback.storeId);
+        }
         this.currentUser = fallback;
         return fallback;
       }
@@ -748,23 +814,23 @@ export class RealAuthService implements IAuthService {
           phone: u.phone,
           avatarText: this.extractInitials(u.name || u.email || 'US'),
           role: (u.role || 'staff') as UserRole,
-          storeId: u.assignedStoreIds?.[0] || u.storeId || '01915dfa-9012-7000-8000-000000000002',
-          storeName: u.storeName || 'Bella Cucina Restaurant',
+          storeId: u.assignedStoreIds?.[0] || u.storeId || getActiveStoreId() || '',
+          storeName: u.storeName || this.currentUser?.storeName || '',
           status: u.isActive === false ? 'inactive' : 'active',
           lastActive: 'Active',
         }));
       }
-      return this.teamMembers;
+      return apiClient.isFallbackEnabled() ? this.teamMembers : [];
     } catch (err) {
       logDebugFallback('AuthService', '/users', err);
-      return this.teamMembers;
+      return apiClient.isFallbackEnabled() ? this.teamMembers : [];
     }
   }
 
   async getMemberById(id: string): Promise<AuthUser | null> {
     try {
       const u = await apiClient.get<any>(`/users/${id}`);
-      if (!u) return this.teamMembers.find((m) => m.id === id) || null;
+      if (!u) return apiClient.isFallbackEnabled() ? this.teamMembers.find((m) => m.id === id) || null : null;
       return {
         id: u.id,
         name: u.name || u.email?.split('@')[0] || 'User',
@@ -772,14 +838,14 @@ export class RealAuthService implements IAuthService {
         phone: u.phone,
         avatarText: this.extractInitials(u.name || u.email || 'US'),
         role: (u.role || 'staff') as UserRole,
-        storeId: u.assignedStoreIds?.[0] || u.storeId || '01915dfa-9012-7000-8000-000000000002',
-        storeName: u.storeName || 'Bella Cucina Restaurant',
+        storeId: u.assignedStoreIds?.[0] || u.storeId || getActiveStoreId() || '',
+        storeName: u.storeName || this.currentUser?.storeName || '',
         status: u.isActive === false ? 'inactive' : 'active',
         lastActive: 'Active',
       };
     } catch (err) {
       logDebugFallback('AuthService', `/users/${id}`, err);
-      return this.teamMembers.find((m) => m.id === id) || null;
+      return apiClient.isFallbackEnabled() ? this.teamMembers.find((m) => m.id === id) || null : null;
     }
   }
 
@@ -793,24 +859,27 @@ export class RealAuthService implements IAuthService {
         phone: res.phone,
         avatarText: this.extractInitials(res.name || 'US'),
         role: (res.role || role) as UserRole,
-        storeId: res.assignedStoreIds?.[0] || '01915dfa-9012-7000-8000-000000000002',
-        storeName: 'Bella Cucina Restaurant',
+        storeId: res.assignedStoreIds?.[0] || getActiveStoreId() || '',
+        storeName: res.storeName || this.currentUser?.storeName || '',
         status: 'active',
         lastActive: 'Active',
       };
     } catch (err) {
       logDebugFallback('AuthService', `/users/${id} [PATCH]`, err);
-      const target = this.teamMembers.find((m) => m.id === id);
-      if (target) {
-        target.role = role;
-        return { ...target };
+      if (apiClient.isFallbackEnabled()) {
+        const target = this.teamMembers.find((m) => m.id === id);
+        if (target) {
+          target.role = role;
+          return { ...target };
+        }
+        return { ...this.teamMembers[0], id, role };
       }
-      return { ...this.teamMembers[0], id, role };
+      throw err;
     }
   }
 
   async inviteMember(name: string, email: string, role: UserRole, phone?: string): Promise<AuthUser> {
-    const storeId = this.currentUser?.storeId || '01915dfa-9012-7000-8000-000000000002';
+    const storeId = this.currentUser?.storeId || getActiveStoreId() || '';
     try {
       try {
         const inviteRes = await apiClient.post<any>(`/stores/${storeId}/invitations`, {
@@ -829,7 +898,7 @@ export class RealAuthService implements IAuthService {
           avatarText: this.extractInitials(name || 'US'),
           role,
           storeId,
-          storeName: inviteRes.storeName || this.currentUser?.storeName || 'Store',
+          storeName: inviteRes.storeName || this.currentUser?.storeName || '',
           status: 'active',
           lastActive: 'Invited (Pending)',
         };
@@ -838,8 +907,7 @@ export class RealAuthService implements IAuthService {
           name,
           email,
           role,
-          organizationId: '01915dfa-9012-7000-8000-000000000001',
-          assignedStoreIds: [storeId],
+          assignedStoreIds: storeId ? [storeId] : [],
         });
         return {
           id: res.id,
@@ -849,27 +917,30 @@ export class RealAuthService implements IAuthService {
           avatarText: this.extractInitials(name),
           role,
           storeId,
-          storeName: this.currentUser?.storeName || 'Store',
+          storeName: this.currentUser?.storeName || '',
           status: 'active',
           lastActive: 'Invited',
         };
       }
     } catch (err) {
       logDebugFallback('AuthService', `/stores/${storeId}/invitations [POST]`, err);
-      const newMember: AuthUser = {
-        id: `usr-${Date.now().toString().slice(-4)}`,
-        name,
-        email,
-        phone,
-        avatarText: this.extractInitials(name),
-        role,
-        storeId,
-        storeName: this.currentUser?.storeName || 'Bella Cucina Restaurant',
-        status: 'active',
-        lastActive: 'Invited',
-      };
-      this.teamMembers.push(newMember);
-      return newMember;
+      if (apiClient.isFallbackEnabled()) {
+        const newMember: AuthUser = {
+          id: `usr-${Date.now().toString().slice(-4)}`,
+          name,
+          email,
+          phone,
+          avatarText: this.extractInitials(name),
+          role,
+          storeId,
+          storeName: this.currentUser?.storeName || '',
+          status: 'active',
+          lastActive: 'Invited',
+        };
+        this.teamMembers.push(newMember);
+        return newMember;
+      }
+      throw err;
     }
   }
 
@@ -879,8 +950,11 @@ export class RealAuthService implements IAuthService {
       return res.success !== false;
     } catch (err) {
       logDebugFallback('AuthService', `/users/${id} [DELETE]`, err);
-      this.teamMembers = this.teamMembers.filter((m) => m.id !== id);
-      return true;
+      if (apiClient.isFallbackEnabled()) {
+        this.teamMembers = this.teamMembers.filter((m) => m.id !== id);
+        return true;
+      }
+      throw err;
     }
   }
 
@@ -903,8 +977,8 @@ export class RealAuthService implements IAuthService {
         overrides?.storeId ||
         meta.assigned_store_ids?.[0] ||
         meta.store_id ||
-        '01915dfa-9012-7000-8000-000000000002',
-      storeName: overrides?.storeName || meta.store_name || 'Bella Cucina Restaurant',
+        '',
+      storeName: overrides?.storeName || meta.store_name || meta.organization_name || '',
       status: overrides?.status || 'active',
       lastActive: 'Just now',
     };

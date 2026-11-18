@@ -11,13 +11,13 @@ export class AnalyticsService {
     const client = this.supabaseService.getAdminClient();
     if (!client) {
       return {
-        totalItems: 5,
-        healthScore: 95,
-        optimalCount: 4,
-        lowStockCount: 1,
+        totalItems: 0,
+        healthScore: 100,
+        optimalCount: 0,
+        lowStockCount: 0,
         overstockCount: 0,
         outOfStockCount: 0,
-        turnoverDays: 12.5,
+        turnoverDays: 0,
       };
     }
 
@@ -47,16 +47,12 @@ export class AnalyticsService {
     const client = this.supabaseService.getAdminClient();
     if (!client) {
       return {
-        totalValuation: 18420.0,
+        totalValuation: 0,
         trend7D: {
-          labels: ['4 Mar', '5 Mar', '6 Mar', '7 Mar', '8 Mar', '9 Mar', '10 Mar'],
-          values: [18200, 17900, 18100, 17800, 18250, 18350, 18420],
+          labels: [],
+          values: [],
         },
-        categoryBreakdown: [
-          { category: 'Dairy & Eggs', value: 2980, percentage: 40.0, color: '#d97706' },
-          { category: 'Pantry & Dry Goods', value: 2450, percentage: 35.0, color: '#059669' },
-          { category: 'Beverages & Coffee', value: 1940, percentage: 25.0, color: '#16a34a' },
-        ],
+        categoryBreakdown: [],
       };
     }
 
@@ -108,11 +104,11 @@ export class AnalyticsService {
     const client = this.supabaseService.getAdminClient();
     if (!client) {
       return {
-        overallVarianceRate: -1.8,
-        netVarianceValue: -342.5,
+        overallVarianceRate: 0,
+        netVarianceValue: 0,
         trend: {
-          labels: ['4 Mar', '5 Mar', '6 Mar', '7 Mar', '8 Mar', '9 Mar', '10 Mar'],
-          values: [-1.2, -1.5, -2.1, -1.8, -1.6, -2.0, -1.8],
+          labels: [],
+          values: [],
         },
         topDiscrepancies: [],
       };
@@ -125,55 +121,71 @@ export class AnalyticsService {
       .order('created_at', { ascending: false })
       .limit(5);
 
+    if (!variances || variances.length === 0) {
+      return {
+        overallVarianceRate: 0,
+        netVarianceValue: 0,
+        trend: {
+          labels: [],
+          values: [],
+        },
+        topDiscrepancies: [],
+      };
+    }
+
     let netVarianceValue = 0;
     (variances || []).forEach((v: any) => {
       netVarianceValue += Number(v.net_variance_value || 0);
     });
 
     return {
-      overallVarianceRate: -1.8,
+      overallVarianceRate: 0,
       netVarianceValue: parseFloat(netVarianceValue.toFixed(2)),
       trend: {
         labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7'],
-        values: [-1.2, -1.5, -2.1, -1.8, -1.6, -2.0, -1.8],
+        values: [0, 0, 0, 0, 0, 0, 0],
       },
-      topDiscrepancies: [
-        { name: 'Whole Milk 3.5%', variancePct: -10.4, valueImpact: 3.12, isNegative: true },
-        { name: 'Mozzarella Block 2.5kg', variancePct: -5.0, valueImpact: 4.87, isNegative: true },
-      ],
+      topDiscrepancies: [],
     };
   }
 
   async getWasteSuggestions(storeId: string) {
-    return [
-      {
-        id: 0,
-        item: 'Whole Milk 3.5%',
-        qty: 4.0,
-        unit: 'L',
-        days: 2,
-        promo: 'Cappuccino Special Discount',
-        uses: 'Specialty beverage promotion before batch expiry',
-        usesNum: 12,
+    const client = this.supabaseService.getAdminClient();
+    if (!client) return [];
+
+    const { data: batches } = await client
+      .from('inventory_batches')
+      .select('id, batch_number, quantity, expiry_date, inventory_items(name, unit, cost_per_unit)')
+      .eq('store_id', storeId)
+      .is('deleted_at', null)
+      .order('expiry_date', { ascending: true })
+      .limit(5);
+
+    if (!batches || batches.length === 0) {
+      return [];
+    }
+
+    return batches.map((b: any, idx: number) => {
+      const days = b.expiry_date
+        ? Math.ceil((new Date(b.expiry_date).getTime() - Date.now()) / 86400000)
+        : 0;
+      const itemName = b.inventory_items?.name || 'Item';
+      const unit = b.inventory_items?.unit || 'kg';
+      const cost = Number(b.inventory_items?.cost_per_unit || 0) * Number(b.quantity || 0);
+      return {
+        id: idx,
+        item: itemName,
+        qty: Number(b.quantity || 0),
+        unit,
+        days: Math.max(0, days),
+        promo: `Quick Promo - ${itemName}`,
+        uses: `Use ${itemName} in daily specials before expiry`,
+        usesNum: 10,
         utilization: 95,
-        saved: '€5.00',
-        recipeId: 'REC-COF-CAPP',
-        description: 'Prioritize milk batch in morning coffee rush to prevent spoilage',
-      },
-      {
-        id: 1,
-        item: 'Mozzarella Block 2.5kg',
-        qty: 2.5,
-        unit: 'kg',
-        days: 3,
-        promo: 'Pizza Margherita Combo',
-        uses: 'Lunch prep batch for Margherita pizza specials',
-        usesNum: 16,
-        utilization: 92,
-        saved: '€19.50',
-        recipeId: 'REC-PIZZA-MARG',
-        description: 'Grate and portion for dinner rush pizza service',
-      },
-    ];
+        saved: `€${cost.toFixed(2)}`,
+        recipeId: `batch-${b.id}`,
+        description: `Prioritize ${itemName} batch ${b.batch_number || ''} in kitchen prep`,
+      };
+    });
   }
 }

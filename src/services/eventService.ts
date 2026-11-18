@@ -245,10 +245,10 @@ export class RealEventService implements IEventService {
       const res = await apiClient.get<any>(`/events${qs}`);
       const list = Array.isArray(res) ? res : res?.items || res?.data;
       if (Array.isArray(list)) return list;
-      return this.filterLocal(filters);
+      return apiClient.isFallbackEnabled() ? this.filterLocal(filters) : [];
     } catch (err) {
       logDebugFallback('EventService', '/events [GET]', err);
-      return this.filterLocal(filters);
+      return apiClient.isFallbackEnabled() ? this.filterLocal(filters) : [];
     }
   }
 

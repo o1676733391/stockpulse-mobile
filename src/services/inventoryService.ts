@@ -101,38 +101,32 @@ export class RealInventoryService implements IInventoryService {
         }
       }
 
-      // Ensure default Drinks & starter items are available if store catalog has no items or no drinks yet
-      if (normalized.length === 0) {
-        return [...localMockItems];
-      }
-      for (const mockItem of localMockItems) {
-        if (mockItem.sku.startsWith('DRK-') && !existingSkus.has(mockItem.sku)) {
-          normalized.push(mockItem);
-        }
-      }
-
+      // In production, return the exact store items (empty [] for brand new stores)
       return normalized;
     } catch (err) {
       logDebugFallback('InventoryService', '/inventory', err);
-      let filtered = [...locallyCreatedItems, ...localMockItems];
-      if (category && category !== 'All' && category !== 'All Items' && category !== 'all') {
-        filtered = filtered.filter((i) => upperGroupService.matchesGroup(i.category, category));
+      if (apiClient.isFallbackEnabled()) {
+        let filtered = [...locallyCreatedItems, ...localMockItems];
+        if (category && category !== 'All' && category !== 'All Items' && category !== 'all') {
+          filtered = filtered.filter((i) => upperGroupService.matchesGroup(i.category, category));
+        }
+        if (status && status !== 'All' && status !== 'all') {
+          filtered = filtered.filter(
+            (i) => i.status.toLowerCase() === status.toLowerCase()
+          );
+        }
+        if (search && search.trim()) {
+          const q = search.trim().toLowerCase();
+          filtered = filtered.filter(
+            (i) =>
+              i.name.toLowerCase().includes(q) ||
+              i.sku.toLowerCase().includes(q) ||
+              i.category.toLowerCase().includes(q)
+          );
+        }
+        return filtered;
       }
-      if (status && status !== 'All' && status !== 'all') {
-        filtered = filtered.filter(
-          (i) => i.status.toLowerCase() === status.toLowerCase()
-        );
-      }
-      if (search && search.trim()) {
-        const q = search.trim().toLowerCase();
-        filtered = filtered.filter(
-          (i) =>
-            i.name.toLowerCase().includes(q) ||
-            i.sku.toLowerCase().includes(q) ||
-            i.category.toLowerCase().includes(q)
-        );
-      }
-      return filtered;
+      return [...locallyCreatedItems];
     }
   }
 
@@ -142,8 +136,11 @@ export class RealInventoryService implements IInventoryService {
       return res ? normalizeInventoryItem(res) : null;
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${id}`, err);
-      const found = localMockItems.find((i) => i.id === id);
-      return found ? { ...found } : null;
+      if (apiClient.isFallbackEnabled()) {
+        const found = localMockItems.find((i) => i.id === id);
+        return found ? { ...found } : null;
+      }
+      return locallyCreatedItems.find((i) => i.id === id) || null;
     }
   }
 
@@ -163,20 +160,24 @@ export class RealInventoryService implements IInventoryService {
       });
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${itemId}/adjustments`, err);
-      const idx = localMockItems.findIndex((i) => i.id === itemId);
-      if (idx !== -1) {
-        const item = localMockItems[idx];
-        const newStock = Math.max(0, item.physicalStock + delta);
-        item.physicalStock = newStock;
-        item.transactions.unshift({
-          id: `tx-${Date.now()}`,
-          type: 'adjustment',
-          date: new Date().toISOString(),
-          user: 'Anna Schmidt',
-          delta,
-          note: note || reason || 'Manual adjustment',
-        });
+      if (apiClient.isFallbackEnabled()) {
+        const idx = localMockItems.findIndex((i) => i.id === itemId);
+        if (idx !== -1) {
+          const item = localMockItems[idx];
+          const newStock = Math.max(0, item.physicalStock + delta);
+          item.physicalStock = newStock;
+          item.transactions.unshift({
+            id: `tx-${Date.now()}`,
+            type: 'adjustment',
+            date: new Date().toISOString(),
+            user: 'Staff',
+            delta,
+            note: note || reason || 'Manual adjustment',
+          });
+        }
+        return;
       }
+      throw err;
     }
   }
 
@@ -195,27 +196,30 @@ export class RealInventoryService implements IInventoryService {
       return created;
     } catch (err) {
       logDebugFallback('InventoryService', '/inventory [POST]', err);
-      const newItem: InventoryItem = {
-        id: `item-${Date.now()}`,
-        name: item.name || 'New Item',
-        sku: item.sku || `SKU-${Date.now().toString().slice(-4)}`,
-        category: chosenCategory,
-        unit: item.unit || 'kg',
-        physicalStock: item.physicalStock ?? 0,
-        theoreticalStock: item.theoreticalStock ?? item.physicalStock ?? 0,
-        targetStock: item.targetStock || 10,
-        safetyStock: item.safetyStock || 2,
-        costPerUnit: item.costPerUnit || 0,
-        supplierId: item.supplierId || '',
-        status: (item.physicalStock || 0) <= 0 ? 'critical' : 'healthy',
-        batches: item.batches || [],
-        transactions: [],
-      };
-      itemCategoryOverrides[newItem.id] = chosenCategory;
-      itemCategoryOverrides[newItem.sku] = chosenCategory;
-      locallyCreatedItems.unshift(newItem);
-      localMockItems.unshift(newItem);
-      return newItem;
+      if (apiClient.isFallbackEnabled()) {
+        const newItem: InventoryItem = {
+          id: `item-${Date.now()}`,
+          name: item.name || 'New Item',
+          sku: item.sku || `SKU-${Date.now().toString().slice(-4)}`,
+          category: chosenCategory,
+          unit: item.unit || 'kg',
+          physicalStock: item.physicalStock ?? 0,
+          theoreticalStock: item.theoreticalStock ?? item.physicalStock ?? 0,
+          targetStock: item.targetStock || 10,
+          safetyStock: item.safetyStock || 2,
+          costPerUnit: item.costPerUnit || 0,
+          supplierId: item.supplierId || '',
+          status: (item.physicalStock || 0) <= 0 ? 'critical' : 'healthy',
+          batches: item.batches || [],
+          transactions: [],
+        };
+        itemCategoryOverrides[newItem.id] = chosenCategory;
+        itemCategoryOverrides[newItem.sku] = chosenCategory;
+        locallyCreatedItems.unshift(newItem);
+        localMockItems.unshift(newItem);
+        return newItem;
+      }
+      throw err;
     }
   }
 
@@ -239,15 +243,17 @@ export class RealInventoryService implements IInventoryService {
       return updated;
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${id} [PATCH]`, err);
-      const localIdx = locallyCreatedItems.findIndex((i) => i.id === id);
-      if (localIdx !== -1) {
-        locallyCreatedItems[localIdx] = { ...locallyCreatedItems[localIdx], ...item };
-        return locallyCreatedItems[localIdx];
-      }
-      const idx = localMockItems.findIndex((i) => i.id === id);
-      if (idx !== -1) {
-        localMockItems[idx] = { ...localMockItems[idx], ...item };
-        return localMockItems[idx];
+      if (apiClient.isFallbackEnabled()) {
+        const localIdx = locallyCreatedItems.findIndex((i) => i.id === id);
+        if (localIdx !== -1) {
+          locallyCreatedItems[localIdx] = { ...locallyCreatedItems[localIdx], ...item };
+          return locallyCreatedItems[localIdx];
+        }
+        const idx = localMockItems.findIndex((i) => i.id === id);
+        if (idx !== -1) {
+          localMockItems[idx] = { ...localMockItems[idx], ...item };
+          return localMockItems[idx];
+        }
       }
       throw err;
     }
@@ -258,7 +264,11 @@ export class RealInventoryService implements IInventoryService {
       await apiClient.del(`/inventory/${id}`);
     } catch (err) {
       logDebugFallback('InventoryService', `/inventory/${id} [DELETE]`, err);
-      localMockItems = localMockItems.filter((i) => i.id !== id);
+      if (apiClient.isFallbackEnabled()) {
+        localMockItems = localMockItems.filter((i) => i.id !== id);
+        return;
+      }
+      throw err;
     }
   }
 
@@ -285,9 +295,12 @@ export class RealInventoryService implements IInventoryService {
       return await apiClient.get<Array<{ id: string; name: string }>>('/inventory/meta/categories');
     } catch (err) {
       logDebugFallback('InventoryService', '/inventory/meta/categories', err);
-      const set = new Set<string>();
-      localMockItems.forEach((i) => set.add(i.category));
-      return Array.from(set).map((cat) => ({ id: cat, name: cat }));
+      if (apiClient.isFallbackEnabled()) {
+        const set = new Set<string>();
+        localMockItems.forEach((i) => set.add(i.category));
+        return Array.from(set).map((cat) => ({ id: cat, name: cat }));
+      }
+      return [];
     }
   }
 }

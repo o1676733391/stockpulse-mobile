@@ -231,10 +231,10 @@ export class RealDeliveryNoteService implements IDeliveryNoteService {
       const res = await apiClient.get<any>(`/procurement/delivery-notes${qs}`);
       const list = Array.isArray(res) ? res : res?.items || res?.data;
       if (Array.isArray(list)) return list;
-      return this.filterLocal(filters);
+      return apiClient.isFallbackEnabled() ? this.filterLocal(filters) : [];
     } catch (err) {
       logDebugFallback('DeliveryNoteService', '/procurement/delivery-notes [GET]', err);
-      return this.filterLocal(filters);
+      return apiClient.isFallbackEnabled() ? this.filterLocal(filters) : [];
     }
   }
 
